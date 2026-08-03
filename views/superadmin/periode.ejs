@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Kelola Periode Seleksi</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="content-wrapper">
+                <% if (success) { %>
+                    <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+                <% } %>
+                <% if (error) { %>
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+
+                <div class="panel">
+                    <div class="panel-header-row">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-calendar-range"></i></div>
+                            <h3>Daftar Periode Seleksi</h3>
+                        </div>
+                        <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
+                            <i class="bi bi-plus-lg"></i> Buka Periode Baru
+                        </button>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Tahun Ajaran</th>
+                                <th>Kuota</th>
+                                <th>Tanggal Mulai</th>
+                                <th>Tanggal Selesai</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (periodeList.length === 0) { %>
+                                <tr><td colspan="6" class="empty-state">Belum ada periode seleksi.</td></tr>
+                            <% } %>
+                            <% periodeList.forEach(function(p) { %>
+                                <tr>
+                                    <td><%= p.tahun_ajaran %></td>
+                                    <td><%= p.kuota_kelas_digital %></td>
+                                    <td><%= p.tanggal_mulai ? new Date(p.tanggal_mulai).toLocaleDateString('id-ID') : '-' %></td>
+                                    <td><%= p.tanggal_selesai ? new Date(p.tanggal_selesai).toLocaleDateString('id-ID') : '-' %></td>
+                                    <td>
+                                        <span class="badge badge-<%= p.status_periode === 'aktif' ? 'green' : 'red' %>">
+                                            <%= p.status_periode === 'aktif' ? 'Aktif' : 'Ditutup' %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <% if (p.status_periode !== 'aktif') { %>
+                                            <form action="/superadmin/periode/set-active/<%= p.id_periode %>" method="POST" onsubmit="return confirm('Aktifkan periode ini? Periode lain akan otomatis ditutup.');">
+                                                <button type="submit" class="btn-icon" title="Aktifkan">
+                                                    <i class="bi bi-toggle-off"></i>
+                                                </button>
+                                            </form>
+                                        <% } else { %>
+                                            <span style="color:#999; font-size:13px;">Sedang aktif</span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <%- include('../partials/footer') %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah Periode -->
+    <div class="modal-overlay" id="modalTambah">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-calendar-plus-fill"></i> Buka Periode Seleksi Baru</h3>
+                <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
+            </div>
+            <form action="/superadmin/periode/create" method="POST">
+                <p style="font-size:13px; color:#e67e22; margin-bottom:15px; background:#fdf1de; padding:10px; border-radius:8px;">
+                    <i class="bi bi-info-circle-fill"></i> Membuat periode baru akan otomatis menutup periode yang sedang aktif.
+                </p>
+
+                <label>Tahun Ajaran</label>
+                <input type="text" name="tahun_ajaran" placeholder="Contoh: 2026/2027" required>
+
+                <label>Kuota Kelas Digital</label>
+                <input type="number" name="kuota_kelas_digital" placeholder="Contoh: 30" required min="1">
+
+                <label>Tanggal Mulai</label>
+                <input type="date" name="tanggal_mulai">
+
+                <label>Tanggal Selesai</label>
+                <input type="date" name="tanggal_selesai">
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Buka Periode</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

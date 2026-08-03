@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Dashboard Kepala Sekolah</title>
+    <%- include('../partials/head') %>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="card-grid" style="margin-bottom: 25px;">
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue"><i class="bi bi-check-circle-fill"></i></div>
+                    <div>
+                        <h3>Total Siswa Diterima</h3>
+                        <p class="stat-number"><%= stats.diterima %></p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-orange"><i class="bi bi-hourglass-split"></i></div>
+                    <div>
+                        <h3>Total Cadangan</h3>
+                        <p class="stat-number"><%= stats.cadangan %></p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-purple"><i class="bi bi-flag-fill"></i></div>
+                    <div>
+                        <h3>Status Keputusan</h3>
+                        <p class="stat-number" style="font-size:20px;"><%= stats.statusKeputusan %></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bar-chart-fill"></i></div>
+                    <h3>Sebaran Nilai Siswa per Kategori</h3>
+                </div>
+                <canvas id="chartSebaran" height="90"></canvas>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
+                    <h3>Bobot Tiap Kriteria (Hasil FUCOM)</h3>
+                </div>
+                <% if (stats.bobotKriteria && stats.bobotKriteria.length > 0) { %>
+                    <div class="chart-with-legend">
+                        <canvas id="chartBobot" width="250" height="250"></canvas>
+                        <ul class="legend-list">
+                            <% stats.bobotKriteria.forEach(function(k) { %>
+                                <li><span class="dot"></span> <%= k.nama_kriteria %> <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b></li>
+                            <% }); %>
+                        </ul>
+                    </div>
+                <% } else { %>
+                    <p class="empty-state">Bobot kriteria belum tersedia. Perhitungan FUCOM belum dilakukan oleh Admin.</p>
+                <% } %>
+            </div>
+
+            <div class="panel laporan-panel">
+                <div class="panel-header">
+                    <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-file-earmark-text-fill"></i></div>
+                    <div>
+                        <h3>Unduh Laporan</h3>
+                        <p class="stat-desc">Unduh laporan hasil penempatan siswa kelas digital dalam format PDF.</p>
+                    </div>
+                </div>
+                <a href="/kepsek/laporan/unduh" class="btn-primary"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
+            </div>
+
+            <%- include('../partials/footer') %>
+        </div>
+    </div>
+
+    <script>
+        const ctxSebaran = document.getElementById('chartSebaran');
+        new Chart(ctxSebaran, {
+            type: 'bar',
+            data: {
+                labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
+                datasets: [{
+                    label: 'Jumlah Siswa',
+                    data: <%- JSON.stringify(stats.sebaranNilai) %>,
+                    backgroundColor: '#1d5fd6',
+                    borderRadius: 6
+                }]
+            },
+            options: { plugins: { legend: { display: false } } }
+        });
+
+        <% if (stats.bobotKriteria && stats.bobotKriteria.length > 0) { %>
+        const ctxBobot = document.getElementById('chartBobot');
+        new Chart(ctxBobot, {
+            type: 'pie',
+            data: {
+                labels: <%- JSON.stringify(stats.bobotKriteria.map(k => k.nama_kriteria)) %>,
+                datasets: [{
+                    data: <%- JSON.stringify(stats.bobotKriteria.map(k => k.nilai_bobot)) %>,
+                    backgroundColor: ['#1d5fd6', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e74c3c']
+                }]
+            },
+            options: { plugins: { legend: { display: false } } }
+        });
+        <% } %>
+    </script>
+</body>
+</html>

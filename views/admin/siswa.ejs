@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Data Siswa</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="content-wrapper">
+                <% if (success) { %>
+                    <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+                <% } %>
+                <% if (error) { %>
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+
+                <div class="panel">
+                    <div class="panel-header-row">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-person-fill"></i></div>
+                            <h3>Daftar Siswa Calon Kelas Digital</h3>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-secondary" onclick="document.getElementById('modalImport').style.display='flex'">
+                                <i class="bi bi-file-earmark-excel-fill"></i> Import Excel
+                            </button>
+                            <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
+                                <i class="bi bi-plus-lg"></i> Tambah Siswa
+                            </button>
+                        </div>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>NISN</th>
+                                <th>Nama</th>
+                                <th>JK</th>
+                                <th>Sekolah Asal</th>
+                                <th>PIP/PKH</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (siswaList.length === 0) { %>
+                                <tr><td colspan="8" class="empty-state">Belum ada data siswa. Tambahkan manual atau import dari Excel.</td></tr>
+                            <% } %>
+                            <% siswaList.forEach(function(s, index) { %>
+                                <tr>
+                                    <td><%= index + 1 %></td>
+                                    <td><%= s.nisn %></td>
+                                    <td><%= s.nama %></td>
+                                    <td><%= s.jenis_kelamin %></td>
+                                    <td><%= s.sekolah_asal %></td>
+                                    <td><span class="badge badge-<%= s.status_pip_pkh ? 'green' : 'red' %>"><%= s.status_pip_pkh ? 'Ya' : 'Tidak' %></span></td>
+                                    <td>
+                                        <span class="badge badge-<%= s.status_penerimaan === 'diterima' ? 'green' : (s.status_penerimaan === 'cadangan' ? 'blue' : 'red') %>">
+                                            <%= s.status_penerimaan.charAt(0).toUpperCase() + s.status_penerimaan.slice(1) %>
+                                        </span>
+                                    </td>
+                                    <td class="action-cell">
+                                        <button class="btn-icon" title="Edit" onclick='bukaModalEdit(<%- JSON.stringify(s) %>)'>
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus siswa ini?');">
+                                            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <%- include('../partials/footer') %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah Siswa -->
+    <div class="modal-overlay" id="modalTambah">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-person-plus-fill"></i> Tambah Data Siswa</h3>
+                <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
+            </div>
+            <form action="/admin/siswa/create" method="POST">
+                <label>NISN</label>
+                <input type="text" name="nisn" required>
+
+                <label>Nama Lengkap</label>
+                <input type="text" name="nama" required>
+
+                <label>Jenis Kelamin</label>
+                <select name="jenis_kelamin" required>
+                    <option value="L">Laki-laki</option>
+                    <option value="P">Perempuan</option>
+                </select>
+
+                <label>Sekolah Asal</label>
+                <input type="text" name="sekolah_asal">
+
+                <label>Pekerjaan Ayah</label>
+                <input type="text" name="pekerjaan_ayah">
+
+                <label>Pekerjaan Ibu</label>
+                <input type="text" name="pekerjaan_ibu">
+
+                <label>Penerima PIP/PKH?</label>
+                <select name="status_pip_pkh">
+                    <option value="tidak">Tidak</option>
+                    <option value="ya">Ya</option>
+                </select>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Edit Siswa -->
+    <div class="modal-overlay" id="modalEdit">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-pencil-square"></i> Edit Data Siswa</h3>
+                <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
+            </div>
+            <form action="/admin/siswa/update" method="POST">
+                <input type="hidden" name="id_siswa" id="edit_id_siswa">
+
+                <label>NISN</label>
+                <input type="text" name="nisn" id="edit_nisn" required>
+
+                <label>Nama Lengkap</label>
+                <input type="text" name="nama" id="edit_nama" required>
+
+                <label>Jenis Kelamin</label>
+                <select name="jenis_kelamin" id="edit_jk" required>
+                    <option value="L">Laki-laki</option>
+                    <option value="P">Perempuan</option>
+                </select>
+
+                <label>Sekolah Asal</label>
+                <input type="text" name="sekolah_asal" id="edit_sekolah">
+
+                <label>Pekerjaan Ayah</label>
+                <input type="text" name="pekerjaan_ayah" id="edit_ayah">
+
+                <label>Pekerjaan Ibu</label>
+                <input type="text" name="pekerjaan_ibu" id="edit_ibu">
+
+                <label>Penerima PIP/PKH?</label>
+                <select name="status_pip_pkh" id="edit_pip">
+                    <option value="tidak">Tidak</option>
+                    <option value="ya">Ya</option>
+                </select>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Import Excel -->
+    <div class="modal-overlay" id="modalImport">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-file-earmark-excel-fill"></i> Import Data dari Excel</h3>
+                <button class="modal-close" onclick="document.getElementById('modalImport').style.display='none'">&times;</button>
+            </div>
+            <form action="/admin/siswa/import" method="POST" enctype="multipart/form-data">
+                <p style="font-size:13px; color:#777; margin-bottom:15px;">
+                    Pastikan file Excel memiliki kolom: NISN, NAMA SISWA, JENIS KELAMIN SISWA, ASAL SEKOLAH, PEKERJAAAN AYAH, PEKERJAAN IBU, APAKAH ANANDA PENERIMA PIP / PKH.
+                </p>
+                <label>Pilih File Excel (.xlsx / .xls)</label>
+                <input type="file" name="fileExcel" accept=".xlsx,.xls" required>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalImport').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Import Sekarang</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function bukaModalEdit(s) {
+            document.getElementById('edit_id_siswa').value = s.id_siswa;
+            document.getElementById('edit_nisn').value = s.nisn;
+            document.getElementById('edit_nama').value = s.nama;
+            document.getElementById('edit_jk').value = s.jenis_kelamin;
+            document.getElementById('edit_sekolah').value = s.sekolah_asal || '';
+            document.getElementById('edit_ayah').value = s.pekerjaan_ayah || '';
+            document.getElementById('edit_ibu').value = s.pekerjaan_ibu || '';
+            document.getElementById('edit_pip').value = s.status_pip_pkh ? 'ya' : 'tidak';
+            document.getElementById('modalEdit').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
