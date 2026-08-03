@@ -24,7 +24,13 @@ app.use(session({
 
 
 const authRoutes = require('./routes/authRoutes');
+const superadminRoutes = require('./routes/superadminRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const kepsekRoutes = require('./routes/kepsekRoutes');
 app.use('/', authRoutes);
+app.use('/superadmin', superadminRoutes);
+app.use('/admin', adminRoutes);
+app.use('/kepsek', kepsekRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Dashboard Admin</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="welcome-banner">
+                <div class="welcome-icon"><i class="bi bi-bar-chart-fill"></i></div>
+                <div>
+                    <h2>Selamat datang, Admin!</h2>
+                    <p>Berikut ringkasan informasi sistem penempatan siswa kelas digital.</p>
+                </div>
+            </div>
+
+            <div class="card-grid">
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                        <h3>Total Siswa</h3>
+                        <p class="stat-number"><%= stats.totalSiswa %></p>
+                        <p class="stat-desc">Jumlah keseluruhan siswa</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-green"><i class="bi bi-clipboard2-check-fill"></i></div>
+                    <div>
+                        <h3>Kriteria Terisi</h3>
+                        <p class="stat-number"><%= stats.kriteriaTerisi %></p>
+                        <p class="stat-desc">Jumlah siswa dengan nilai terisi</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-orange"><i class="bi bi-balance-scale"></i></div>
+                    <div>
+                        <h3>Status FUCOM</h3>
+                        <p class="stat-number stat-status <%= stats.statusFucom === 'Sudah' ? 'status-ok' : 'status-pending' %>"><%= stats.statusFucom %></p>
+                        <p class="stat-desc">Perhitungan FUCOM <%= stats.statusFucom === 'Sudah' ? 'sudah' : 'belum' %> dilakukan</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-purple"><i class="bi bi-graph-up-arrow"></i></div>
+                    <div>
+                        <h3>Status WASPAS</h3>
+                        <p class="stat-number stat-status <%= stats.statusWaspas === 'Sudah' ? 'status-ok' : 'status-pending' %>"><%= stats.statusWaspas %></p>
+                        <p class="stat-desc">Perhitungan WASPAS <%= stats.statusWaspas === 'Sudah' ? 'sudah' : 'belum' %> dilakukan</p>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('../partials/footer') %>
+        </div>
+    </div>
+</body>
+</html>

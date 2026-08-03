@@ -1,0 +1,39 @@
+<div class="topbar">
+    <div class="topbar-left">
+        <button class="hamburger-btn" id="hamburgerBtn">
+            <i class="bi bi-list"></i>
+        </button>
+        <h2><%= pageTitle %></h2>
+        <% if (user.role === 'kepsek') { %>
+            <span class="readonly-badge"><i class="bi bi-lock-fill"></i> Read-only</span>
+        <% } %>
+    </div>
+    <div class="topbar-right">
+        <i class="bi bi-bell-fill notif-icon"></i>
+        <div class="user-dropdown">
+            <i class="bi bi-person-circle"></i>
+            <span><%= user.role === 'super_admin' ? 'Super Admin' : (user.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %></span>
+            <i class="bi bi-chevron-down"></i>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('hamburgerBtn').addEventListener('click', function() {
+        document.querySelector('.sidebar').classList.toggle('collapsed');
+        document.querySelector('.app-layout').classList.toggle('sidebar-collapsed');
+
+        // Simpan preferensi di localStorage supaya konsisten pas pindah halaman
+        const isCollapsed = document.querySelector('.sidebar').classList.contains('collapsed');
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    });
+
+    // Terapkan preferensi tersimpan saat halaman dimuat
+    window.addEventListener('DOMContentLoaded', function() {
+        const saved = localStorage.getItem('sidebarCollapsed');
+        if (saved === 'true') {
+            document.querySelector('.sidebar').classList.add('collapsed');
+            document.querySelector('.app-layout').classList.add('sidebar-collapsed');
+        }
+    });
+</script>

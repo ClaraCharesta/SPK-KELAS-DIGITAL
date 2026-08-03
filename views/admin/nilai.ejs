@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Input Nilai Siswa</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="content-wrapper">
+                <% if (success) { %>
+                    <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+                <% } %>
+                <% if (error) { %>
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pencil-square"></i></div>
+                        <h3>Input Nilai Siswa per Kriteria</h3>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>NISN</th>
+                                <th>Nama</th>
+                                <th>Kelengkapan Nilai</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (siswaList.length === 0) { %>
+                                <tr><td colspan="5" class="empty-state">Belum ada data siswa. Tambahkan siswa terlebih dahulu di menu Data Siswa.</td></tr>
+                            <% } %>
+                            <% siswaList.forEach(function(s, index) { %>
+                                <tr>
+                                    <td><%= index + 1 %></td>
+                                    <td><%= s.nisn %></td>
+                                    <td><%= s.nama %></td>
+                                    <td>
+                                        <span class="badge badge-<%= s.jumlah_terisi >= s.total_kriteria && s.total_kriteria > 0 ? 'green' : 'red' %>">
+                                            <%= s.jumlah_terisi %> / <%= s.total_kriteria %> kriteria
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <%- include('../partials/footer') %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

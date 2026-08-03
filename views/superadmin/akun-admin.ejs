@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Kelola Akun Admin</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="content-wrapper">
+                <% if (success) { %>
+                    <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+                <% } %>
+                <% if (error) { %>
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+
+                <div class="panel">
+                    <div class="panel-header-row">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-people-fill"></i></div>
+                            <h3>Daftar Akun Admin & Kepala Sekolah</h3>
+                        </div>
+                        <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
+                            <i class="bi bi-plus-lg"></i> Tambah Akun
+                        </button>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Nama</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (users.length === 0) { %>
+                                <tr><td colspan="6" class="empty-state">Belum ada akun Admin/Kepala Sekolah.</td></tr>
+                            <% } %>
+                            <% users.forEach(function(u, index) { %>
+                                <tr>
+                                    <td><%= index + 1 %></td>
+                                    <td><%= u.nama %></td>
+                                    <td><%= u.username %></td>
+                                    <td><span class="badge badge-<%= u.role === 'admin' ? 'blue' : 'purple' %>"><%= u.role === 'admin' ? 'Admin' : 'Kepala Sekolah' %></span></td>
+                                    <td>
+                                        <span class="badge badge-<%= u.status_aktif ? 'green' : 'red' %>">
+                                            <%= u.status_aktif ? 'Aktif' : 'Nonaktif' %>
+                                        </span>
+                                    </td>
+                                    <td class="action-cell">
+                                        <button class="btn-icon" title="Edit" onclick='bukaModalEdit(<%- JSON.stringify(u) %>)'>
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button class="btn-icon" title="Reset Password" onclick='bukaModalReset(<%= u.id_user %>, "<%= u.nama %>")'>
+                                            <i class="bi bi-key-fill"></i>
+                                        </button>
+                                        <form action="/superadmin/akun-admin/toggle-status/<%= u.id_user %>" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn-icon" title="<%= u.status_aktif ? 'Nonaktifkan' : 'Aktifkan' %>">
+                                                <i class="bi bi-toggle-<%= u.status_aktif ? 'on' : 'off' %>"></i>
+                                            </button>
+                                        </form>
+                                        <form action="/superadmin/akun-admin/delete/<%= u.id_user %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus akun ini?');">
+                                            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <%- include('../partials/footer') %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah Akun -->
+    <div class="modal-overlay" id="modalTambah">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-person-plus-fill"></i> Tambah Akun Baru</h3>
+                <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
+            </div>
+            <form action="/superadmin/akun-admin/create" method="POST">
+                <label>Nama Lengkap</label>
+                <input type="text" name="nama" required placeholder="Contoh: Desi Wahyuni, S.Pd">
+
+                <label>Username</label>
+                <input type="text" name="username" required placeholder="Contoh: admin_desi">
+
+                <label>Password</label>
+                <input type="password" name="password" required placeholder="Minimal 6 karakter" minlength="6">
+
+                <label>Role</label>
+                <select name="role" required>
+                    <option value="">-- Pilih Role --</option>
+                    <option value="admin">Admin</option>
+                    <option value="kepsek">Kepala Sekolah</option>
+                </select>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Edit Akun -->
+    <div class="modal-overlay" id="modalEdit">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-pencil-square"></i> Edit Akun</h3>
+                <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
+            </div>
+            <form action="/superadmin/akun-admin/update" method="POST">
+                <input type="hidden" name="id_user" id="edit_id_user">
+
+                <label>Nama Lengkap</label>
+                <input type="text" name="nama" id="edit_nama" required>
+
+                <label>Username</label>
+                <input type="text" name="username" id="edit_username" required>
+
+                <label>Role</label>
+                <select name="role" id="edit_role" required>
+                    <option value="admin">Admin</option>
+                    <option value="kepsek">Kepala Sekolah</option>
+                </select>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Reset Password -->
+    <div class="modal-overlay" id="modalReset">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-key-fill"></i> Reset Password</h3>
+                <button class="modal-close" onclick="document.getElementById('modalReset').style.display='none'">&times;</button>
+            </div>
+            <form action="/superadmin/akun-admin/reset-password" method="POST">
+                <input type="hidden" name="id_user" id="reset_id_user">
+                <p style="margin-bottom:15px; color:#666; font-size:14px;">Reset password untuk: <strong id="reset_nama"></strong></p>
+
+                <label>Password Baru</label>
+                <input type="password" name="newPassword" required placeholder="Minimal 6 karakter" minlength="6">
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalReset').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function bukaModalEdit(u) {
+            document.getElementById('edit_id_user').value = u.id_user;
+            document.getElementById('edit_nama').value = u.nama;
+            document.getElementById('edit_username').value = u.username;
+            document.getElementById('edit_role').value = u.role;
+            document.getElementById('modalEdit').style.display = 'flex';
+        }
+
+        function bukaModalReset(id, nama) {
+            document.getElementById('reset_id_user').value = id;
+            document.getElementById('reset_nama').innerText = nama;
+            document.getElementById('modalReset').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>

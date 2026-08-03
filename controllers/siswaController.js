@@ -1,0 +1,127 @@
+const siswaModel = require('../models/siswaModel');
+const userModel = require('../models/userModel');
+const xlsx = require('xlsx');
+const fs = require('fs');
+
+const siswaController = {
+    async index(req, res) {
+        try {
+            const periode = await siswaModel.getActivePeriode();
+            if (!periode) {
+                return res.render('admin/siswa', {
+                    user: req.session.user, siswaList: [], activePage: 'siswa',
+                    pageTitle: 'Data Siswa', success: null,
+                    error: 'Belum ada periode seleksi aktif. Silakan hubungi Super Admin untuk membuat periode terlebih dahulu.'
+                });
+            }
+            const siswaList = await siswaModel.getAllSiswa(periode.id_periode);
+            res.render('admin/siswa', {
+                user: req.session.user, siswaList, activePage: 'siswa',
+                pageTitle: 'Data Siswa',
+                success: req.query.success || null,
+                error: req.query.error || null
+            });
+        } catch (error) {
+            console.error(error);
+            res.status(500).send('Terjadi kesalahan mengambil data siswa.');
+        }
+    },
+
+    async create(req, res) {
+        try {
+            const periode = await siswaModel.getActivePeriode();
+            if (!periode) return res.redirect('/admin/siswa?error=Periode seleksi belum aktif.');
+
+            const { nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = req.body;
+
+            const exists = await siswaModel.checkNisnExists(nisn, periode.id_periode);
+            if (exists) return res.redirect('/admin/siswa?error=NISN sudah terdaftar di periode ini.');
+
+            await siswaModel.createSiswa({
+                id_periode: periode.id_periode, nisn, nama, jenis_kelamin, sekolah_asal,
+                pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh: status_pip_pkh === 'ya'
+            });
+
+            await userModel.logActivity(req.session.user.id_user, `Admin menambahkan data siswa: ${nama}`);
+            res.redirect('/admin/siswa?success=Data siswa berhasil ditambahkan.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/admin/siswa?error=Terjadi kesalahan sistem.');
+        }
+    },
+
+    async update(req, res) {
+        try {
+            const { id_siswa, nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = req.body;
+            await siswaModel.updateSiswa(id_siswa, {
+                nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu,
+                status_pip_pkh: status_pip_pkh === 'ya'
+            });
+            await userModel.logActivity(req.session.user.id_user, `Admin memperbarui data siswa: ${nama}`);
+            res.redirect('/admin/siswa?success=Data siswa berhasil diperbarui.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/admin/siswa?error=Terjadi kesalahan sistem.');
+        }
+    },
+
+    async delete(req, res) {
+        try {
+            const { id_siswa } = req.params;
+            const siswa = await siswaModel.getSiswaById(id_siswa);
+            await siswaModel.deleteSiswa(id_siswa);
+            await userModel.logActivity(req.session.user.id_user, `Admin menghapus data siswa: ${siswa ? siswa.nama : id_siswa}`);
+            res.redirect('/admin/siswa?success=Data siswa berhasil dihapus.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/admin/siswa?error=Terjadi kesalahan sistem. Pastikan siswa ini belum memiliki nilai/hasil terkait.');
+        }
+    },
+
+    async importExcel(req, res) {
+        try {
+            if (!req.file) return res.redirect('/admin/siswa?error=Silakan pilih file Excel terlebih dahulu.');
+
+            const periode = await siswaModel.getActivePeriode();
+            if (!periode) {
+                fs.unlinkSync(req.file.path);
+                return res.redirect('/admin/siswa?error=Periode seleksi belum aktif.');
+            }
+
+            const workbook = xlsx.readFile(req.file.path);
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const jsonData = xlsx.utils.sheet_to_json(sheet);
+
+            // Mapping kolom Excel ke format yang dibutuhkan sistem
+            // Sesuaikan nama kolom di sini dengan header asli file Excel PPDB kamu
+            const dataSiswa = jsonData.map(row => ({
+                nisn: String(row['NISN'] || row['nisn'] || '').trim(),
+                nama: String(row['NAMA SISWA'] || row['nama'] || '').trim(),
+                jenis_kelamin: (row['JENIS KELAMIN SISWA'] || row['jenis_kelamin'] || '').toUpperCase().startsWith('L') ? 'L' : 'P',
+                sekolah_asal: String(row['ASAL SEKOLAH'] || row['sekolah_asal'] || '').trim(),
+                pekerjaan_ayah: String(row['PEKERJAAAN AYAH'] || row['pekerjaan_ayah'] || '').trim(),
+                pekerjaan_ibu: String(row['PEKERJAAN IBU'] || row['pekerjaan_ibu'] || '').trim(),
+                status_pip_pkh: String(row['APAKAH ANANDA PENERIMA PIP / PKH'] || '').toUpperCase() === 'YA'
+            })).filter(row => row.nisn && row.nama); // buang baris kosong
+
+            fs.unlinkSync(req.file.path); // hapus file sementara setelah dibaca
+
+            if (dataSiswa.length === 0) {
+                return res.redirect('/admin/siswa?error=Tidak ada data valid ditemukan di file Excel. Periksa kembali format kolom.');
+            }
+
+            const hasil = await siswaModel.bulkInsert(dataSiswa, periode.id_periode);
+            await userModel.logActivity(req.session.user.id_user, `Admin mengimpor ${hasil.berhasil} data siswa dari Excel`);
+
+            let pesan = `Import selesai: ${hasil.berhasil} berhasil, ${hasil.gagal} gagal.`;
+            res.redirect(`/admin/siswa?success=${encodeURIComponent(pesan)}`);
+        } catch (error) {
+            console.error(error);
+            if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            res.redirect('/admin/siswa?error=Gagal membaca file Excel. Pastikan format file sesuai template.');
+        }
+    }
+};
+
+module.exports = siswaController;
