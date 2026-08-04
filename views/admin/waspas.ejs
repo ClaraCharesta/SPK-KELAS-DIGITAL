@@ -9,7 +9,6 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
@@ -17,7 +16,6 @@
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-
                 <% if (cekData) { %>
                 <div class="panel">
                     <div class="panel-header-row">
@@ -31,49 +29,78 @@
                     </div>
                     <table class="data-table">
                         <tbody>
+                            <tr><td>Kuota Kelas Digital</td><td><strong><%= kuota || '-' %> siswa</strong></td></tr>
                             <tr><td>Total Siswa</td><td><%= cekData.totalSiswa %></td></tr>
                             <tr><td>Total Kriteria</td><td><%= cekData.totalKriteria %></td></tr>
-                            <tr><td>Bobot Kriteria Tersedia</td><td><span class="badge badge-<%= cekData.totalBobot > 0 ? 'green' : 'red' %>"><%= cekData.totalBobot > 0 ? 'Sudah' : 'Belum' %></span></td></tr>
-                            <tr><td>Siswa dengan Nilai Belum Lengkap</td><td><span class="badge badge-<%= cekData.siswaBelumLengkap === 0 ? 'green' : 'red' %>"><%= cekData.siswaBelumLengkap %> siswa</span></td></tr>
+                            <tr><td>Bobot Kriteria Tersedia</td><td><span class="badge badge-<%= cekData.totalBobot > 0 ? 'lulus' : 'mengundurkan_diri' %>"><%= cekData.totalBobot > 0 ? 'Sudah' : 'Belum' %></span></td></tr>
+                            <tr><td>Siswa dengan Nilai Belum Lengkap</td><td><span class="badge badge-<%= cekData.siswaBelumLengkap === 0 ? 'lulus' : 'mengundurkan_diri' %>"><%= cekData.siswaBelumLengkap %> siswa</span></td></tr>
                         </tbody>
                     </table>
                 </div>
                 <% } %>
-
                 <div class="panel">
                     <div class="panel-header">
                         <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
-                        <h3>Hasil Perangkingan Siswa (Kuota: <%= kuota || '-' %>)</h3>
+                        <h3>Hasil Perangkingan Siswa</h3>
                     </div>
-
                     <% if (hasilRanking.length === 0) { %>
-                        <p class="empty-state">Perangkingan belum dihitung. Klik "Hitung Ranking WASPAS" di atas.</p>
+                        <p class="empty-state">Perangkingan belum dihitung.</p>
                     <% } else { %>
-                        <table class="data-table">
-                            <thead>
-                                <tr><th>Rank</th><th>NISN</th><th>Nama</th><th>WSM</th><th>WPM</th><th>Nilai Q</th><th>Status</th></tr>
-                            </thead>
-                            <tbody>
-                                <% hasilRanking.forEach(function(h) { %>
+                        <div class="status-legend">
+                            <span><span class="dot-legend badge-diusulkan"></span> Diusulkan</span>
+                            <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
+                            <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
+                        </div>
+                        <% 
+                            const jumlahLulus = hasilRanking.filter(h => h.status_penerimaan === 'lulus').length;
+                            const kuotaPenuh = jumlahLulus >= (kuota || 0);
+                        %>
+                        <% if (!kuotaPenuh) { %>
+                            <p style="font-size:13px; color:#666; margin-bottom:10px;">Lulus: <strong><%= jumlahLulus %> / <%= kuota %></strong> kuota</p>
+                        <% } %>
+                        <form action="/admin/waspas/tetapkan-lulus" method="POST" onsubmit="return confirmDelete(this, 'Tetapkan siswa terpilih sebagai Lulus?');">
+                            <table class="data-table">
+                                <thead>
                                     <tr>
-                                        <td><strong>#<%= h.ranking %></strong></td>
-                                        <td><%= h.nisn %></td>
-                                        <td><%= h.nama %></td>
-                                        <td><%= parseFloat(h.nilai_wsm).toFixed(4) %></td>
-                                        <td><%= parseFloat(h.nilai_wpm).toFixed(4) %></td>
-                                        <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
-                                        <td>
-                                            <span class="badge badge-<%= h.status_penerimaan === 'diterima' ? 'green' : 'blue' %>">
-                                                <%= h.status_penerimaan === 'diterima' ? 'Diterima' : 'Cadangan' %>
-                                            </span>
-                                        </td>
+                                        <% if (!kuotaPenuh) { %><th></th><% } %>
+                                        <th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th>
                                     </tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <% hasilRanking.forEach(function(h) { %>
+                                        <tr>
+                                            <% if (!kuotaPenuh) { %>
+                                                <td>
+                                                    <% if (h.status_penerimaan === 'diusulkan' || h.status_penerimaan === 'cadangan') { %>
+                                                        <input type="checkbox" name="id_siswa_lulus" value="<%= h.id_siswa %>">
+                                                    <% } %>
+                                                </td>
+                                            <% } %>
+                                            <td><strong>#<%= h.ranking %></strong></td>
+                                            <td><%= h.nisn %></td>
+                                            <td><%= h.nama %></td>
+                                            <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
+                                            <td>
+                                                <span class="badge badge-<%= h.status_penerimaan %>">
+                                                    <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' : (h.status_penerimaan === 'lulus' ? 'Lulus' : 'Cadangan') %>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                            <% if (!kuotaPenuh) { %>
+                                <div class="modal-footer" style="justify-content:flex-start; margin-top:15px;">
+                                    <button type="submit" class="btn-primary"><i class="bi bi-check-circle-fill"></i> Tetapkan Terpilih sebagai Lulus</button>
+                                </div>
+                            <% } else { %>
+                                <div class="alert" style="background:#e2f8ea; color:#1e8449; margin-top:15px;">
+                                    <i class="bi bi-check-circle-fill"></i> Kuota telah terpenuhi. Hasil penempatan bersifat final.
+                                </div>
+                            <% } %>
+                        </form>
                     <% } %>
                 </div>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>

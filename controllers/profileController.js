@@ -1,16 +1,16 @@
 const bcrypt = require('bcrypt');
+const fs = require('fs');
+const path = require('path');
 const userModel = require('../models/userModel');
 
 const profileController = {
     async index(req, res) {
         try {
             const userData = await userModel.getById(req.session.user.id_user);
-            const basePath = req.session.user.role === 'super_admin' ? 'superadmin' :
-                              req.session.user.role === 'admin' ? 'admin' : 'kepsek';
 
             res.render('shared/profile', {
                 user: req.session.user, userData, activePage: 'profile',
-                pageTitle: 'Profil Saya', basePath,
+                pageTitle: 'Profil Saya',
                 success: req.query.success || null,
                 error: req.query.error || null
             });
@@ -28,8 +28,6 @@ const profileController = {
             }
 
             await userModel.updateProfile(req.session.user.id_user, nama.trim());
-
-            // Update juga session supaya nama di topbar langsung berubah tanpa perlu login ulang
             req.session.user.nama = nama.trim();
 
             res.redirect('/profile?success=Nama berhasil diperbarui.');
@@ -49,11 +47,9 @@ const profileController = {
             if (!cocok) {
                 return res.redirect('/profile?error=Password lama tidak sesuai.');
             }
-
             if (password_baru !== konfirmasi_password) {
                 return res.redirect('/profile?error=Konfirmasi password baru tidak cocok.');
             }
-
             if (password_baru.length < 6) {
                 return res.redirect('/profile?error=Password baru minimal 6 karakter.');
             }
@@ -62,6 +58,28 @@ const profileController = {
             await userModel.updatePassword(req.session.user.id_user, hashedPassword);
 
             res.redirect('/profile?success=Password berhasil diubah.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/profile?error=Terjadi kesalahan sistem.');
+        }
+    },
+
+    async updateFoto(req, res) {
+        try {
+            if (!req.file) return res.redirect('/profile?error=Silakan pilih foto terlebih dahulu.');
+
+            const userData = await userModel.getById(req.session.user.id_user);
+
+            // Hapus foto lama kalau ada
+            if (userData.foto_profil) {
+                const fotoLamaPath = path.join(__dirname, '../public/img/profile', userData.foto_profil);
+                if (fs.existsSync(fotoLamaPath)) fs.unlinkSync(fotoLamaPath);
+            }
+
+            await userModel.updateFoto(req.session.user.id_user, req.file.filename);
+            req.session.user.foto_profil = req.file.filename;
+
+            res.redirect('/profile?success=Foto profil berhasil diperbarui.');
         } catch (error) {
             console.error(error);
             res.redirect('/profile?error=Terjadi kesalahan sistem.');

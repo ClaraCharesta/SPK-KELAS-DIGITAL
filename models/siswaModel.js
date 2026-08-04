@@ -42,8 +42,14 @@ const siswaModel = {
         await db.query('DELETE FROM siswa WHERE id_siswa = ?', [id_siswa]);
     },
 
-    async checkNisnExists(nisn, id_periode) {
-        const [rows] = await db.query('SELECT id_siswa FROM siswa WHERE nisn = ? AND id_periode = ?', [nisn, id_periode]);
+    async checkNisnExists(nisn, id_periode, excludeId = null) {
+        let query = 'SELECT id_siswa FROM siswa WHERE nisn = ? AND id_periode = ?';
+        const params = [nisn, id_periode];
+        if (excludeId) {
+            query += ' AND id_siswa != ?';
+            params.push(excludeId);
+        }
+        const [rows] = await db.query(query, params);
         return rows.length > 0;
     },
 

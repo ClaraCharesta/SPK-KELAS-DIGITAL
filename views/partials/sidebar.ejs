@@ -6,7 +6,6 @@
             <p>Penempatan Siswa Kelas Digital</p>
         </div>
     </div>
-
     <ul class="sidebar-menu">
         <% if (user.role === 'super_admin') { %>
             <li class="<%= activePage === 'dashboard' ? 'active' : '' %>">
@@ -24,33 +23,32 @@
             <li class="<%= activePage === 'log' ? 'active' : '' %>">
                 <a href="/superadmin/log"><i class="bi bi-clock-history"></i> <span>Log Aktivitas</span></a>
             </li>
-
+            <li class="<%= activePage === 'riwayat' ? 'active' : '' %>">
+                <a href="/superadmin/riwayat"><i class="bi bi-archive-fill"></i> <span>Riwayat Periode</span></a>
+            </li>
         <% } else if (user.role === 'admin') { %>
-
             <li class="<%= activePage === 'dashboard' ? 'active' : '' %>">
                 <a href="/admin/dashboard"><i class="bi bi-grid-fill"></i> <span>Dashboard</span></a>
-            </li>
-            <li class="<%= activePage === 'siswa' ? 'active' : '' %>">
-                <a href="/admin/siswa"><i class="bi bi-person-fill"></i> <span>Data Siswa</span></a>
             </li>
             <li class="<%= activePage === 'kriteria' ? 'active' : '' %>">
                 <a href="/admin/kriteria"><i class="bi bi-card-checklist"></i> <span>Kriteria</span></a>
             </li>
+            <li class="<%= activePage === 'fucom' ? 'active' : '' %>">
+                <a href="/admin/fucom"><i class="bi bi-sliders"></i> <span>Pembobotan Kriteria</span></a>
+            </li>
+            <li class="<%= activePage === 'siswa' ? 'active' : '' %>">
+                <a href="/admin/siswa"><i class="bi bi-person-fill"></i> <span>Data Siswa</span></a>
+            </li>
             <li class="<%= activePage === 'nilai' ? 'active' : '' %>">
                 <a href="/admin/nilai"><i class="bi bi-pencil-square"></i> <span>Input Nilai</span></a>
             </li>
-            <li class="<%= activePage === 'fucom' ? 'active' : '' %>">
-                <a href="/admin/fucom"><i class="bi bi-sliders"></i> <span>FUCOM</span></a>
-            </li>
             <li class="<%= activePage === 'waspas' ? 'active' : '' %>">
-                <a href="/admin/waspas"><i class="bi bi-graph-up-arrow"></i> <span>WASPAS</span></a>
+                <a href="/admin/waspas"><i class="bi bi-graph-up-arrow"></i> <span>Perankingan</span></a>
             </li>
             <li class="<%= activePage === 'laporan' ? 'active' : '' %>">
                 <a href="/admin/laporan"><i class="bi bi-file-earmark-text-fill"></i> <span>Laporan</span></a>
             </li>
-
         <% } else if (user.role === 'kepsek') { %>
-
             <li class="<%= activePage === 'dashboard' ? 'active' : '' %>">
                 <a href="/kepsek/dashboard"><i class="bi bi-grid-fill"></i> <span>Dashboard</span></a>
             </li>
@@ -60,12 +58,16 @@
             <li class="<%= activePage === 'laporan' ? 'active' : '' %>">
                 <a href="/kepsek/laporan"><i class="bi bi-file-earmark-text-fill"></i> <span>Laporan</span></a>
             </li>
-
         <% } %>
     </ul>
-
     <div class="sidebar-footer">
-        <a href="/profile" style="margin-bottom:8px;"><i class="bi bi-person-fill"></i> <span>Profil Saya</span></a>
-        <a href="/logout"><i class="bi bi-box-arrow-right"></i> <span>Logout</span></a>
-    </div>
+    <a href="/profile" class="sidebar-footer-link">
+        <div class="sidebar-footer-icon"><i class="bi bi-person-fill"></i></div>
+        <span>Profil Saya</span>
+    </a>
+    <a href="/logout" class="sidebar-footer-link logout-link">
+        <div class="sidebar-footer-icon icon-logout"><i class="bi bi-box-arrow-right"></i></div>
+        <span>Logout</span>
+    </a>
+</div>
 </div>

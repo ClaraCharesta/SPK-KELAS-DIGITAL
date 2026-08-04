@@ -22,6 +22,10 @@ const userModel = {
         await db.query('UPDATE users SET password = ? WHERE id_user = ?', [hashedPassword, id_user]);
     },
 
+    async updateFoto(id_user, namaFile) {
+        await db.query('UPDATE users SET foto_profil = ? WHERE id_user = ?', [namaFile, id_user]);
+    },
+
     async logActivity(id_user, aktivitas) {
         await db.query(
             'INSERT INTO log_aktivitas (id_user, aktivitas) VALUES (?, ?)',

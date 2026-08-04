@@ -9,19 +9,16 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <a href="/admin/nilai" style="display:inline-flex; align-items:center; gap:6px; color:#1d5fd6; text-decoration:none; font-size:14px; margin-bottom:15px;">
                     <i class="bi bi-arrow-left"></i> Kembali ke Daftar Siswa
                 </a>
-
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
                 <% } %>
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-
                 <div class="panel">
                     <div class="panel-header">
                         <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-person-fill"></i></div>
@@ -30,7 +27,6 @@
                             <p style="font-size:13px; color:#888;">NISN: <%= siswa.nisn %></p>
                         </div>
                     </div>
-
                     <form action="/admin/nilai/<%= siswa.id_siswa %>/save" method="POST">
                         <table class="data-table">
                             <thead>
@@ -38,7 +34,6 @@
                                     <th>Kriteria</th>
                                     <th>Jenis</th>
                                     <th>Nilai (Skala 1-5, kecuali Nilai Akademik & Psikotes: 0-100)</th>
-                                    <th>Sumber Data</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -48,29 +43,17 @@
                                         <td><span class="badge badge-<%= k.jenis === 'benefit' ? 'green' : 'red' %>"><%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %></span></td>
                                         <td>
                                             <input type="hidden" name="id_kriteria" value="<%= k.id_kriteria %>">
-                                            <input type="number" step="0.01" name="nilai_mentah" value="<%= k.nilai_mentah !== null ? k.nilai_mentah : '' %>" style="width:120px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
-                                        </td>
-                                        <td>
-                                            <select name="sumber_data" style="padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
-                                                <option value="Rapor" <%= k.sumber_data === 'Rapor' ? 'selected' : '' %>>Rapor</option>
-                                                <option value="Psikotes" <%= k.sumber_data === 'Psikotes' ? 'selected' : '' %>>Hasil Psikotes</option>
-                                                <option value="Angket TIK" <%= k.sumber_data === 'Angket TIK' ? 'selected' : '' %>>Angket TIK</option>
-                                                <option value="Angket Minat" <%= k.sumber_data === 'Angket Minat' ? 'selected' : '' %>>Angket Minat</option>
-                                                <option value="PIP/PKH & Pekerjaan Ortu" <%= k.sumber_data === 'PIP/PKH & Pekerjaan Ortu' ? 'selected' : '' %>>PIP/PKH & Pekerjaan Ortu</option>
-                                                <option value="Belum Ada" <%= (!k.sumber_data || k.sumber_data === 'Belum Ada') ? 'selected' : '' %>>Belum Ada</option>
-                                            </select>
+                                            <input type="number" step="0.01" name="nilai_mentah" value="<%= k.nilai_mentah !== null ? k.nilai_mentah : '' %>" style="width:150px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
                                         </td>
                                     </tr>
                                 <% }); %>
                             </tbody>
                         </table>
-
                         <div class="modal-footer" style="margin-top:20px;">
                             <button type="submit" class="btn-primary"><i class="bi bi-save-fill"></i> Simpan Semua Nilai</button>
                         </div>
                     </form>
                 </div>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>

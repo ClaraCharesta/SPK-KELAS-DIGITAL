@@ -9,7 +9,6 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
@@ -17,7 +16,6 @@
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
@@ -25,6 +23,9 @@
                             <h3>Daftar Siswa Calon Kelas Digital</h3>
                         </div>
                         <div style="display:flex; gap:10px;">
+                            <a href="/admin/siswa/template" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
+                                <i class="bi bi-download"></i> Unduh Template
+                            </a>
                             <button class="btn-secondary" onclick="document.getElementById('modalImport').style.display='flex'">
                                 <i class="bi bi-file-earmark-excel-fill"></i> Import Excel
                             </button>
@@ -33,23 +34,15 @@
                             </button>
                         </div>
                     </div>
-
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>No</th>
-                                <th>NISN</th>
-                                <th>Nama</th>
-                                <th>JK</th>
-                                <th>Sekolah Asal</th>
-                                <th>PIP/PKH</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
+                                <th>No</th><th>NISN</th><th>Nama</th><th>JK</th><th>Sekolah Asal</th><th>PIP/PKH</th><th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             <% if (siswaList.length === 0) { %>
-                                <tr><td colspan="8" class="empty-state">Belum ada data siswa. Tambahkan manual atau import dari Excel.</td></tr>
+                                <tr><td colspan="7" class="empty-state">Belum ada data siswa. Tambahkan manual atau import dari Excel.</td></tr>
                             <% } %>
                             <% siswaList.forEach(function(s, index) { %>
                                 <tr>
@@ -59,19 +52,10 @@
                                     <td><%= s.jenis_kelamin %></td>
                                     <td><%= s.sekolah_asal %></td>
                                     <td><span class="badge badge-<%= s.status_pip_pkh ? 'green' : 'red' %>"><%= s.status_pip_pkh ? 'Ya' : 'Tidak' %></span></td>
-                                    <td>
-                                        <span class="badge badge-<%= s.status_penerimaan === 'diterima' ? 'green' : (s.status_penerimaan === 'cadangan' ? 'blue' : 'red') %>">
-                                            <%= s.status_penerimaan.charAt(0).toUpperCase() + s.status_penerimaan.slice(1) %>
-                                        </span>
-                                    </td>
                                     <td class="action-cell">
-                                        <button class="btn-icon" title="Edit" onclick='bukaModalEdit(<%- JSON.stringify(s) %>)'>
-                                            <i class="bi bi-pencil-square"></i>
-                                        </button>
-                                        <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus siswa ini?');">
-                                            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
-                                                <i class="bi bi-trash-fill"></i>
-                                            </button>
+                                        <button class="btn-icon" title="Edit" onclick='bukaModalEdit(<%- JSON.stringify(s) %>)'><i class="bi bi-pencil-square"></i></button>
+                                        <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST" onsubmit="return confirmDelete(this, 'Yakin ingin menghapus data siswa ini? Semua nilai terkait juga akan ikut terhapus.');">
+                                            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                                         </form>
                                     </td>
                                 </tr>
@@ -79,12 +63,10 @@
                         </tbody>
                     </table>
                 </div>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
-
     <!-- Modal Tambah Siswa -->
     <div class="modal-overlay" id="modalTambah">
         <div class="modal-box">
@@ -95,31 +77,24 @@
             <form action="/admin/siswa/create" method="POST">
                 <label>NISN</label>
                 <input type="text" name="nisn" required>
-
                 <label>Nama Lengkap</label>
                 <input type="text" name="nama" required>
-
                 <label>Jenis Kelamin</label>
                 <select name="jenis_kelamin" required>
                     <option value="L">Laki-laki</option>
                     <option value="P">Perempuan</option>
                 </select>
-
                 <label>Sekolah Asal</label>
                 <input type="text" name="sekolah_asal">
-
                 <label>Pekerjaan Ayah</label>
                 <input type="text" name="pekerjaan_ayah">
-
                 <label>Pekerjaan Ibu</label>
                 <input type="text" name="pekerjaan_ibu">
-
                 <label>Penerima PIP/PKH?</label>
                 <select name="status_pip_pkh">
                     <option value="tidak">Tidak</option>
                     <option value="ya">Ya</option>
                 </select>
-
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan</button>
@@ -127,7 +102,6 @@
             </form>
         </div>
     </div>
-
     <!-- Modal Edit Siswa -->
     <div class="modal-overlay" id="modalEdit">
         <div class="modal-box">
@@ -137,34 +111,26 @@
             </div>
             <form action="/admin/siswa/update" method="POST">
                 <input type="hidden" name="id_siswa" id="edit_id_siswa">
-
                 <label>NISN</label>
                 <input type="text" name="nisn" id="edit_nisn" required>
-
                 <label>Nama Lengkap</label>
                 <input type="text" name="nama" id="edit_nama" required>
-
                 <label>Jenis Kelamin</label>
                 <select name="jenis_kelamin" id="edit_jk" required>
                     <option value="L">Laki-laki</option>
                     <option value="P">Perempuan</option>
                 </select>
-
                 <label>Sekolah Asal</label>
                 <input type="text" name="sekolah_asal" id="edit_sekolah">
-
                 <label>Pekerjaan Ayah</label>
                 <input type="text" name="pekerjaan_ayah" id="edit_ayah">
-
                 <label>Pekerjaan Ibu</label>
                 <input type="text" name="pekerjaan_ibu" id="edit_ibu">
-
                 <label>Penerima PIP/PKH?</label>
                 <select name="status_pip_pkh" id="edit_pip">
                     <option value="tidak">Tidak</option>
                     <option value="ya">Ya</option>
                 </select>
-
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -172,7 +138,6 @@
             </form>
         </div>
     </div>
-
     <!-- Modal Import Excel -->
     <div class="modal-overlay" id="modalImport">
         <div class="modal-box">
@@ -186,7 +151,6 @@
                 </p>
                 <label>Pilih File Excel (.xlsx / .xls)</label>
                 <input type="file" name="fileExcel" accept=".xlsx,.xls" required>
-
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalImport').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Import Sekarang</button>
@@ -194,6 +158,24 @@
             </form>
         </div>
     </div>
+
+    <div class="panel" style="background:#f4f8ff;">
+    <div class="panel-header-row" style="cursor:pointer;" onclick="document.getElementById('tutorialSiswa').classList.toggle('show')">
+        <div class="panel-header">
+            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-question-circle-fill"></i></div>
+            <h3>Cara Mengelola Data Siswa</h3>
+        </div>
+        <i class="bi bi-chevron-down"></i>
+    </div>
+    <div id="tutorialSiswa" class="tutorial-content">
+        <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
+            <li>Klik <strong>"Unduh Template"</strong> untuk mendapatkan format Excel yang sesuai (kolom NISN akan berwarna kuning, wajib diisi dan tidak boleh sama).</li>
+            <li>Isi data siswa di template tersebut, satu baris untuk satu siswa.</li>
+            <li>Klik <strong>"Import Excel"</strong> dan unggah file yang sudah diisi.</li>
+            <li>Atau gunakan <strong>"Tambah Siswa"</strong> untuk menambahkan data satu per satu secara manual.</li>
+        </ol>
+    </div>
+</div>
 
     <script>
         function bukaModalEdit(s) {

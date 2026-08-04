@@ -78,20 +78,31 @@ function hitungDFC(bobot, phi) {
  * @param {Array} hasilResponden1 - array { id_kriteria, nama_kriteria, bobot }
  * @param {Array} hasilResponden2 - array { id_kriteria, nama_kriteria, bobot }
  */
-function agregasiBobot(hasilResponden1, hasilResponden2) {
-    const map1 = {};
-    hasilResponden1.forEach(item => { map1[item.id_kriteria] = item; });
+/**
+ * Agregasi bobot dari N responden (minimal 2) menggunakan rata-rata geometris.
+ * @param {Array} semuaBobotResponden - array of array: [[{id_kriteria,nama_kriteria,bobot}, ...], [...], ...]
+ */
+function agregasiBobot(semuaBobotResponden) {
+    const map = {};
 
-    const hasilAgregasi = hasilResponden2.map(item2 => {
-        const item1 = map1[item2.id_kriteria];
-        const b1 = item1 ? item1.bobot : item2.bobot;
-        const b2 = item2.bobot;
-        const rataGeometris = Math.sqrt(b1 * b2);
-        return { id_kriteria: item2.id_kriteria, nama_kriteria: item2.nama_kriteria, bobot: rataGeometris };
+    semuaBobotResponden.forEach(bobotList => {
+        bobotList.forEach(item => {
+            if (!map[item.id_kriteria]) {
+                map[item.id_kriteria] = { nama_kriteria: item.nama_kriteria, nilai: [] };
+            }
+            map[item.id_kriteria].nilai.push(item.bobot);
+        });
     });
 
-    const total = hasilAgregasi.reduce((sum, item) => sum + item.bobot, 0);
-    return hasilAgregasi.map(item => ({ ...item, bobot: item.bobot / total }));
+    const hasil = Object.keys(map).map(id => {
+        const d = map[id];
+        const perkalian = d.nilai.reduce((a, b) => a * b, 1);
+        const geo = Math.pow(perkalian, 1 / d.nilai.length);
+        return { id_kriteria: parseInt(id), nama_kriteria: d.nama_kriteria, bobot: geo };
+    });
+
+    const total = hasil.reduce((s, i) => s + i.bobot, 0);
+    return hasil.map(i => ({ ...i, bobot: i.bobot / total }));
 }
 
 module.exports = { hitungFUCOM, agregasiBobot };

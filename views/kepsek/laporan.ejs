@@ -9,12 +9,10 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-
                 <% if (periode) { %>
                 <div class="panel laporan-panel">
                     <div class="panel-header">
@@ -26,7 +24,6 @@
                     </div>
                     <a href="/<%= user.role %>/laporan/unduh" class="btn-primary"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
                 </div>
-
                 <div class="panel">
                     <div class="panel-header">
                         <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-sliders"></i></div>
@@ -41,11 +38,15 @@
                         </tbody>
                     </table>
                 </div>
-
                 <div class="panel">
                     <div class="panel-header">
                         <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
                         <h3>Hasil Perangkingan Siswa</h3>
+                    </div>
+                    <div class="status-legend">
+                        <span><span class="dot-legend badge-diusulkan"></span> Diusulkan</span>
+                        <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
+                        <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
                     </div>
                     <table class="data-table">
                         <thead><tr><th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th></tr></thead>
@@ -56,14 +57,17 @@
                                     <td><%= h.nisn %></td>
                                     <td><%= h.nama %></td>
                                     <td><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></td>
-                                    <td><span class="badge badge-<%= h.status_penerimaan === 'diterima' ? 'green' : 'blue' %>"><%= h.status_penerimaan === 'diterima' ? 'Diterima' : 'Cadangan' %></span></td>
+                                    <td>
+                                        <span class="badge badge-<%= h.status_penerimaan %>">
+                                            <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' : (h.status_penerimaan === 'lulus' ? 'Lulus' : 'Cadangan') %>
+                                        </span>
+                                    </td>
                                 </tr>
                             <% }); %>
                         </tbody>
                     </table>
                 </div>
                 <% } %>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>

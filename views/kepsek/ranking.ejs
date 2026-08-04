@@ -9,12 +9,10 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-
                 <% if (periode) { %>
                 <div class="panel">
                     <div class="panel-header">
@@ -24,10 +22,14 @@
                             <p class="stat-desc">Tahun Ajaran <%= periode.tahun_ajaran %> — Kuota: <%= periode.kuota_kelas_digital %> siswa</p>
                         </div>
                     </div>
-
                     <% if (hasilRanking.length === 0) { %>
                         <p class="empty-state">Belum ada hasil perangkingan. Admin belum menjalankan perhitungan WASPAS.</p>
                     <% } else { %>
+                        <div class="status-legend">
+                            <span><span class="dot-legend badge-diusulkan"></span> Diusulkan</span>
+                            <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
+                            <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
+                        </div>
                         <table class="data-table">
                             <thead>
                                 <tr><th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th><th>Detail</th></tr>
@@ -40,8 +42,8 @@
                                         <td><%= h.nama %></td>
                                         <td><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></td>
                                         <td>
-                                            <span class="badge badge-<%= h.status_penerimaan === 'diterima' ? 'green' : 'blue' %>">
-                                                <%= h.status_penerimaan === 'diterima' ? 'Diterima' : 'Cadangan' %>
+                                            <span class="badge badge-<%= h.status_penerimaan %>">
+                                                <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' : (h.status_penerimaan === 'lulus' ? 'Lulus' : 'Cadangan') %>
                                             </span>
                                         </td>
                                         <td>
@@ -56,12 +58,10 @@
                     <% } %>
                 </div>
                 <% } %>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
-
     <!-- Modal Detail Nilai Siswa -->
     <div class="modal-overlay" id="modalDetailSiswa">
         <div class="modal-box" style="max-width:500px;">
@@ -70,7 +70,7 @@
                 <button class="modal-close" onclick="document.getElementById('modalDetailSiswa').style.display='none'">&times;</button>
             </div>
             <table class="data-table">
-                <thead><tr><th>Kriteria</th><th>Nilai</th><th>Sumber</th></tr></thead>
+                <thead><tr><th>Kriteria</th><th>Nilai</th></tr></thead>
                 <tbody id="isiDetailSiswa"></tbody>
             </table>
             <div class="modal-footer">
@@ -78,25 +78,21 @@
             </div>
         </div>
     </div>
-
     <script>
         async function lihatDetailSiswa(id_siswa, nama) {
             document.getElementById('detailNamaSiswa').innerText = nama;
             const res = await fetch('/kepsek/ranking/detail/' + id_siswa);
             const data = await res.json();
-
             const tbody = document.getElementById('isiDetailSiswa');
             tbody.innerHTML = '';
-
             if (data.success) {
                 data.detail.forEach(function(d) {
                     const tr = document.createElement('tr');
                     const nilaiTampil = d.nilai_mentah !== null ? d.nilai_mentah : '<span style="color:#e74c3c;">Belum diisi</span>';
-                    tr.innerHTML = `<td>${d.nama_kriteria}</td><td>${nilaiTampil}</td><td>${d.sumber_data || '-'}</td>`;
+                    tr.innerHTML = `<td>${d.nama_kriteria}</td><td>${nilaiTampil}</td>`;
                     tbody.appendChild(tr);
                 });
             }
-
             document.getElementById('modalDetailSiswa').style.display = 'flex';
         }
     </script>

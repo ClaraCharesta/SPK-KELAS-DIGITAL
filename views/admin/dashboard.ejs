@@ -11,12 +11,20 @@
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
             <div class="welcome-banner">
-                <div class="welcome-icon"><i class="bi bi-bar-chart-fill"></i></div>
-                <div>
-                    <h2>Selamat datang, Admin!</h2>
-                    <p>Berikut ringkasan informasi sistem penempatan siswa kelas digital.</p>
-                </div>
-            </div>
+    <div class="welcome-icon"><i class="bi bi-bar-chart-fill"></i></div>
+    <div>
+        <h2>Selamat datang kembali, <%= user.nama %>! 👋</h2>
+        <p>
+            <% if (stats.statusFucom === 'Belum') { %>
+                Mulai dengan melengkapi pembobotan kriteria di menu <strong>Pembobotan Kriteria</strong> sebelum menjalankan perankingan.
+            <% } else if (stats.statusWaspas === 'Belum') { %>
+                Pembobotan kriteria sudah siap. Lanjutkan ke menu <strong>Perankingan</strong> untuk melihat hasil seleksi siswa.
+            <% } else { %>
+                Semua proses seleksi sudah berjalan. Cek menu <strong>Perankingan</strong> untuk meninjau hasil terbaru.
+            <% } %>
+        </p>
+    </div>
+</div>
 
             <div class="card-grid">
                 <div class="stat-card">
@@ -56,5 +64,7 @@
             <%- include('../partials/footer') %>
         </div>
     </div>
+
+    
 </body>
 </html>

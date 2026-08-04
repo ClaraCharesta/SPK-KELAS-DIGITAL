@@ -61,14 +61,38 @@ const waspasModel = {
     },
 
     async updateStatusPenerimaan(id_periode, kuota) {
-        // Ranking 1 s.d kuota => diterima, sisanya cadangan
         await db.query(
             `UPDATE siswa s
              JOIN hasil_waspas hw ON s.id_siswa = hw.id_siswa
-             SET s.status_penerimaan = IF(hw.ranking <= ?, 'diterima', 'cadangan')
-             WHERE s.id_periode = ?`,
+             SET s.status_penerimaan = IF(hw.ranking <= ?, 'diusulkan', 'cadangan')
+             WHERE s.id_periode = ? AND s.status_penerimaan != 'lulus'`,
             [kuota, id_periode]
         );
+    },
+
+    async hitungJumlahLulus(id_periode) {
+        const [[{ jumlah }]] = await db.query(
+            "SELECT COUNT(*) AS jumlah FROM siswa WHERE id_periode = ? AND status_penerimaan = 'lulus'",
+            [id_periode]
+        );
+        return jumlah;
+    },
+
+    async tetapkanLulus(id_periode, idSiswaArray) {
+        if (idSiswaArray.length === 0) return;
+        await db.query(
+            `UPDATE siswa SET status_penerimaan = 'lulus' WHERE id_siswa IN (?) AND id_periode = ?`,
+            [idSiswaArray, id_periode]
+        );
+    },
+
+    async kunciJikaKuotaPenuh(id_periode, kuota) {
+        const jumlahLulus = await waspasModel.hitungJumlahLulus(id_periode);
+        if (jumlahLulus >= kuota) {
+            await db.query(`UPDATE hasil_waspas SET status_final = 'final' WHERE id_periode = ?`, [id_periode]);
+            return true;
+        }
+        return false;
     },
 
     async getBobotForLaporan(id_periode) {
@@ -83,7 +107,7 @@ const waspasModel = {
 
     async getDetailNilaiSiswa(id_siswa) {
         const [rows] = await db.query(
-            `SELECT k.nama_kriteria, k.jenis, ns.nilai_mentah, ns.sumber_data
+            `SELECT k.nama_kriteria, k.jenis, ns.nilai_mentah
              FROM kriteria k
              LEFT JOIN nilai_siswa ns ON k.id_kriteria = ns.id_kriteria AND ns.id_siswa = ?
              WHERE k.id_periode = (SELECT id_periode FROM siswa WHERE id_siswa = ?)
@@ -99,9 +123,20 @@ const waspasModel = {
              FROM hasil_waspas hw 
              JOIN siswa s ON hw.id_siswa = s.id_siswa 
              WHERE hw.id_periode = ? 
-             ORDER BY hw.ranking ASC`, [id_periode]
+             ORDER BY 
+                CASE s.status_penerimaan 
+                    WHEN 'lulus' THEN 0 
+                    WHEN 'diusulkan' THEN 1 
+                    WHEN 'cadangan' THEN 2 
+                    ELSE 3 
+                END ASC,
+                hw.ranking ASC`, [id_periode]
         );
         return rows;
+    },
+
+    async hapusHasil(id_periode) {
+        await db.query('DELETE FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
     }
 };
 

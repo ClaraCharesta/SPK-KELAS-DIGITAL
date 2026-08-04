@@ -5,8 +5,9 @@ const periodeController = {
     async index(req, res) {
         try {
             const periodeList = await periodeModel.getAll();
+            const latestId = await periodeModel.getLatestId();
             res.render('superadmin/periode', {
-                user: req.session.user, periodeList, activePage: 'periode',
+                user: req.session.user, periodeList, latestId, activePage: 'periode',
                 pageTitle: 'Kelola Periode Seleksi',
                 success: req.query.success || null,
                 error: req.query.error || null
@@ -53,6 +54,59 @@ const periodeController = {
             await periodeModel.setActive(id_periode);
             await userModel.logActivity(req.session.user.id_user, `Super Admin mengaktifkan periode ID ${id_periode}`);
             res.redirect('/superadmin/periode?success=Periode berhasil diaktifkan.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
+        }
+    },
+
+    async update(req, res) {
+        try {
+            const { id_periode, tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = req.body;
+            const latestId = await periodeModel.getLatestId();
+
+            if (parseInt(id_periode) !== latestId) {
+                return res.redirect('/superadmin/periode?error=Hanya periode terbaru yang dapat diedit.');
+            }
+
+            await periodeModel.update(id_periode, { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai });
+            await userModel.logActivity(req.session.user.id_user, `Super Admin memperbarui periode: ${tahun_ajaran}`);
+            res.redirect('/superadmin/periode?success=Periode berhasil diperbarui.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
+        }
+    },
+
+    async delete(req, res) {
+        try {
+            const { id_periode } = req.params;
+            const latestId = await periodeModel.getLatestId();
+
+            if (parseInt(id_periode) !== latestId) {
+                return res.redirect('/superadmin/periode?error=Hanya periode terbaru yang dapat dihapus.');
+            }
+
+            const adaData = await periodeModel.checkAdaData(id_periode);
+            if (adaData) {
+                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat dihapus karena sudah memiliki data siswa terkait.');
+            }
+
+            await periodeModel.delete(id_periode);
+            await userModel.logActivity(req.session.user.id_user, `Super Admin menghapus periode ID ${id_periode}`);
+            res.redirect('/superadmin/periode?success=Periode berhasil dihapus.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
+        }
+    },
+
+    async tutupManual(req, res) {
+        try {
+            const { id_periode } = req.params;
+            await periodeModel.tutupManual(id_periode);
+            await userModel.logActivity(req.session.user.id_user, `Super Admin menutup periode ID ${id_periode} secara manual`);
+            res.redirect('/superadmin/periode?success=Periode berhasil ditutup.');
         } catch (error) {
             console.error(error);
             res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');

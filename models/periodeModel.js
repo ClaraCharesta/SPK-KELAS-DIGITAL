@@ -37,6 +37,32 @@ const periodeModel = {
 
     async close(id_periode) {
         await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode = ?", [id_periode]);
+    },
+
+    async getLatestId() {
+        const [rows] = await db.query('SELECT id_periode FROM periode_seleksi ORDER BY id_periode DESC LIMIT 1');
+        return rows.length > 0 ? rows[0].id_periode : null;
+    },
+
+    async update(id_periode, data) {
+        const { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = data;
+        await db.query(
+            'UPDATE periode_seleksi SET tahun_ajaran = ?, kuota_kelas_digital = ?, tanggal_mulai = ?, tanggal_selesai = ? WHERE id_periode = ?',
+            [tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai, id_periode]
+        );
+    },
+
+    async delete(id_periode) {
+        await db.query('DELETE FROM periode_seleksi WHERE id_periode = ?', [id_periode]);
+    },
+
+    async checkAdaData(id_periode) {
+        const [[{ jumlah }]] = await db.query('SELECT COUNT(*) AS jumlah FROM siswa WHERE id_periode = ?', [id_periode]);
+        return jumlah > 0;
+    },
+
+    async tutupManual(id_periode) {
+        await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode = ?", [id_periode]);
     }
 };
 

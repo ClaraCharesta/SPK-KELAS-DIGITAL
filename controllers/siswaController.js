@@ -2,6 +2,7 @@ const siswaModel = require('../models/siswaModel');
 const userModel = require('../models/userModel');
 const xlsx = require('xlsx');
 const fs = require('fs');
+const { generateTemplateSiswa } = require('../utils/templateGenerator');
 
 const siswaController = {
     async index(req, res) {
@@ -50,9 +51,16 @@ const siswaController = {
         }
     },
 
-    async update(req, res) {
+   async update(req, res) {
         try {
             const { id_siswa, nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = req.body;
+            const periode = await siswaModel.getActivePeriode();
+
+            const exists = await siswaModel.checkNisnExists(nisn, periode.id_periode, id_siswa);
+            if (exists) {
+                return res.redirect('/admin/siswa?error=NISN tersebut sudah digunakan oleh siswa lain. Periksa kembali data yang diinput.');
+            }
+
             await siswaModel.updateSiswa(id_siswa, {
                 nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu,
                 status_pip_pkh: status_pip_pkh === 'ya'
@@ -75,6 +83,15 @@ const siswaController = {
         } catch (error) {
             console.error(error);
             res.redirect('/admin/siswa?error=Terjadi kesalahan sistem. Pastikan siswa ini belum memiliki nilai/hasil terkait.');
+        }
+    },
+
+     async downloadTemplate(req, res) {
+        try {
+            await generateTemplateSiswa(res);
+        } catch (error) {
+            console.error(error);
+            res.status(500).send('Gagal membuat template.');
         }
     },
 

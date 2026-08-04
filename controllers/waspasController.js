@@ -62,6 +62,61 @@ const waspasController = {
             console.error(error);
             res.redirect('/admin/waspas?error=Terjadi kesalahan sistem: ' + error.message);
         }
+    },
+
+    async hapusHasil(req, res) {
+        try {
+            const periode = await periodeModel.getActivePeriode();
+
+            const [[statusFinal]] = await require('../config/database').query(
+                "SELECT status_final FROM hasil_waspas WHERE id_periode = ? AND status_final = 'final' LIMIT 1",
+                [periode.id_periode]
+            );
+            if (statusFinal) {
+                return res.redirect('/admin/waspas?error=Tidak dapat menghapus karena hasil sudah ditetapkan Final.');
+            }
+
+            await waspasModel.hapusHasil(periode.id_periode);
+            await userModel.logActivity(req.session.user.id_user, 'Menghapus hasil perankingan WASPAS');
+
+            res.redirect('/admin/waspas?success=Hasil perankingan berhasil dihapus. Pembobotan kriteria kini dapat diubah kembali.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/admin/waspas?error=Terjadi kesalahan sistem.');
+        }
+    },
+
+    async tetapkanLulus(req, res) {
+        try {
+            const periode = await periodeModel.getActivePeriode();
+            let { id_siswa_lulus } = req.body;
+
+            if (!id_siswa_lulus) {
+                return res.redirect('/admin/waspas?error=Pilih minimal 1 siswa untuk ditetapkan lulus.');
+            }
+
+            const idArray = Array.isArray(id_siswa_lulus) ? id_siswa_lulus : [id_siswa_lulus];
+
+            const jumlahLulusSekarang = await waspasModel.hitungJumlahLulus(periode.id_periode);
+            const sisaKuota = periode.kuota_kelas_digital - jumlahLulusSekarang;
+
+            if (idArray.length > sisaKuota) {
+                return res.redirect(`/admin/waspas?error=Jumlah yang dipilih (${idArray.length}) melebihi sisa kuota (${sisaKuota}). Kurangi pilihan Anda.`);
+            }
+
+            await waspasModel.tetapkanLulus(periode.id_periode, idArray);
+            const sudahPenuh = await waspasModel.kunciJikaKuotaPenuh(periode.id_periode, periode.kuota_kelas_digital);
+
+            await userModel.logActivity(req.session.user.id_user, `Menetapkan ${idArray.length} siswa sebagai Lulus`);
+
+            let pesan = `${idArray.length} siswa berhasil ditetapkan Lulus.`;
+            if (sudahPenuh) pesan += ' Kuota telah terpenuhi, hasil penempatan kini bersifat final.';
+
+            res.redirect(`/admin/waspas?success=${encodeURIComponent(pesan)}`);
+        } catch (error) {
+            console.error(error);
+            res.redirect('/admin/waspas?error=Terjadi kesalahan sistem.');
+        }
     }
 };
 
