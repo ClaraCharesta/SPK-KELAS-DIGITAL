@@ -28,12 +28,12 @@ const authController = {
 
             // Simpan data user ke session
             req.session.user = {
-                id_user: user.id_user,
-                nama: user.nama,
-                username: user.username,
-                role: user.role
+            id_user: user.id_user,
+            nama: user.nama,
+            username: user.username,
+            role: user.role,
+            foto_profil: user.foto_profil || null
             };
-
             await userModel.logActivity(user.id_user, `${user.nama} login ke sistem`);
 
             // Arahkan ke dashboard sesuai role

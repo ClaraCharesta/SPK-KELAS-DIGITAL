@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Riwayat Periode</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="content-wrapper">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-archive-fill"></i></div>
+                        <h3>Riwayat Periode Seleksi (Tidak Aktif)</h3>
+                    </div>
+
+                    <% if (periodeTertutup.length === 0) { %>
+                        <p class="empty-state">Belum ada periode yang ditutup.</p>
+                    <% } else { %>
+                        <select onchange="window.location.href='/superadmin/riwayat/' + this.value" style="padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:20px; width:100%; max-width:350px;">
+                            <option value="">-- Pilih Periode --</option>
+                            <% periodeTertutup.forEach(function(p) { %>
+                                <option value="<%= p.id_periode %>" <%= selectedPeriode && selectedPeriode.id_periode === p.id_periode ? 'selected' : '' %>>
+                                    <%= p.tahun_ajaran %>
+                                </option>
+                            <% }); %>
+                        </select>
+                    <% } %>
+                </div>
+
+                <% if (selectedPeriode) { %>
+                <div class="panel">
+                    <h3 style="margin-bottom:15px;">Bobot Kriteria — <%= selectedPeriode.tahun_ajaran %></h3>
+                    <table class="data-table">
+                        <thead><tr><th>Kriteria</th><th>Bobot</th></tr></thead>
+                        <tbody>
+                            <% bobotKriteria.forEach(function(b) { %>
+                                <tr><td><%= b.nama_kriteria %></td><td><%= (b.nilai_bobot * 100).toFixed(2) %>%</td></tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="panel">
+                    <h3 style="margin-bottom:15px;">Hasil Perangkingan — <%= selectedPeriode.tahun_ajaran %></h3>
+                    <table class="data-table">
+                        <thead><tr><th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th></tr></thead>
+                        <tbody>
+                            <% hasilRanking.forEach(function(h) { %>
+                                <tr>
+                                    <td>#<%= h.ranking %></td><td><%= h.nisn %></td><td><%= h.nama %></td>
+                                    <td><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></td>
+                                    <td><span class="badge badge-<%= h.status_penerimaan %>"><%= h.status_penerimaan %></span></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+                <% } %>
+
+                <%- include('../partials/footer') %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

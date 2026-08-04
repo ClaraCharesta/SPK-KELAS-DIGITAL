@@ -11,6 +11,14 @@
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
+            <div class="welcome-banner">
+    <div class="welcome-icon"><i class="bi bi-mortarboard-fill"></i></div>
+    <div>
+        <h2>Selamat datang, <%= user.nama %>! 👋</h2>
+        <p>Pantau hasil seleksi Kelas Digital dan unduh laporan resmi kapan saja melalui dashboard ini.</p>
+    </div>
+</div>
+
             <div class="card-grid" style="margin-bottom: 25px;">
                 <div class="stat-card">
                     <div class="stat-icon icon-blue"><i class="bi bi-check-circle-fill"></i></div>
@@ -50,13 +58,15 @@
                 </div>
                 <% if (stats.bobotKriteria && stats.bobotKriteria.length > 0) { %>
                     <div class="chart-with-legend">
-                        <canvas id="chartBobot" width="250" height="250"></canvas>
-                        <ul class="legend-list">
-                            <% stats.bobotKriteria.forEach(function(k) { %>
-                                <li><span class="dot"></span> <%= k.nama_kriteria %> <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b></li>
-                            <% }); %>
-                        </ul>
-                    </div>
+    <div style="width:200px; height:200px; flex-shrink:0;">
+        <canvas id="chartBobot"></canvas>
+    </div>
+    <ul class="legend-list">
+        <% stats.bobotKriteria.forEach(function(k) { %>
+            <li><span class="dot"></span> <%= k.nama_kriteria %> <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b></li>
+        <% }); %>
+    </ul>
+</div>
                 <% } else { %>
                     <p class="empty-state">Bobot kriteria belum tersedia. Perhitungan FUCOM belum dilakukan oleh Admin.</p>
                 <% } %>
@@ -76,6 +86,8 @@
             <%- include('../partials/footer') %>
         </div>
     </div>
+
+    
 
     <script>
         const ctxSebaran = document.getElementById('chartSebaran');

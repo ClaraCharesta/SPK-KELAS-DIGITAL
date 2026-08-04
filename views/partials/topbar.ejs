@@ -10,32 +10,12 @@
     </div>
 
     <div class="topbar-right">
-        <div class="notif-wrapper">
-            <button class="notif-btn" id="notifBtn">
-                <i class="bi bi-bell-fill"></i>
-                <% if (typeof notifikasi !== 'undefined' && notifikasi.length > 0) { %>
-                    <span class="notif-dot"></span>
-                <% } %>
-            </button>
-            <div class="notif-dropdown" id="notifDropdown">
-                <div class="notif-dropdown-header">Notifikasi</div>
-                <% if (typeof notifikasi === 'undefined' || notifikasi.length === 0) { %>
-                    <div class="notif-empty">Tidak ada notifikasi baru.</div>
-                <% } else { %>
-                    <% notifikasi.forEach(function(n) { %>
-                        <div class="notif-item">
-                            <div class="notif-icon-small icon-<%= n.warna %>"><i class="bi <%= n.icon %>"></i></div>
-                            <div class="notif-text"><%= n.pesan %></div>
-                        </div>
-                    <% }); %>
-                <% } %>
-            </div>
-        </div>
-
-        <div class="topbar-divider"></div>
-
         <a href="/profile" class="user-dropdown" style="text-decoration:none;">
-            <i class="bi bi-person-circle"></i>
+            <% if (user.foto_profil) { %>
+                <img src="/img/profile/<%= user.foto_profil %>" class="topbar-avatar">
+            <% } else { %>
+                <i class="bi bi-person-circle"></i>
+            <% } %>
             <span><%= user.role === 'super_admin' ? 'Super Admin' : (user.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %></span>
             <i class="bi bi-chevron-down"></i>
         </a>
@@ -51,16 +31,4 @@
             sidebarEl.classList.toggle('collapsed');
         });
     }
-
-    document.getElementById('notifBtn').addEventListener('click', function(e) {
-        e.stopPropagation();
-        document.getElementById('notifDropdown').classList.toggle('show');
-    });
-
-    document.addEventListener('click', function(e) {
-        const dropdown = document.getElementById('notifDropdown');
-        if (dropdown && !dropdown.contains(e.target) && e.target.id !== 'notifBtn') {
-            dropdown.classList.remove('show');
-        }
-    });
 </script>

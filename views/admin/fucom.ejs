@@ -9,7 +9,6 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
@@ -17,21 +16,36 @@
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-
+                <!-- Panel Tutorial -->
+                <div class="panel" style="background:#f4f8ff;">
+                    <div class="panel-header-row" style="cursor:pointer;" onclick="document.getElementById('isiTutorial').classList.toggle('show')">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-question-circle-fill"></i></div>
+                            <h3>Cara Pengisian Data Perbandingan Kriteria</h3>
+                        </div>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div id="isiTutorial" class="tutorial-content">
+                        <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
+                            <li>Klik <strong>"Input Data Responden"</strong> dan isi nama guru/pengambil keputusan yang mengisi kuesioner.</li>
+                            <li>Urutkan 6 kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong> menurut penilaian responden tersebut.</li>
+                            <li>Isi nilai perbandingan antar kriteria yang bersebelahan, skala 1-9. Gunakan angka <strong>1-4</strong> untuk selisih yang wajar, dan angka besar (7-9) hanya jika benar-benar yakin ada kesenjangan sangat besar.</li>
+                            <li>Ulangi untuk responden kedua (minimal 2 responden diperlukan).</li>
+                            <li>Setelah minimal 2 responden lengkap, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
+                        </ol>
+                    </div>
+                </div>
                 <!-- Panel Data Responden -->
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clipboard-data"></i></div>
-                            <h3>Data Perbandingan Kriteria (2 Responden)</h3>
+                            <h3>Data Perbandingan Kriteria (Minimal 2 Responden)</h3>
                         </div>
-                        <% if (respondenList.length < 2) { %>
-                            <button class="btn-primary" onclick="document.getElementById('modalInput').style.display='flex'">
-                                <i class="bi bi-plus-lg"></i> Input Data Responden
-                            </button>
-                        <% } %>
+                        <button class="btn-primary" onclick="document.getElementById('modalInput').style.display='flex'">
+                            <i class="bi bi-plus-lg"></i> Input Data Responden
+                        </button>
                     </div>
-
                     <% if (respondenList.length === 0) { %>
                         <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner dari guru (maksimal 2 orang).</p>
                     <% } else { %>
@@ -59,12 +73,11 @@
                                 </table>
                             </div>
                         <% }); %>
-                        <% if (respondenList.length === 1) { %>
-                            <p style="font-size:13px; color:#e67e22;"><i class="bi bi-info-circle-fill"></i> Masih perlu 1 responden lagi sebelum bisa menghitung bobot.</p>
+                        <% if (respondenList.length < 2) { %>
+                            <p style="font-size:13px; color:#e67e22;"><i class="bi bi-info-circle-fill"></i> Masih perlu minimal <%= 2 - respondenList.length %> responden lagi sebelum bisa menghitung bobot.</p>
                         <% } %>
                     <% } %>
                 </div>
-
                 <!-- Panel Hitung Bobot -->
                 <div class="panel">
                     <div class="panel-header-row">
@@ -72,23 +85,26 @@
                             <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-sliders"></i></div>
                             <h3>Hasil Perhitungan Bobot Kriteria (Agregasi)</h3>
                         </div>
-                        <form action="/admin/fucom/hitung" method="POST">
-                            <button type="submit" class="btn-primary" <%= respondenList.length < 2 ? 'disabled' : '' %>>
-                                <i class="bi bi-calculator-fill"></i> Hitung Bobot FUCOM
-                            </button>
-                        </form>
+                        <% if (respondenList.length >= 2) { %>
+                            <form action="/admin/fucom/hitung" method="POST">
+                                <button type="submit" class="btn-primary">
+                                    <i class="bi bi-calculator-fill"></i> Hitung Bobot FUCOM
+                                </button>
+                            </form>
+                        <% } %>
                     </div>
-
-                    <% if (bobotFinal.length === 0) { %>
-                        <p class="empty-state">Bobot belum dihitung. Lengkapi data 2 responden, lalu klik "Hitung Bobot FUCOM".</p>
+                    <% if (respondenList.length < 2) { %>
+                        <p class="empty-state">Tombol perhitungan akan muncul setelah data 2 responden lengkap. Saat ini: <strong><%= respondenList.length %>/2</strong> responden.</p>
+                    <% } else if (bobotFinal.length === 0) { %>
+                        <p class="empty-state">Data sudah lengkap. Klik "Hitung Bobot FUCOM" untuk memulai perhitungan.</p>
                     <% } else { %>
                         <% 
                             const bobotTerkecil = Math.min(...bobotFinal.map(b => parseFloat(b.nilai_bobot)));
                         %>
                         <% if (bobotTerkecil < 0.03) { %>
                             <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
-                                <i class="bi bi-exclamation-triangle-fill"></i> 
-                                Distribusi bobot sangat timpang (bobot terkecil di bawah 3%). Disarankan meninjau ulang nilai perbandingan kuesioner untuk memastikan hasil ini sesuai maksud sebenarnya.
+                                <i class="bi bi-lightbulb-fill"></i> 
+                                Ada kriteria yang pengaruhnya sangat kecil dibanding yang lain. Kalau ini bukan yang dimaksud, coba isi ulang nilai perbandingan dengan angka yang lebih moderat (1-4) di form input.
                             </div>
                         <% } %>
                         <table class="data-table">
@@ -110,12 +126,10 @@
                         </table>
                     <% } %>
                 </div>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
-
     <!-- Modal Input Data Responden -->
     <div class="modal-overlay" id="modalInput">
         <div class="modal-box" style="max-width:550px;">
@@ -126,11 +140,9 @@
             <form action="/admin/fucom/input" method="POST">
                 <label>Nama Responden</label>
                 <input type="text" name="nama_responden" required placeholder="Contoh: Desi Wahyuni, S.Pd">
-
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
                     Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>.
                 </p>
-
                 <% kriteriaList.forEach(function(k, idx) { %>
                     <label>Peringkat <%= idx + 1 %></label>
                     <select name="id_kriteria_urutan" required style="margin-bottom:8px;">
@@ -139,16 +151,13 @@
                         <% }); %>
                     </select>
                 <% }); %>
-
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
                     Nilai perbandingan antar peringkat berurutan (skala 1-9). <strong>Gunakan nilai moderat (1-4)</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
                 </p>
-
                 <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>
                     <label>Peringkat <%= i + 1 %> dibanding Peringkat <%= i + 2 %></label>
                     <input type="number" name="nilai_perbandingan" min="1" max="9" step="0.5" required style="margin-bottom:8px;">
                 <% } %>
-
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalInput').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Data</button>
