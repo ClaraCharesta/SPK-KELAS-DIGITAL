@@ -18,29 +18,50 @@
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
 
-                <!-- Panel Input Data Responden -->
+                <!-- Panel Data Responden -->
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clipboard-data"></i></div>
-                            <h3>Input Hasil Kuesioner Perbandingan Kriteria</h3>
+                            <h3>Data Perbandingan Kriteria (2 Responden)</h3>
                         </div>
-                        <button class="btn-primary" onclick="document.getElementById('modalInput').style.display='flex'">
-                            <i class="bi bi-plus-lg"></i> Input Data Responden
-                        </button>
+                        <% if (respondenList.length < 2) { %>
+                            <button class="btn-primary" onclick="document.getElementById('modalInput').style.display='flex'">
+                                <i class="bi bi-plus-lg"></i> Input Data Responden
+                            </button>
+                        <% } %>
                     </div>
 
                     <% if (respondenList.length === 0) { %>
-                        <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner dari guru.</p>
+                        <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner dari guru (maksimal 2 orang).</p>
                     <% } else { %>
-                        <table class="data-table">
-                            <thead><tr><th>No</th><th>Nama Responden</th></tr></thead>
-                            <tbody>
-                                <% respondenList.forEach(function(nama, idx) { %>
-                                    <tr><td><%= idx + 1 %></td><td><%= nama %></td></tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
+                        <% respondenList.forEach(function(nama) { %>
+                            <div style="margin-bottom:20px; padding:15px; background:#fafbfd; border-radius:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <strong style="font-size:14px; color:#0b2545;"><i class="bi bi-person-fill"></i> <%= nama %></strong>
+                                    <form action="/admin/fucom/hapus" method="POST" onsubmit="return confirm('Hapus data responden ini?');">
+                                        <input type="hidden" name="nama_responden" value="<%= nama %>">
+                                        <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <table class="data-table">
+                                    <thead><tr><th>Perbandingan</th><th>Nilai</th></tr></thead>
+                                    <tbody>
+                                        <% dataResponden[nama].forEach(function(p) { %>
+                                            <tr>
+                                                <td><%= p.nama_kriteria_asal %> vs <%= p.nama_kriteria_pembanding %></td>
+                                                <td><strong><%= p.nilai_perbandingan %></strong></td>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <% }); %>
+                        <% if (respondenList.length === 1) { %>
+                            <p style="font-size:13px; color:#e67e22;"><i class="bi bi-info-circle-fill"></i> Masih perlu 1 responden lagi sebelum bisa menghitung bobot.</p>
+                        <% } %>
                     <% } %>
                 </div>
 
@@ -49,20 +70,29 @@
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-sliders"></i></div>
-                            <h3>Hasil Perhitungan Bobot Kriteria</h3>
+                            <h3>Hasil Perhitungan Bobot Kriteria (Agregasi)</h3>
                         </div>
                         <form action="/admin/fucom/hitung" method="POST">
-                            <button type="submit" class="btn-primary" <%= respondenList.length === 0 ? 'disabled' : '' %>>
+                            <button type="submit" class="btn-primary" <%= respondenList.length < 2 ? 'disabled' : '' %>>
                                 <i class="bi bi-calculator-fill"></i> Hitung Bobot FUCOM
                             </button>
                         </form>
                     </div>
 
                     <% if (bobotFinal.length === 0) { %>
-                        <p class="empty-state">Bobot belum dihitung. Pastikan minimal 1 responden sudah input data, lalu klik "Hitung Bobot FUCOM".</p>
+                        <p class="empty-state">Bobot belum dihitung. Lengkapi data 2 responden, lalu klik "Hitung Bobot FUCOM".</p>
                     <% } else { %>
+                        <% 
+                            const bobotTerkecil = Math.min(...bobotFinal.map(b => parseFloat(b.nilai_bobot)));
+                        %>
+                        <% if (bobotTerkecil < 0.03) { %>
+                            <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
+                                <i class="bi bi-exclamation-triangle-fill"></i> 
+                                Distribusi bobot sangat timpang (bobot terkecil di bawah 3%). Disarankan meninjau ulang nilai perbandingan kuesioner untuk memastikan hasil ini sesuai maksud sebenarnya.
+                            </div>
+                        <% } %>
                         <table class="data-table">
-                            <thead><tr><th>Kriteria</th><th>Bobot</th><th>Nilai DFC</th></tr></thead>
+                            <thead><tr><th>Kriteria</th><th>Bobot</th><th>Nilai DFC (rata-rata 2 responden)</th></tr></thead>
                             <tbody>
                                 <% bobotFinal.forEach(function(b) { %>
                                     <tr>
@@ -93,27 +123,25 @@
                 <h3><i class="bi bi-clipboard-data"></i> Input Data Kuesioner Responden</h3>
                 <button class="modal-close" onclick="document.getElementById('modalInput').style.display='none'">&times;</button>
             </div>
-            <form action="/admin/fucom/input-responden" method="POST">
+            <form action="/admin/fucom/input" method="POST">
                 <label>Nama Responden</label>
                 <input type="text" name="nama_responden" required placeholder="Contoh: Desi Wahyuni, S.Pd">
 
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
-                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong> sesuai Tahap 1 kuesioner, lalu isi nilai perbandingan sesuai Tahap 2.
+                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>.
                 </p>
 
-                <div id="urutanKriteriaWrapper">
-                    <% kriteriaList.forEach(function(k, idx) { %>
-                        <label>Peringkat <%= idx + 1 %></label>
-                        <select name="id_kriteria_urutan" required style="margin-bottom:8px;">
-                            <% kriteriaList.forEach(function(k2) { %>
-                                <option value="<%= k2.id_kriteria %>"><%= k2.nama_kriteria %></option>
-                            <% }); %>
-                        </select>
-                    <% }); %>
-                </div>
+                <% kriteriaList.forEach(function(k, idx) { %>
+                    <label>Peringkat <%= idx + 1 %></label>
+                    <select name="id_kriteria_urutan" required style="margin-bottom:8px;">
+                        <% kriteriaList.forEach(function(k2) { %>
+                            <option value="<%= k2.id_kriteria %>"><%= k2.nama_kriteria %></option>
+                        <% }); %>
+                    </select>
+                <% }); %>
 
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
-                    Nilai perbandingan antar peringkat berurutan (skala 1-9):
+                    Nilai perbandingan antar peringkat berurutan (skala 1-9). <strong>Gunakan nilai moderat (1-4)</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
                 </p>
 
                 <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>

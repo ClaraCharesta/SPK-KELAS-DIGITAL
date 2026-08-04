@@ -40,6 +40,34 @@ const kriteriaModel = {
             'SELECT COUNT(*) AS jumlah FROM kriteria WHERE id_periode = ?', [id_periode]
         );
         return jumlah;
+    },
+
+    async checkNamaExists(id_periode, nama_kriteria, excludeId = null) {
+        let query = 'SELECT id_kriteria FROM kriteria WHERE id_periode = ? AND LOWER(nama_kriteria) = LOWER(?)';
+        const params = [id_periode, nama_kriteria];
+
+        if (excludeId) {
+            query += ' AND id_kriteria != ?';
+            params.push(excludeId);
+        }
+
+        const [rows] = await db.query(query, params);
+        return rows.length > 0;
+    },
+
+    async checkSedangDipakai(id_kriteria) {
+        const [[{ jumlahNilai }]] = await db.query(
+            'SELECT COUNT(*) AS jumlahNilai FROM nilai_siswa WHERE id_kriteria = ?', [id_kriteria]
+        );
+        const [[{ jumlahBobot }]] = await db.query(
+            'SELECT COUNT(*) AS jumlahBobot FROM bobot_kriteria WHERE id_kriteria = ?', [id_kriteria]
+        );
+        const [[{ jumlahPerbandingan }]] = await db.query(
+            'SELECT COUNT(*) AS jumlahPerbandingan FROM perbandingan_fucom WHERE id_kriteria_asal = ? OR id_kriteria_pembanding = ?',
+            [id_kriteria, id_kriteria]
+        );
+
+        return jumlahNilai > 0 || jumlahBobot > 0 || jumlahPerbandingan > 0;
     }
 };
 

@@ -10,6 +10,7 @@ const fucomController = require('../controllers/fucomController');
 const waspasController = require('../controllers/waspasController');
 const laporanController = require('../controllers/laporanController');
 
+
 router.use(isAuthenticated, checkRole('admin'));
 
 router.get('/dashboard', dashboardController.showAdminDashboard);
@@ -19,15 +20,13 @@ router.post('/siswa/create', siswaController.create);
 router.post('/siswa/update', siswaController.update);
 router.post('/siswa/delete/:id_siswa', siswaController.delete);
 router.post('/siswa/import', upload.single('fileExcel'), siswaController.importExcel);
-router.get('/kriteria', kriteriaController.index);
-router.post('/kriteria/create', kriteriaController.create);
-router.post('/kriteria/update', kriteriaController.update);
-router.post('/kriteria/delete/:id_kriteria', kriteriaController.delete);
+router.get('/kriteria', kriteriaController.indexReadOnly);
 router.get('/nilai', nilaiController.index);
 router.get('/nilai/:id_siswa', nilaiController.showForm);
 router.post('/nilai/:id_siswa/save', nilaiController.saveNilai);
 router.get('/fucom', fucomController.index);
-router.post('/fucom/input-responden', fucomController.saveInputResponden);
+router.post('/fucom/input', fucomController.saveInput);
+router.post('/fucom/hapus', fucomController.hapusResponden);
 router.post('/fucom/hitung', fucomController.hitungBobot);
 router.get('/waspas', waspasController.index);
 router.post('/waspas/hitung', waspasController.hitung);

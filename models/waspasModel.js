@@ -81,6 +81,18 @@ const waspasModel = {
         return rows;
     },
 
+    async getDetailNilaiSiswa(id_siswa) {
+        const [rows] = await db.query(
+            `SELECT k.nama_kriteria, k.jenis, ns.nilai_mentah, ns.sumber_data
+             FROM kriteria k
+             LEFT JOIN nilai_siswa ns ON k.id_kriteria = ns.id_kriteria AND ns.id_siswa = ?
+             WHERE k.id_periode = (SELECT id_periode FROM siswa WHERE id_siswa = ?)
+             ORDER BY k.id_kriteria ASC`,
+            [id_siswa, id_siswa]
+        );
+        return rows;
+    },
+
     async getHasilRanking(id_periode) {
         const [rows] = await db.query(
             `SELECT hw.*, s.nama, s.nisn, s.status_penerimaan 

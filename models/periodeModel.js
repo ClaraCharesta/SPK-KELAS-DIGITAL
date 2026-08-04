@@ -28,6 +28,13 @@ const periodeModel = {
         await db.query("UPDATE periode_seleksi SET status_periode = 'aktif' WHERE id_periode = ?", [id_periode]);
     },
 
+    async updateKuota(id_periode, kuota_baru) {
+        await db.query(
+            'UPDATE periode_seleksi SET kuota_kelas_digital = ? WHERE id_periode = ?',
+            [kuota_baru, id_periode]
+        );
+    },
+
     async close(id_periode) {
         await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode = ?", [id_periode]);
     }

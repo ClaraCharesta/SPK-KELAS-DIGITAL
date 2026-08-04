@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <title>Kelola Kriteria</title>
+    <title>Kriteria Penilaian</title>
     <%- include('../partials/head') %>
 </head>
 <body>
@@ -11,37 +11,27 @@
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
             <div class="content-wrapper">
-                <% if (success) { %>
-                    <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
-                <% } %>
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
 
+                <div class="alert" style="background:#e3edfd; color:#1d5fd6;">
+                    <i class="bi bi-info-circle-fill"></i> Kriteria penilaian dikelola oleh Super Admin. Hubungi Super Admin jika ada perubahan yang diperlukan.
+                </div>
+
                 <div class="panel">
-                    <div class="panel-header-row">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-card-checklist"></i></div>
-                            <h3>Daftar Kriteria Penilaian</h3>
-                        </div>
-                        <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
-                            <i class="bi bi-plus-lg"></i> Tambah Kriteria
-                        </button>
+                    <div class="panel-header">
+                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-card-checklist"></i></div>
+                        <h3>Daftar Kriteria Penilaian</h3>
                     </div>
 
                     <table class="data-table">
                         <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Nama Kriteria</th>
-                                <th>Jenis</th>
-                                <th>Keterangan</th>
-                                <th>Aksi</th>
-                            </tr>
+                            <tr><th>No</th><th>Nama Kriteria</th><th>Jenis</th><th>Keterangan</th></tr>
                         </thead>
                         <tbody>
                             <% if (kriteriaList.length === 0) { %>
-                                <tr><td colspan="5" class="empty-state">Belum ada kriteria. Tambahkan 6 kriteria yang sudah disepakati.</td></tr>
+                                <tr><td colspan="4" class="empty-state">Belum ada kriteria. Hubungi Super Admin untuk menambahkan.</td></tr>
                             <% } %>
                             <% kriteriaList.forEach(function(k, index) { %>
                                 <tr>
@@ -49,16 +39,6 @@
                                     <td><%= k.nama_kriteria %></td>
                                     <td><span class="badge badge-<%= k.jenis === 'benefit' ? 'green' : 'red' %>"><%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %></span></td>
                                     <td><%= k.keterangan || '-' %></td>
-                                    <td class="action-cell">
-                                        <button class="btn-icon" title="Edit" onclick='bukaModalEdit(<%- JSON.stringify(k) %>)'>
-                                            <i class="bi bi-pencil-square"></i>
-                                        </button>
-                                        <form action="<%= user.role === 'super_admin' ? '/superadmin' : '/admin' %>/kriteria/delete/<%= k.id_kriteria %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus kriteria ini?');">
-                                            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
-                                                <i class="bi bi-trash-fill"></i>
-                                            </button>
-                                        </form>
-                                    </td>
                                 </tr>
                             <% }); %>
                         </tbody>
@@ -69,73 +49,5 @@
             </div>
         </div>
     </div>
-
-    <!-- Modal Tambah Kriteria -->
-    <div class="modal-overlay" id="modalTambah">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h3><i class="bi bi-plus-circle-fill"></i> Tambah Kriteria Baru</h3>
-                <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
-            </div>
-            <form action="<%= user.role === 'super_admin' ? '/superadmin' : '/admin' %>/kriteria/create" method="POST">
-                <label>Nama Kriteria</label>
-                <input type="text" name="nama_kriteria" required placeholder="Contoh: Nilai Akademik">
-
-                <label>Jenis Kriteria</label>
-                <select name="jenis" required>
-                    <option value="benefit">Benefit (semakin tinggi semakin baik)</option>
-                    <option value="cost">Cost (semakin rendah semakin baik)</option>
-                </select>
-
-                <label>Keterangan (Opsional)</label>
-                <input type="text" name="keterangan" placeholder="Penjelasan singkat kriteria">
-
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
-                    <button type="submit" class="btn-primary">Simpan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal Edit Kriteria -->
-    <div class="modal-overlay" id="modalEdit">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h3><i class="bi bi-pencil-square"></i> Edit Kriteria</h3>
-                <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
-            </div>
-            <form action="<%= user.role === 'super_admin' ? '/superadmin' : '/admin' %>/kriteria/update" method="POST">
-                <input type="hidden" name="id_kriteria" id="edit_id_kriteria">
-
-                <label>Nama Kriteria</label>
-                <input type="text" name="nama_kriteria" id="edit_nama_kriteria" required>
-
-                <label>Jenis Kriteria</label>
-                <select name="jenis" id="edit_jenis" required>
-                    <option value="benefit">Benefit (semakin tinggi semakin baik)</option>
-                    <option value="cost">Cost (semakin rendah semakin baik)</option>
-                </select>
-
-                <label>Keterangan (Opsional)</label>
-                <input type="text" name="keterangan" id="edit_keterangan">
-
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
-                    <button type="submit" class="btn-primary">Simpan Perubahan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        function bukaModalEdit(k) {
-            document.getElementById('edit_id_kriteria').value = k.id_kriteria;
-            document.getElementById('edit_nama_kriteria').value = k.nama_kriteria;
-            document.getElementById('edit_jenis').value = k.jenis;
-            document.getElementById('edit_keterangan').value = k.keterangan || '';
-            document.getElementById('modalEdit').style.display = 'flex';
-        }
-    </script>
 </body>
 </html>

@@ -5,6 +5,7 @@ const dashboardController = require('../controllers/dashboardController');
 const userManagementController = require('../controllers/userManagementController');
 const periodeController = require('../controllers/periodeController');
 const kriteriaController = require('../controllers/kriteriaController');
+const logController = require('../controllers/logController');
 
 router.use(isAuthenticated, checkRole('super_admin'));
 
@@ -23,5 +24,7 @@ router.get('/kriteria', kriteriaController.index);
 router.post('/kriteria/create', kriteriaController.create);
 router.post('/kriteria/update', kriteriaController.update);
 router.post('/kriteria/delete/:id_kriteria', kriteriaController.delete);
+router.post('/periode/update-kuota', periodeController.updateKuota);
+router.get('/log', logController.index);
 
 module.exports = router;

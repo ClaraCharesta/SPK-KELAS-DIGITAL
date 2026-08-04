@@ -35,6 +35,18 @@ const periodeController = {
         }
     },
 
+    async updateKuota(req, res) {
+        try {
+            const { id_periode, kuota_kelas_digital } = req.body;
+            await periodeModel.updateKuota(id_periode, kuota_kelas_digital);
+            await userModel.logActivity(req.session.user.id_user, `Super Admin mengubah kuota periode ID ${id_periode} menjadi ${kuota_kelas_digital}`);
+            res.redirect('/superadmin/periode?success=Kuota berhasil diperbarui. Jika sudah ada hasil WASPAS, hitung ulang untuk memperbarui status Diterima/Cadangan.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
+        }
+    },
+
     async setActive(req, res) {
         try {
             const { id_periode } = req.params;
