@@ -8,32 +8,59 @@
             <span class="readonly-badge"><i class="bi bi-lock-fill"></i> Read-only</span>
         <% } %>
     </div>
+
     <div class="topbar-right">
-        <i class="bi bi-bell-fill notif-icon"></i>
-        <div class="user-dropdown">
+        <div class="notif-wrapper">
+            <button class="notif-btn" id="notifBtn">
+                <i class="bi bi-bell-fill"></i>
+                <% if (typeof notifikasi !== 'undefined' && notifikasi.length > 0) { %>
+                    <span class="notif-dot"></span>
+                <% } %>
+            </button>
+            <div class="notif-dropdown" id="notifDropdown">
+                <div class="notif-dropdown-header">Notifikasi</div>
+                <% if (typeof notifikasi === 'undefined' || notifikasi.length === 0) { %>
+                    <div class="notif-empty">Tidak ada notifikasi baru.</div>
+                <% } else { %>
+                    <% notifikasi.forEach(function(n) { %>
+                        <div class="notif-item">
+                            <div class="notif-icon-small icon-<%= n.warna %>"><i class="bi <%= n.icon %>"></i></div>
+                            <div class="notif-text"><%= n.pesan %></div>
+                        </div>
+                    <% }); %>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="topbar-divider"></div>
+
+        <a href="/profile" class="user-dropdown" style="text-decoration:none;">
             <i class="bi bi-person-circle"></i>
             <span><%= user.role === 'super_admin' ? 'Super Admin' : (user.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %></span>
             <i class="bi bi-chevron-down"></i>
-        </div>
+        </a>
     </div>
 </div>
 
 <script>
-    document.getElementById('hamburgerBtn').addEventListener('click', function() {
-        document.querySelector('.sidebar').classList.toggle('collapsed');
-        document.querySelector('.app-layout').classList.toggle('sidebar-collapsed');
+    // Toggle sidebar (collapse/expand)
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const sidebarEl = document.querySelector('.sidebar');
+    if (hamburgerBtn && sidebarEl) {
+        hamburgerBtn.addEventListener('click', function() {
+            sidebarEl.classList.toggle('collapsed');
+        });
+    }
 
-        // Simpan preferensi di localStorage supaya konsisten pas pindah halaman
-        const isCollapsed = document.querySelector('.sidebar').classList.contains('collapsed');
-        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    document.getElementById('notifBtn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('notifDropdown').classList.toggle('show');
     });
 
-    // Terapkan preferensi tersimpan saat halaman dimuat
-    window.addEventListener('DOMContentLoaded', function() {
-        const saved = localStorage.getItem('sidebarCollapsed');
-        if (saved === 'true') {
-            document.querySelector('.sidebar').classList.add('collapsed');
-            document.querySelector('.app-layout').classList.add('sidebar-collapsed');
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('notifDropdown');
+        if (dropdown && !dropdown.contains(e.target) && e.target.id !== 'notifBtn') {
+            dropdown.classList.remove('show');
         }
     });
 </script>

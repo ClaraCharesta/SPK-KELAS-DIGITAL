@@ -9,7 +9,6 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
@@ -17,7 +16,6 @@
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
@@ -28,7 +26,6 @@
                             <i class="bi bi-plus-lg"></i> Tambah Kriteria
                         </button>
                     </div>
-
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -53,7 +50,7 @@
                                         <button class="btn-icon" title="Edit" onclick='bukaModalEdit(<%- JSON.stringify(k) %>)'>
                                             <i class="bi bi-pencil-square"></i>
                                         </button>
-                                        <form action="<%= user.role === 'super_admin' ? '/superadmin' : '/admin' %>/kriteria/delete/<%= k.id_kriteria %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus kriteria ini?');">
+                                        <form action="/superadmin/kriteria/delete/<%= k.id_kriteria %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus kriteria ini?');">
                                             <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>
@@ -64,12 +61,10 @@
                         </tbody>
                     </table>
                 </div>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
-
     <!-- Modal Tambah Kriteria -->
     <div class="modal-overlay" id="modalTambah">
         <div class="modal-box">
@@ -77,19 +72,16 @@
                 <h3><i class="bi bi-plus-circle-fill"></i> Tambah Kriteria Baru</h3>
                 <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
             </div>
-            <form action="<%= user.role === 'super_admin' ? '/superadmin' : '/admin' %>/kriteria/create" method="POST">
+            <form action="/superadmin/kriteria/create" method="POST">
                 <label>Nama Kriteria</label>
                 <input type="text" name="nama_kriteria" required placeholder="Contoh: Nilai Akademik">
-
                 <label>Jenis Kriteria</label>
                 <select name="jenis" required>
                     <option value="benefit">Benefit (semakin tinggi semakin baik)</option>
                     <option value="cost">Cost (semakin rendah semakin baik)</option>
                 </select>
-
                 <label>Keterangan (Opsional)</label>
                 <input type="text" name="keterangan" placeholder="Penjelasan singkat kriteria">
-
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan</button>
@@ -97,7 +89,6 @@
             </form>
         </div>
     </div>
-
     <!-- Modal Edit Kriteria -->
     <div class="modal-overlay" id="modalEdit">
         <div class="modal-box">
@@ -105,21 +96,17 @@
                 <h3><i class="bi bi-pencil-square"></i> Edit Kriteria</h3>
                 <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
             </div>
-            <form action="<%= user.role === 'super_admin' ? '/superadmin' : '/admin' %>/kriteria/update" method="POST">
+            <form action="/superadmin/kriteria/update" method="POST">
                 <input type="hidden" name="id_kriteria" id="edit_id_kriteria">
-
                 <label>Nama Kriteria</label>
                 <input type="text" name="nama_kriteria" id="edit_nama_kriteria" required>
-
                 <label>Jenis Kriteria</label>
                 <select name="jenis" id="edit_jenis" required>
                     <option value="benefit">Benefit (semakin tinggi semakin baik)</option>
                     <option value="cost">Cost (semakin rendah semakin baik)</option>
                 </select>
-
                 <label>Keterangan (Opsional)</label>
                 <input type="text" name="keterangan" id="edit_keterangan">
-
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -127,7 +114,6 @@
             </form>
         </div>
     </div>
-
     <script>
         function bukaModalEdit(k) {
             document.getElementById('edit_id_kriteria').value = k.id_kriteria;
@@ -136,6 +122,26 @@
             document.getElementById('edit_keterangan').value = k.keterangan || '';
             document.getElementById('modalEdit').style.display = 'flex';
         }
+    </script>
+
+    <script>
+    const daftarKriteria = <%- JSON.stringify(kriteriaList.map(k => k.nama_kriteria.toLowerCase())) %>;
+
+    document.querySelectorAll('input[name="nama_kriteria"]').forEach(function(input) {
+        input.addEventListener('blur', function() {
+            const nilai = this.value.trim().toLowerCase();
+            const existingWarning = this.parentElement.querySelector('.inline-warning');
+            if (existingWarning) existingWarning.remove();
+
+            if (daftarKriteria.includes(nilai)) {
+                const warning = document.createElement('p');
+                warning.className = 'inline-warning';
+                warning.style.cssText = 'color:#e74c3c; font-size:12px; margin-top:4px;';
+                warning.innerText = 'Kriteria dengan nama ini sudah ada.';
+                this.parentElement.appendChild(warning);
+            }
+        });
+    });
     </script>
 </body>
 </html>

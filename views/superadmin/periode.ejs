@@ -55,9 +55,12 @@
                                             <%= p.status_periode === 'aktif' ? 'Aktif' : 'Ditutup' %>
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="action-cell">
+                                        <button class="btn-icon" title="Ubah Kuota" onclick="bukaModalKuota(<%= p.id_periode %>, '<%= p.tahun_ajaran %>', <%= p.kuota_kelas_digital %>)">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
                                         <% if (p.status_periode !== 'aktif') { %>
-                                            <form action="/superadmin/periode/set-active/<%= p.id_periode %>" method="POST" onsubmit="return confirm('Aktifkan periode ini? Periode lain akan otomatis ditutup.');">
+                                            <form action="/superadmin/periode/set-active/<%= p.id_periode %>" method="POST" style="display:inline;" onsubmit="return confirm('Aktifkan periode ini? Periode lain akan otomatis ditutup.');">
                                                 <button type="submit" class="btn-icon" title="Aktifkan">
                                                     <i class="bi bi-toggle-off"></i>
                                                 </button>
@@ -108,5 +111,34 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal Ubah Kuota -->
+    <div class="modal-overlay" id="modalKuota">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-pencil-square"></i> Ubah Kuota Kelas Digital</h3>
+                <button class="modal-close" onclick="document.getElementById('modalKuota').style.display='none'">&times;</button>
+            </div>
+            <form action="/superadmin/periode/update-kuota" method="POST">
+                <input type="hidden" name="id_periode" id="kuota_id_periode">
+                <p style="font-size:13px; color:#777; margin-bottom:15px;">Periode: <strong id="kuota_tahun_ajaran"></strong></p>
+                <label>Kuota Kelas Digital</label>
+                <input type="number" name="kuota_kelas_digital" id="kuota_nilai" min="1" required>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalKuota').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function bukaModalKuota(id, tahun, kuotaLama) {
+            document.getElementById('kuota_id_periode').value = id;
+            document.getElementById('kuota_tahun_ajaran').innerText = tahun;
+            document.getElementById('kuota_nilai').value = kuotaLama;
+            document.getElementById('modalKuota').style.display = 'flex';
+        }
+    </script>
 </body>
 </html>

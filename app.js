@@ -27,10 +27,15 @@ const authRoutes = require('./routes/authRoutes');
 const superadminRoutes = require('./routes/superadminRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const kepsekRoutes = require('./routes/kepsekRoutes');
+const profileRoutes = require('./routes/profileRoutes');
+const injectNotifikasi = require('./middlewares/notifikasiMiddleware');
+
 app.use('/', authRoutes);
 app.use('/superadmin', superadminRoutes);
 app.use('/admin', adminRoutes);
 app.use('/kepsek', kepsekRoutes);
+app.use('/', profileRoutes);
+app.use(injectNotifikasi);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

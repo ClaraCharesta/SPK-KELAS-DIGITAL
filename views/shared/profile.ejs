@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Profil Saya</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="content-wrapper">
+                <% if (success) { %>
+                    <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+                <% } %>
+                <% if (error) { %>
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+
+                <div class="profile-header">
+                    <div class="profile-avatar"><i class="bi bi-person-circle"></i></div>
+                    <div>
+                        <h2><%= userData.nama %></h2>
+                        <span class="badge badge-<%= userData.role === 'super_admin' ? 'purple' : (userData.role === 'admin' ? 'blue' : 'green') %>">
+                            <%= userData.role === 'super_admin' ? 'Super Admin' : (userData.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-person-fill"></i></div>
+                        <h3>Informasi Akun</h3>
+                    </div>
+
+                    <form action="/profile/update-nama" method="POST" style="max-width:400px;">
+                        <label>Username</label>
+                        <input type="text" value="<%= userData.username %>" disabled style="background:#f4f7fb; color:#999;">
+
+                        <label>Nama Lengkap</label>
+                        <input type="text" name="nama" value="<%= userData.nama %>" required>
+
+                        <div class="modal-footer" style="justify-content:flex-start; margin-top:20px;">
+                            <button type="submit" class="btn-primary"><i class="bi bi-save-fill"></i> Simpan Nama</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-shield-lock-fill"></i></div>
+                        <h3>Ubah Password</h3>
+                    </div>
+
+                    <form action="/profile/update-password" method="POST" style="max-width:400px;">
+                        <label>Password Lama</label>
+                        <input type="password" name="password_lama" required>
+
+                        <label>Password Baru</label>
+                        <input type="password" name="password_baru" required minlength="6">
+
+                        <label>Konfirmasi Password Baru</label>
+                        <input type="password" name="konfirmasi_password" required minlength="6">
+
+                        <div class="modal-footer" style="justify-content:flex-start; margin-top:20px;">
+                            <button type="submit" class="btn-primary"><i class="bi bi-key-fill"></i> Ubah Password</button>
+                        </div>
+                    </form>
+                </div>
+
+                <%- include('../partials/footer') %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

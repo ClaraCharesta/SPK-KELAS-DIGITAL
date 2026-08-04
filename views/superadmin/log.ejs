@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Log Aktivitas</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="content-wrapper">
+                <div class="panel">
+                    <div class="panel-header-row">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clock-history"></i></div>
+                            <h3>Riwayat Aktivitas Pengguna</h3>
+                        </div>
+                        <form method="GET" style="display:flex; gap:10px;">
+                            <select name="role" onchange="this.form.submit()" style="padding:8px 12px; border:1px solid #ddd; border-radius:8px; font-size:13px;">
+                                <option value="">Semua Role</option>
+                                <option value="super_admin" <%= filterRole === 'super_admin' ? 'selected' : '' %>>Super Admin</option>
+                                <option value="admin" <%= filterRole === 'admin' ? 'selected' : '' %>>Admin</option>
+                                <option value="kepsek" <%= filterRole === 'kepsek' ? 'selected' : '' %>>Kepala Sekolah</option>
+                            </select>
+                            <input type="date" name="tanggal" value="<%= filterTanggal %>" onchange="this.form.submit()" style="padding:8px 12px; border:1px solid #ddd; border-radius:8px; font-size:13px;">
+                            <% if (filterRole || filterTanggal) { %>
+                                <a href="/superadmin/log" class="btn-secondary" style="display:flex; align-items:center; padding:0 15px;">Reset</a>
+                            <% } %>
+                        </form>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Waktu</th><th>Nama</th><th>Role</th><th>Aktivitas</th></tr>
+                        </thead>
+                        <tbody>
+                            <% if (logs.length === 0) { %>
+                                <tr><td colspan="4" class="empty-state">Belum ada aktivitas tercatat.</td></tr>
+                            <% } %>
+                            <% logs.forEach(function(l) { %>
+                                <tr>
+                                    <td style="white-space:nowrap;"><%= new Date(l.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) %></td>
+                                    <td><%= l.nama %></td>
+                                    <td>
+                                        <span class="badge badge-<%= l.role === 'super_admin' ? 'purple' : (l.role === 'admin' ? 'blue' : 'green') %>">
+                                            <%= l.role === 'super_admin' ? 'Super Admin' : (l.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %>
+                                        </span>
+                                    </td>
+                                    <td><%= l.aktivitas %></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <%- include('../partials/footer') %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
