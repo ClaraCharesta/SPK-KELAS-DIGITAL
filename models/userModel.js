@@ -31,6 +31,10 @@ const userModel = {
             'INSERT INTO log_aktivitas (id_user, aktivitas) VALUES (?, ?)',
             [id_user, aktivitas]
         );
+    },
+
+    async updateLastLogin(id_user) {
+        await db.query('UPDATE users SET last_login = NOW() WHERE id_user = ?', [id_user]);
     }
 };
 

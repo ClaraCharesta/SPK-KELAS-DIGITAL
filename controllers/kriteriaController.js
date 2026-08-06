@@ -4,21 +4,21 @@ const userModel = require('../models/userModel');
 
 const kriteriaController = {
     // Untuk Super Admin — full CRUD
-    async index(req, res) {
+        async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
-
             if (!periode) {
                 return res.render('superadmin/kriteria', {
-                    user: req.session.user, kriteriaList: [], activePage: 'kriteria',
-                    pageTitle: 'Kelola Kriteria', success: null,
-                    error: 'Belum ada periode seleksi aktif.'
+                    user: req.session.user, kriteriaList: [], terkunci: false, activePage: 'kriteria',
+                    pageTitle: 'Kelola Kriteria', success: null, error: 'Belum ada periode seleksi aktif.'
                 });
             }
 
             const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
+            const terkunci = await kriteriaModel.checkPerankinganDimulai(periode.id_periode);
+
             res.render('superadmin/kriteria', {
-                user: req.session.user, kriteriaList, activePage: 'kriteria',
+                user: req.session.user, kriteriaList, terkunci, activePage: 'kriteria',
                 pageTitle: 'Kelola Kriteria',
                 success: req.query.success || null,
                 error: req.query.error || null
@@ -54,8 +54,14 @@ const kriteriaController = {
 
     async create(req, res) {
         try {
+
+            
             const periode = await periodeModel.getActivePeriode();
             if (!periode) return res.redirect('/superadmin/kriteria?error=Periode seleksi belum aktif.');
+
+            if (await kriteriaModel.checkPerankinganDimulai(periode.id_periode)) {
+                return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');
+            }
 
             const { nama_kriteria, jenis, keterangan } = req.body;
             if (!nama_kriteria || !jenis) {
@@ -118,7 +124,9 @@ const kriteriaController = {
             console.error(error);
             res.redirect('/superadmin/kriteria?error=Gagal menghapus kriteria.');
         }
-    }
+    },
+
+    
 };
 
 module.exports = kriteriaController;

@@ -69,7 +69,7 @@
                                                 <i class="bi bi-toggle-<%= u.status_aktif ? 'on' : 'off' %>"></i>
                                             </button>
                                         </form>
-                                        <form action="/superadmin/akun-admin/delete/<%= u.id_user %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus akun ini?');">
+                                        <form action="/superadmin/akun-admin/delete/<%= u.id_user %>" method="POST" style="display:inline;" onsubmit="return confirmDelete(this,'Yakin ingin menghapus akun ini?');">
                                             <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>

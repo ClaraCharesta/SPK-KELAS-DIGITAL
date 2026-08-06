@@ -939,3 +939,32 @@ body {
 .back-link:hover i {
     transform: translateX(-3px);
 }
+
+.card-grid .stat-card {
+    animation: fadeSlideIn 0.5s ease both;
+}
+
+.card-grid .stat-card:nth-child(1) { animation-delay: 0.05s; }
+.card-grid .stat-card:nth-child(2) { animation-delay: 0.15s; }
+.card-grid .stat-card:nth-child(3) { animation-delay: 0.25s; }
+.card-grid .stat-card:nth-child(4) { animation-delay: 0.35s; }
+
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.panel {
+    animation: fadeSlideIn 0.5s ease both;
+}
+
+.dot-legend.badge-mengundurkan_diri { background: #e74c3c; }

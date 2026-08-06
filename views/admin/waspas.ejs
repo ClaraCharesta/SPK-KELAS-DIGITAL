@@ -16,6 +16,24 @@
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
+                <div class="panel" style="background:#f4f8ff;">
+                    <div class="panel-header-row" style="cursor:pointer;" onclick="document.getElementById('tutorialWaspas').classList.toggle('show')">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-question-circle-fill"></i></div>
+                            <h3>Cara Menjalankan Perankingan</h3>
+                        </div>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div id="tutorialWaspas" class="tutorial-content">
+                        <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
+                            <li>Pastikan status kesiapan di bawah menunjukkan bobot kriteria sudah tersedia dan seluruh siswa memiliki nilai lengkap.</li>
+                            <li>Klik <strong>"Hitung Ranking WASPAS"</strong> untuk memproses perankingan.</li>
+                            <li>Jika ada perubahan data siswa, nilai, kriteria, atau bobot kriteria setelah ini, hasil perankingan akan otomatis dikosongkan dan Anda perlu menghitung ulang.</li>
+                            <li>Setelah hasil keluar, centang siswa yang ingin ditetapkan <strong>Lulus</strong> secara bertahap sesuai kuota.</li>
+                            <li>Begitu ada siswa yang ditetapkan Lulus, seluruh data dasar (siswa, nilai, kriteria, bobot) akan terkunci dan tidak bisa diubah lagi.</li>
+                        </ol>
+                    </div>
+                </div>
                 <% if (cekData) { %>
                 <div class="panel">
                     <div class="panel-header-row">
@@ -23,10 +41,17 @@
                             <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-graph-up-arrow"></i></div>
                             <h3>Status Kesiapan Perhitungan</h3>
                         </div>
-                        <form action="/admin/waspas/hitung" method="POST">
-                            <button type="submit" class="btn-primary"><i class="bi bi-calculator-fill"></i> Hitung Ranking WASPAS</button>
+                        <form action="/admin/waspas/hitung" method="POST" onsubmit="return confirmDelete(this, 'Menjalankan perhitungan ini akan menghapus hasil sebelumnya. Setelah ada siswa yang ditandai Lulus, data siswa, nilai, dan pembobotan kriteria akan terkunci dan tidak dapat diubah lagi. Lanjutkan?');">
+                            <button type="submit" class="btn-primary" <%= terkunci ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '' %>>
+                                <i class="bi bi-calculator-fill"></i> Hitung Ranking WASPAS
+                            </button>
                         </form>
                     </div>
+                    <% if (kuota > cekData.totalSiswa) { %>
+                        <div class="alert" style="background:#e3edfd; color:#1d5fd6; margin-bottom:15px;">
+                            <i class="bi bi-info-circle-fill"></i> Kuota (<%= kuota %>) melebihi jumlah siswa terdaftar (<%= cekData.totalSiswa %>). Tidak masalah, seluruh siswa berpeluang lulus.
+                        </div>
+                    <% } %>
                     <table class="data-table">
                         <tbody>
                             <tr><td>Kuota Kelas Digital</td><td><strong><%= kuota || '-' %> siswa</strong></td></tr>
@@ -39,9 +64,18 @@
                 </div>
                 <% } %>
                 <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
-                        <h3>Hasil Perangkingan Siswa</h3>
+                    <div class="panel-header-row">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
+                            <h3>Hasil Perangkingan Siswa</h3>
+                        </div>
+                        <% if (hasilRanking.length > 0) { %>
+                            <form action="/admin/waspas/hapus" method="POST" onsubmit="return confirmDelete(this, 'Hapus hasil perankingan ini?');">
+                                <button type="submit" class="btn-secondary" <%= terkunci ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '' %>>
+                                    <i class="bi bi-trash-fill"></i> Hapus Hasil Perankingan
+                                </button>
+                            </form>
+                        <% } %>
                     </div>
                     <% if (hasilRanking.length === 0) { %>
                         <p class="empty-state">Perangkingan belum dihitung.</p>
@@ -50,6 +84,7 @@
                             <span><span class="dot-legend badge-diusulkan"></span> Diusulkan</span>
                             <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
                             <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
+                            <span><span class="dot-legend badge-mengundurkan_diri"></span> Mengundurkan Diri</span>
                         </div>
                         <% 
                             const jumlahLulus = hasilRanking.filter(h => h.status_penerimaan === 'lulus').length;
@@ -58,17 +93,18 @@
                         <% if (!kuotaPenuh) { %>
                             <p style="font-size:13px; color:#666; margin-bottom:10px;">Lulus: <strong><%= jumlahLulus %> / <%= kuota %></strong> kuota</p>
                         <% } %>
-                        <form action="/admin/waspas/tetapkan-lulus" method="POST" onsubmit="return confirmDelete(this, 'Tetapkan siswa terpilih sebagai Lulus?');">
-                            <table class="data-table">
-                                <thead>
+                        <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." 
+                               style="width:100%; max-width:350px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;"
+                               onkeyup="filterTabelSiswa()">
+                        <form action="/admin/waspas/tetapkan-lulus" method="POST" onsubmit="return confirmDelete(this, 'Apakah Anda yakin? Setelah ini ditetapkan, Anda TIDAK akan bisa lagi mengubah data siswa, nilai siswa, kriteria, maupun bobot FUCOM sampai periode baru dibuka.');">
                                     <tr>
                                         <% if (!kuotaPenuh) { %><th></th><% } %>
-                                        <th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th>
+                                        <th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th><th>Ubah Status</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="tabelBodyRanking">
                                     <% hasilRanking.forEach(function(h) { %>
-                                        <tr>
+                                        <tr class="baris-siswa" data-nama="<%= h.nama.toLowerCase() %>" data-nisn="<%= h.nisn %>">
                                             <% if (!kuotaPenuh) { %>
                                                 <td>
                                                     <% if (h.status_penerimaan === 'diusulkan' || h.status_penerimaan === 'cadangan') { %>
@@ -84,6 +120,18 @@
                                                 <span class="badge badge-<%= h.status_penerimaan %>">
                                                     <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' : (h.status_penerimaan === 'lulus' ? 'Lulus' : 'Cadangan') %>
                                                 </span>
+                                            </td>
+                                            <td>
+                                                <form action="/admin/waspas/update-status" method="POST" onsubmit="return confirmDelete(this, 'Ubah status siswa ini menjadi ' + this.status_baru.options[this.status_baru.selectedIndex].text + '?');" style="display:flex; gap:6px;">
+                                                    <input type="hidden" name="id_siswa" value="<%= h.id_siswa %>">
+                                                    <select name="status_baru" style="padding:6px 8px; border:1px solid #ddd; border-radius:6px; font-size:12px;">
+                                                        <option value="diusulkan" <%= h.status_penerimaan === 'diusulkan' ? 'selected' : '' %>>Diusulkan</option>
+                                                        <option value="cadangan" <%= h.status_penerimaan === 'cadangan' ? 'selected' : '' %>>Cadangan</option>
+                                                        <option value="lulus" <%= h.status_penerimaan === 'lulus' ? 'selected' : '' %>>Lulus</option>
+                                                        <option value="mengundurkan_diri" <%= h.status_penerimaan === 'mengundurkan_diri' ? 'selected' : '' %>>Mengundurkan Diri</option>
+                                                    </select>
+                                                    <button type="submit" class="btn-icon" title="Simpan"><i class="bi bi-check-lg"></i></button>
+                                                </form>
                                             </td>
                                         </tr>
                                     <% }); %>
@@ -105,5 +153,14 @@
             </div>
         </div>
     </div>
+    <script>
+        function filterTabelSiswa() {
+            const keyword = document.getElementById('searchSiswa').value.toLowerCase();
+            document.querySelectorAll('.baris-siswa').forEach(row => {
+                const cocok = row.dataset.nama.includes(keyword) || row.dataset.nisn.includes(keyword);
+                row.style.display = cocok ? '' : 'none';
+            });
+        }
+    </script>
 </body>
 </html>

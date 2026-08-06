@@ -87,14 +87,14 @@ const periodeController = {
                 return res.redirect('/superadmin/periode?error=Hanya periode terbaru yang dapat dihapus.');
             }
 
-            const adaData = await periodeModel.checkAdaData(id_periode);
-            if (adaData) {
-                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat dihapus karena sudah memiliki data siswa terkait.');
+            const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
+            if (statusPenyelesaian === 'selesai') {
+                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat dihapus karena sudah dinyatakan selesai dan tersimpan sebagai data historis.');
             }
 
-            await periodeModel.delete(id_periode);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin menghapus periode ID ${id_periode}`);
-            res.redirect('/superadmin/periode?success=Periode berhasil dihapus.');
+            await periodeModel.deleteCascade(id_periode);
+            await userModel.logActivity(req.session.user.id_user, `Super Admin menghapus periode ID ${id_periode} beserta seluruh data terkait`);
+            res.redirect('/superadmin/periode?success=Periode beserta seluruh data terkait berhasil dihapus.');
         } catch (error) {
             console.error(error);
             res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');

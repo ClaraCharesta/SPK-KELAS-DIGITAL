@@ -52,28 +52,24 @@ const dashboardModel = {
         };
     },
 
-async getKepsekStats(id_periode) {
-        const [[{ diterima }]] = await db.query(
-            "SELECT COUNT(*) AS diterima FROM siswa WHERE id_periode = ? AND status_penerimaan = 'diterima'", [id_periode]
-        );
-        const [[{ cadangan }]] = await db.query(
-            "SELECT COUNT(*) AS cadangan FROM siswa WHERE id_periode = ? AND status_penerimaan = 'cadangan'", [id_periode]
-        );
-        const [[statusHasil]] = await db.query(
-            "SELECT status_final FROM hasil_waspas WHERE id_periode = ? LIMIT 1", [id_periode]
-        );
-        const [bobot] = await db.query(
+    // Dipakai untuk chart — pakai periode TERAKHIR (bukan cuma yang aktif), supaya tetap tampil walau ditutup
+    async getChartData(id_periode) {
+        if (!id_periode) {
+            return { diusulkan: 0, cadangan: 0, lulus: 0, bobotKriteria: [], sebaranNilai: [0, 0, 0, 0, 0] };
+        }
+
+        const [[{ diusulkan }]] = await db.query("SELECT COUNT(*) AS diusulkan FROM siswa WHERE id_periode = ? AND status_penerimaan = 'diusulkan'", [id_periode]);
+        const [[{ cadangan }]] = await db.query("SELECT COUNT(*) AS cadangan FROM siswa WHERE id_periode = ? AND status_penerimaan = 'cadangan'", [id_periode]);
+        const [[{ lulus }]] = await db.query("SELECT COUNT(*) AS lulus FROM siswa WHERE id_periode = ? AND status_penerimaan = 'lulus'", [id_periode]);
+
+        const [bobotKriteria] = await db.query(
             'SELECT nama_kriteria, nilai_bobot FROM bobot_kriteria bk JOIN kriteria k ON bk.id_kriteria = k.id_kriteria WHERE bk.id_periode = ?', [id_periode]
         );
 
-        // Hitung sebaran nilai Q siswa per rentang (0-20, 21-40, dst, dikonversi ke skala 0-100)
-        const [hasilQ] = await db.query(
-            'SELECT nilai_akhir_q FROM hasil_waspas WHERE id_periode = ?', [id_periode]
-        );
-
-        const sebaran = [0, 0, 0, 0, 0]; // 0-20, 21-40, 41-60, 61-80, 81-100
+        const [hasilQ] = await db.query('SELECT nilai_akhir_q FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
+        const sebaran = [0, 0, 0, 0, 0];
         hasilQ.forEach(row => {
-            const skorPersen = parseFloat(row.nilai_akhir_q) * 100; // Q biasanya 0-1, diubah ke skala 0-100
+            const skorPersen = parseFloat(row.nilai_akhir_q) * 100;
             if (skorPersen <= 20) sebaran[0]++;
             else if (skorPersen <= 40) sebaran[1]++;
             else if (skorPersen <= 60) sebaran[2]++;
@@ -81,13 +77,7 @@ async getKepsekStats(id_periode) {
             else sebaran[4]++;
         });
 
-        return {
-            diterima,
-            cadangan,
-            statusKeputusan: statusHasil ? (statusHasil.status_final === 'final' ? 'Final' : 'Rekomendasi') : 'Belum Ada',
-            bobotKriteria: bobot,
-            sebaranNilai: sebaran
-        };
+        return { diusulkan, cadangan, lulus, bobotKriteria, sebaranNilai: sebaran };
     }
 };
 

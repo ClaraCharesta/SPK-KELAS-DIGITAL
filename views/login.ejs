@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Login - Sistem Penempatan Siswa Kelas Digital</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/login.css">
 </head>
 <body>
@@ -28,12 +29,31 @@
                     <input type="text" id="username" name="username" placeholder="Masukkan username Anda" required>
 
                     <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" placeholder="Masukkan password Anda" required>
-
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" placeholder="Masukkan password Anda" required>
+                        <span class="toggle-password" onclick="togglePassword()">
+                            <i class="bi bi-eye-fill" id="eyeIcon"></i>
+                        </span>
+                    </div>
                     <button type="submit">Login</button>
                 </form>
             </div>
         </div>
     </div>
+
+    <script>
+    function togglePassword() {
+        const input = document.getElementById('password');
+        const icon = document.getElementById('eyeIcon');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'bi bi-eye-slash-fill';
+        } else {
+            input.type = 'password';
+            icon.className = 'bi bi-eye-fill';
+        }
+    }
+    </script>
+
 </body>
 </html>

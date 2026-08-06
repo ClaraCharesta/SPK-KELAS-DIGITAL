@@ -11,93 +11,92 @@
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
-            <div class="welcome-banner">
-    <div class="welcome-icon"><i class="bi bi-mortarboard-fill"></i></div>
-    <div>
-        <h2>Selamat datang, <%= user.nama %>! 👋</h2>
-        <p>Pantau hasil seleksi Kelas Digital dan unduh laporan resmi kapan saja melalui dashboard ini.</p>
-    </div>
-</div>
-
-            <div class="card-grid" style="margin-bottom: 25px;">
-                <div class="stat-card">
-                    <div class="stat-icon icon-blue"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="content-wrapper">
+                <div class="welcome-banner">
+                    <div class="welcome-icon"><i class="bi bi-mortarboard-fill"></i></div>
                     <div>
-                        <h3>Total Siswa Diterima</h3>
-                        <p class="stat-number"><%= stats.diterima %></p>
+                        <h2><%= user.isFirstLogin ? 'Selamat datang' : 'Selamat datang kembali' %>, <%= user.nama %>! 👋</h2>
+                        <p>Pantau hasil seleksi Kelas Digital dan unduh laporan resmi kapan saja melalui dashboard ini.</p>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon icon-orange"><i class="bi bi-hourglass-split"></i></div>
-                    <div>
-                        <h3>Total Cadangan</h3>
-                        <p class="stat-number"><%= stats.cadangan %></p>
+
+                <div class="card-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue"><i class="bi bi-hourglass-split"></i></div>
+                        <div>
+                            <h3>Diusulkan</h3>
+                            <p class="stat-number"><%= chartData.diusulkan %></p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-orange"><i class="bi bi-people-fill"></i></div>
+                        <div>
+                            <h3>Cadangan</h3>
+                            <p class="stat-number"><%= chartData.cadangan %></p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-green"><i class="bi bi-check-circle-fill"></i></div>
+                        <div>
+                            <h3>Lulus</h3>
+                            <p class="stat-number"><%= chartData.lulus %></p>
+                        </div>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon icon-purple"><i class="bi bi-flag-fill"></i></div>
-                    <div>
-                        <h3>Status Keputusan</h3>
-                        <p class="stat-number" style="font-size:20px;"><%= stats.statusKeputusan %></p>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bar-chart-fill"></i></div>
+                        <h3>Sebaran Nilai Siswa <% if (latestPeriode) { %>(<%= latestPeriode.tahun_ajaran %>)<% } %></h3>
                     </div>
+                    <canvas id="chartSebaran" height="90"></canvas>
                 </div>
-            </div>
 
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bar-chart-fill"></i></div>
-                    <h3>Sebaran Nilai Siswa per Kategori</h3>
-                </div>
-                <canvas id="chartSebaran" height="90"></canvas>
-            </div>
-
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
-                    <h3>Bobot Tiap Kriteria (Hasil FUCOM)</h3>
-                </div>
-                <% if (stats.bobotKriteria && stats.bobotKriteria.length > 0) { %>
-                    <div class="chart-with-legend">
-    <div style="width:200px; height:200px; flex-shrink:0;">
-        <canvas id="chartBobot"></canvas>
-    </div>
-    <ul class="legend-list">
-        <% stats.bobotKriteria.forEach(function(k) { %>
-            <li><span class="dot"></span> <%= k.nama_kriteria %> <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b></li>
-        <% }); %>
-    </ul>
-</div>
-                <% } else { %>
-                    <p class="empty-state">Bobot kriteria belum tersedia. Perhitungan FUCOM belum dilakukan oleh Admin.</p>
-                <% } %>
-            </div>
-
-            <div class="panel laporan-panel">
-                <div class="panel-header">
-                    <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-file-earmark-text-fill"></i></div>
-                    <div>
-                        <h3>Unduh Laporan</h3>
-                        <p class="stat-desc">Unduh laporan hasil penempatan siswa kelas digital dalam format PDF.</p>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
+                        <h3>Bobot Tiap Kriteria (Hasil FUCOM)</h3>
                     </div>
+                    <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
+                        <div class="chart-with-legend">
+                            <div style="width:200px; height:200px; flex-shrink:0;">
+                                <canvas id="chartBobot"></canvas>
+                            </div>
+                            <ul class="legend-list">
+                                <% chartData.bobotKriteria.forEach(function(k) { %>
+                                    <li><span class="dot"></span> <%= k.nama_kriteria %> <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b></li>
+                                <% }); %>
+                            </ul>
+                        </div>
+                    <% } else { %>
+                        <p class="empty-state">Bobot kriteria belum tersedia. Perhitungan FUCOM belum dilakukan oleh Admin.</p>
+                    <% } %>
                 </div>
-                <a href="/kepsek/laporan/unduh" class="btn-primary"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
-            </div>
 
-            <%- include('../partials/footer') %>
+                <div class="panel laporan-panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-file-earmark-text-fill"></i></div>
+                        <div>
+                            <h3>Unduh Laporan</h3>
+                            <p class="stat-desc">Unduh laporan hasil penempatan siswa kelas digital dalam format PDF.</p>
+                        </div>
+                    </div>
+                    <a href="/kepsek/laporan/unduh" class="btn-primary"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
+                </div>
+
+                <%- include('../partials/footer') %>
+            </div>
         </div>
     </div>
 
-    
-
     <script>
-        const ctxSebaran = document.getElementById('chartSebaran');
-        new Chart(ctxSebaran, {
+        new Chart(document.getElementById('chartSebaran'), {
             type: 'bar',
             data: {
                 labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
                 datasets: [{
                     label: 'Jumlah Siswa',
-                    data: <%- JSON.stringify(stats.sebaranNilai) %>,
+                    data: <%- JSON.stringify(chartData.sebaranNilai) %>,
                     backgroundColor: '#1d5fd6',
                     borderRadius: 6
                 }]
@@ -105,20 +104,24 @@
             options: { plugins: { legend: { display: false } } }
         });
 
-        <% if (stats.bobotKriteria && stats.bobotKriteria.length > 0) { %>
-        const ctxBobot = document.getElementById('chartBobot');
-        new Chart(ctxBobot, {
+        <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
+        new Chart(document.getElementById('chartBobot'), {
             type: 'pie',
             data: {
-                labels: <%- JSON.stringify(stats.bobotKriteria.map(k => k.nama_kriteria)) %>,
+                labels: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nama_kriteria)) %>,
                 datasets: [{
-                    data: <%- JSON.stringify(stats.bobotKriteria.map(k => k.nilai_bobot)) %>,
+                    data: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nilai_bobot)) %>,
                     backgroundColor: ['#1d5fd6', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e74c3c']
                 }]
             },
-            options: { plugins: { legend: { display: false } } }
+            options: { maintainAspectRatio: true, plugins: { legend: { display: false } } }
         });
         <% } %>
     </script>
+
+    <script>
+    setTimeout(() => { window.location.reload(); }, 60000); // refresh otomatis tiap 60 detik
+    </script>
+
 </body>
 </html>

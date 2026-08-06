@@ -5,6 +5,9 @@ const { generateTemplateNilai } = require('../utils/templateGenerator');
 const kriteriaModel = require('../models/kriteriaModel');
 const xlsx = require('xlsx');
 const fs = require('fs');
+const { cekTerkunci } = require('../utils/lockHelper');
+const { generateNilaiSiswaPDF } = require('../utils/pdfGenerator');
+
 
 
 const nilaiController = {
@@ -70,7 +73,7 @@ const nilaiController = {
             const siswa = await nilaiModel.getSiswaById(id_siswa);
             await userModel.logActivity(req.session.user.id_user, `Menginput/memperbarui nilai siswa: ${siswa.nama}`);
 
-            res.redirect(`/admin/nilai/${id_siswa}?success=Nilai berhasil disimpan.`);
+            res.redirect(`/admin/nilai?success=${encodeURIComponent('Nilai siswa ' + siswa.nama + ' berhasil disimpan.')}`);
         } catch (error) {
             console.error(error);
             res.redirect(`/admin/nilai/${req.params.id_siswa}?error=Terjadi kesalahan sistem.`);
@@ -175,6 +178,21 @@ const nilaiController = {
             console.error(error);
             if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
             res.redirect('/admin/nilai?error=Gagal membaca file Excel. Pastikan format sesuai template.');
+        }
+    },
+
+    async unduhPDF(req, res) {
+        try {
+            const periode = await periodeModel.getActivePeriode();
+            if (!periode) return res.status(400).send('Periode seleksi belum aktif.');
+
+            const siswaList = await nilaiModel.getSiswaWithAllNilai(periode.id_periode);
+            const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
+
+            generateNilaiSiswaPDF(res, { periode, siswaList, kriteriaList });
+        } catch (error) {
+            console.error(error);
+            res.status(500).send('Gagal membuat PDF.');
         }
     }
 };

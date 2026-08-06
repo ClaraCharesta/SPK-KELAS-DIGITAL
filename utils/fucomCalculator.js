@@ -82,23 +82,30 @@ function hitungDFC(bobot, phi) {
  * Agregasi bobot dari N responden (minimal 2) menggunakan rata-rata geometris.
  * @param {Array} semuaBobotResponden - array of array: [[{id_kriteria,nama_kriteria,bobot}, ...], [...], ...]
  */
-function agregasiBobot(semuaBobotResponden) {
-    const map = {};
+function agregasiBobot(semuaHasilResponden) {
+    const EPSILON = 0.0001;
 
-    semuaBobotResponden.forEach(bobotList => {
-        bobotList.forEach(item => {
+    // Bobot pengaruh tiap responden = kebalikan dari DFC-nya (semakin konsisten, semakin dipercaya)
+    const bobotPengaruh = semuaHasilResponden.map(r => 1 / (r.dfc + EPSILON));
+    const totalPengaruh = bobotPengaruh.reduce((a, b) => a + b, 0);
+    const bobotPengaruhNormal = bobotPengaruh.map(b => b / totalPengaruh);
+
+    const map = {};
+    semuaHasilResponden.forEach((responden, idx) => {
+        responden.bobot.forEach(item => {
             if (!map[item.id_kriteria]) {
-                map[item.id_kriteria] = { nama_kriteria: item.nama_kriteria, nilai: [] };
+                map[item.id_kriteria] = { nama_kriteria: item.nama_kriteria, nilaiTertimbang: [] };
             }
-            map[item.id_kriteria].nilai.push(item.bobot);
+            map[item.id_kriteria].nilaiTertimbang.push({ nilai: item.bobot, pengaruh: bobotPengaruhNormal[idx] });
         });
     });
 
     const hasil = Object.keys(map).map(id => {
         const d = map[id];
-        const perkalian = d.nilai.reduce((a, b) => a * b, 1);
-        const geo = Math.pow(perkalian, 1 / d.nilai.length);
-        return { id_kriteria: parseInt(id), nama_kriteria: d.nama_kriteria, bobot: geo };
+        // Rata-rata geometris tertimbang: exp(sum(pengaruh_i * ln(nilai_i)))
+        const logSum = d.nilaiTertimbang.reduce((sum, item) => sum + item.pengaruh * Math.log(item.nilai), 0);
+        const geoTertimbang = Math.exp(logSum);
+        return { id_kriteria: parseInt(id), nama_kriteria: d.nama_kriteria, bobot: geoTertimbang };
     });
 
     const total = hasil.reduce((s, i) => s + i.bobot, 0);

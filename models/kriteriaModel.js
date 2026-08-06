@@ -68,6 +68,11 @@ const kriteriaModel = {
         );
 
         return jumlahNilai > 0 || jumlahBobot > 0 || jumlahPerbandingan > 0;
+    },
+
+    async checkPerankinganDimulai(id_periode) {
+        const [[{ jumlah }]] = await db.query('SELECT COUNT(*) AS jumlah FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
+        return jumlah > 0;
     }
 };
 
