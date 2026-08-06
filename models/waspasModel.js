@@ -90,6 +90,7 @@ const waspasModel = {
         const jumlahLulus = await waspasModel.hitungJumlahLulus(id_periode);
         if (jumlahLulus >= kuota) {
             await db.query(`UPDATE hasil_waspas SET status_final = 'final' WHERE id_periode = ?`, [id_periode]);
+            await db.query(`UPDATE periode_seleksi SET status_penyelesaian = 'selesai' WHERE id_periode = ?`, [id_periode]);
             return true;
         }
         return false;
@@ -117,6 +118,23 @@ const waspasModel = {
         return rows;
     },
 
+    async checkAdaSiswaLulus(id_periode) {
+        const [[{ jumlah }]] = await db.query(
+            "SELECT COUNT(*) AS jumlah FROM siswa WHERE id_periode = ? AND status_penerimaan = 'lulus'",
+            [id_periode]
+        );
+        return jumlah > 0;
+    },
+
+    // Hapus hasil_waspas otomatis kalau BELUM ada yang lulus (data lama jadi stale karena ada perubahan)
+    async invalidateHasilJikaAda(id_periode) {
+        const adaLulus = await waspasModel.checkAdaSiswaLulus(id_periode);
+        if (!adaLulus) {
+            await db.query('DELETE FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
+            await db.query("UPDATE siswa SET status_penerimaan = 'cadangan' WHERE id_periode = ? AND status_penerimaan != 'lulus'", [id_periode]);
+        }
+    },
+
     async getHasilRanking(id_periode) {
         const [rows] = await db.query(
             `SELECT hw.*, s.nama, s.nisn, s.status_penerimaan 
@@ -137,6 +155,10 @@ const waspasModel = {
 
     async hapusHasil(id_periode) {
         await db.query('DELETE FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
+    },
+
+    async updateStatusManual(id_siswa, status_baru) {
+        await db.query('UPDATE siswa SET status_penerimaan = ? WHERE id_siswa = ?', [status_baru, id_siswa]);
     }
 };
 

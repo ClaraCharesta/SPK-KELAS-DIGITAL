@@ -1,4 +1,5 @@
 const dashboardModel = require('../models/dashboardModel');
+const periodeModel = require('../models/periodeModel');
 const db = require('../config/database');
 
 const dashboardController = {
@@ -18,7 +19,15 @@ const dashboardController = {
             const stats = periode
                 ? await dashboardModel.getAdminStats(periode.id_periode)
                 : { totalSiswa: 0, totalKriteria: 0, kriteriaTerisi: 0, statusFucom: 'Belum', statusWaspas: 'Belum' };
-            res.render('admin/dashboard', { user: req.session.user, stats, activePage: 'dashboard', pageTitle: 'Dashboard Admin' });
+
+            // Chart pakai periode TERAKHIR (bukan cuma aktif), supaya tetap tampil walau periode ditutup
+            const latestPeriode = await periodeModel.getLatestPeriode();
+            const chartData = await dashboardModel.getChartData(latestPeriode ? latestPeriode.id_periode : null);
+
+            res.render('admin/dashboard', {
+                user: req.session.user, stats, chartData, latestPeriode,
+                activePage: 'dashboard', pageTitle: 'Dashboard Admin'
+            });
         } catch (error) {
             console.error(error);
             res.status(500).send('Terjadi kesalahan mengambil data dashboard.');
@@ -27,11 +36,13 @@ const dashboardController = {
 
     async showKepsekDashboard(req, res) {
         try {
-            const [[periode]] = await db.query("SELECT id_periode FROM periode_seleksi WHERE status_periode = 'aktif' LIMIT 1");
-            const stats = periode
-                ? await dashboardModel.getKepsekStats(periode.id_periode)
-                : { diterima: 0, cadangan: 0, statusKeputusan: 'Belum Ada', bobotKriteria: [] };
-            res.render('kepsek/dashboard', { user: req.session.user, stats, activePage: 'dashboard', pageTitle: 'Dashboard Kepala Sekolah' });
+            const latestPeriode = await periodeModel.getLatestPeriode();
+            const chartData = await dashboardModel.getChartData(latestPeriode ? latestPeriode.id_periode : null);
+
+            res.render('kepsek/dashboard', {
+                user: req.session.user, chartData, latestPeriode,
+                activePage: 'dashboard', pageTitle: 'Dashboard Kepala Sekolah'
+            });
         } catch (error) {
             console.error(error);
             res.status(500).send('Terjadi kesalahan mengambil data dashboard.');

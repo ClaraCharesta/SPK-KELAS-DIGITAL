@@ -17,14 +17,21 @@
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
                 <div class="panel">
+                    <% if (terkunci) { %>
+                        <div class="alert" style="background:#fdf1de; color:#b35c00;">
+                            <i class="bi bi-lock-fill"></i> Kriteria terkunci karena perankingan sudah dijalankan pada periode ini. Buka periode baru untuk mengubah kriteria.
+                        </div>
+                    <% } %>
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-card-checklist"></i></div>
                             <h3>Daftar Kriteria Penilaian</h3>
                         </div>
-                        <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
-                            <i class="bi bi-plus-lg"></i> Tambah Kriteria
-                        </button>
+                        <% if (!terkunci) { %>
+                            <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
+                                <i class="bi bi-plus-lg"></i> Tambah Kriteria
+                            </button>
+                        <% } %>
                     </div>
                     <table class="data-table">
                         <thead>
@@ -47,14 +54,18 @@
                                     <td><span class="badge badge-<%= k.jenis === 'benefit' ? 'green' : 'red' %>"><%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %></span></td>
                                     <td><%= k.keterangan || '-' %></td>
                                     <td class="action-cell">
-                                        <button class="btn-icon" title="Edit" onclick='bukaModalEdit(<%- JSON.stringify(k) %>)'>
-                                            <i class="bi bi-pencil-square"></i>
-                                        </button>
-                                        <form action="/superadmin/kriteria/delete/<%= k.id_kriteria %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus kriteria ini?');">
-                                            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
-                                                <i class="bi bi-trash-fill"></i>
+                                        <% if (!terkunci) { %>
+                                            <button class="btn-icon" title="Edit" onclick='bukaModalEdit(<%- JSON.stringify(k) %>)'>
+                                                <i class="bi bi-pencil-square"></i>
                                             </button>
-                                        </form>
+                                            <form action="/superadmin/kriteria/delete/<%= k.id_kriteria %>" method="POST" style="display:inline;" onsubmit="return confirmDelete(this,'Yakin ingin menghapus kriteria ini?');">
+                                                <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
+                                                    <i class="bi bi-trash-fill"></i>
+                                                </button>
+                                            </form>
+                                        <% } else { %>
+                                            <span style="color:#999; font-size:12px;">Terkunci</span>
+                                        <% } %>
                                     </td>
                                 </tr>
                             <% }); %>

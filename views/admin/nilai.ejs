@@ -10,6 +10,23 @@
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
             <div class="content-wrapper">
+                <div class="panel" style="background:#f4f8ff;">
+                    <div class="panel-header-row" style="cursor:pointer;" onclick="document.getElementById('tutorialNilai').classList.toggle('show')">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-question-circle-fill"></i></div>
+                            <h3>Cara Mengisi Nilai Siswa</h3>
+                        </div>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div id="tutorialNilai" class="tutorial-content">
+                        <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
+                            <li>Klik <strong>"Unduh Template"</strong> — nilai yang sudah pernah diisi akan otomatis muncul di template.</li>
+                            <li>Isi kolom nilai sesuai NISN (kolom NISN berwarna kuning, jangan diubah urutannya).</li>
+                            <li>Klik <strong>"Import Nilai (Excel)"</strong> dan unggah file yang sudah diisi.</li>
+                            <li>Atau klik ikon pensil di tabel siswa untuk isi nilai satu per satu secara manual.</li>
+                        </ol>
+                    </div>
+                </div>
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
                 <% } %>
@@ -47,6 +64,9 @@
                             <h3>Input Nilai Siswa per Kriteria</h3>
                         </div>
                         <div style="display:flex; gap:10px;">
+                            <a href="/admin/nilai/unduh-pdf" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
+                                <i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF Nilai
+                            </a>
                             <a href="/admin/nilai/template" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
                                 <i class="bi bi-download"></i> Unduh Template
                             </a>
@@ -93,7 +113,6 @@
             </div>
         </div>
     </div>
-
     <!-- Modal Import Nilai -->
     <div class="modal-overlay" id="modalImportNilai">
         <div class="modal-box">
@@ -114,23 +133,5 @@
             </form>
         </div>
     </div>
-
-    <div class="panel" style="background:#f4f8ff;">
-    <div class="panel-header-row" style="cursor:pointer;" onclick="document.getElementById('tutorialNilai').classList.toggle('show')">
-        <div class="panel-header">
-            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-question-circle-fill"></i></div>
-            <h3>Cara Mengisi Nilai Siswa</h3>
-        </div>
-        <i class="bi bi-chevron-down"></i>
-    </div>
-    <div id="tutorialNilai" class="tutorial-content">
-        <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
-            <li>Klik <strong>"Unduh Template"</strong> — nilai yang sudah pernah diisi akan otomatis muncul di template.</li>
-            <li>Isi kolom nilai sesuai NISN (kolom NISN berwarna kuning, jangan diubah urutannya).</li>
-            <li>Klik <strong>"Import Nilai (Excel)"</strong> dan unggah file yang sudah diisi.</li>
-            <li>Atau klik ikon pensil di tabel siswa untuk isi nilai satu per satu secara manual.</li>
-        </ol>
-    </div>
-</div>
 </body>
 </html>

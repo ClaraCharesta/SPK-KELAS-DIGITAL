@@ -3,21 +3,25 @@ const userModel = require('../models/userModel');
 const xlsx = require('xlsx');
 const fs = require('fs');
 const { generateTemplateSiswa } = require('../utils/templateGenerator');
+const { cekTerkunci } = require('../utils/lockHelper');
+
+
 
 const siswaController = {
     async index(req, res) {
         try {
             const periode = await siswaModel.getActivePeriode();
+            const terkunci = periode ? await cekTerkunci(periode.id_periode) : false;
             if (!periode) {
                 return res.render('admin/siswa', {
-                    user: req.session.user, siswaList: [], activePage: 'siswa',
+                    user: req.session.user, siswaList: [], terkunci, activePage: 'siswa',
                     pageTitle: 'Data Siswa', success: null,
                     error: 'Belum ada periode seleksi aktif. Silakan hubungi Super Admin untuk membuat periode terlebih dahulu.'
                 });
             }
             const siswaList = await siswaModel.getAllSiswa(periode.id_periode);
             res.render('admin/siswa', {
-                user: req.session.user, siswaList, activePage: 'siswa',
+                user: req.session.user, siswaList, terkunci, activePage: 'siswa',
                 pageTitle: 'Data Siswa',
                 success: req.query.success || null,
                 error: req.query.error || null
@@ -28,28 +32,43 @@ const siswaController = {
         }
     },
 
+
+
     async create(req, res) {
+    try {
+        const periode = await siswaModel.getActivePeriode();
+        if (!periode) return res.redirect('/admin/siswa?error=Periode seleksi belum aktif.');
+
+        const { nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = req.body;
+
+        const exists = await siswaModel.checkNisnExists(nisn, periode.id_periode);
+        if (exists) return res.redirect('/admin/siswa?error=NISN sudah terdaftar di periode ini.');
+
         try {
-            const periode = await siswaModel.getActivePeriode();
-            if (!periode) return res.redirect('/admin/siswa?error=Periode seleksi belum aktif.');
-
-            const { nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = req.body;
-
-            const exists = await siswaModel.checkNisnExists(nisn, periode.id_periode);
-            if (exists) return res.redirect('/admin/siswa?error=NISN sudah terdaftar di periode ini.');
-
             await siswaModel.createSiswa({
-                id_periode: periode.id_periode, nisn, nama, jenis_kelamin, sekolah_asal,
-                pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh: status_pip_pkh === 'ya'
+                id_periode: periode.id_periode,
+                nisn,
+                nama,
+                jenis_kelamin,
+                sekolah_asal,
+                pekerjaan_ayah,
+                pekerjaan_ibu,
+                status_pip_pkh: status_pip_pkh === 'ya'
             });
-
-            await userModel.logActivity(req.session.user.id_user, `Admin menambahkan data siswa: ${nama}`);
-            res.redirect('/admin/siswa?success=Data siswa berhasil ditambahkan.');
-        } catch (error) {
-            console.error(error);
-            res.redirect('/admin/siswa?error=Terjadi kesalahan sistem.');
+        } catch (dupErr) {
+            if (dupErr.message.includes('sudah terdaftar')) {
+                return res.redirect('/admin/siswa?error=' + encodeURIComponent(dupErr.message));
+            }
+            throw dupErr;
         }
-    },
+
+        await userModel.logActivity(req.session.user.id_user, `Admin menambahkan data siswa: ${nama}`);
+        res.redirect('/admin/siswa?success=Data siswa berhasil ditambahkan.');
+    } catch (error) {
+        console.error(error);
+        res.redirect('/admin/siswa?error=Terjadi kesalahan sistem.');
+    }
+},
 
    async update(req, res) {
         try {
@@ -73,10 +92,16 @@ const siswaController = {
         }
     },
 
-    async delete(req, res) {
+async delete(req, res) {
         try {
             const { id_siswa } = req.params;
             const siswa = await siswaModel.getSiswaById(id_siswa);
+
+            const punyaHasil = await siswaModel.checkPunyaHasilRanking(id_siswa);
+            if (punyaHasil) {
+                return res.redirect('/admin/siswa?error=Siswa ini tidak dapat dihapus karena sudah termasuk dalam hasil perankingan. Hapus hasil perankingan terlebih dahulu di menu Perankingan jika ingin menghapus siswa ini.');
+            }
+
             await siswaModel.deleteSiswa(id_siswa);
             await userModel.logActivity(req.session.user.id_user, `Admin menghapus data siswa: ${siswa ? siswa.nama : id_siswa}`);
             res.redirect('/admin/siswa?success=Data siswa berhasil dihapus.');

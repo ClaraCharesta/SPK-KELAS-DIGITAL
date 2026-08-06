@@ -11,7 +11,7 @@
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
             <div class="content-wrapper">
-                <a href="/<%= user.role === 'super_admin' ? 'superadmin' : (user.role === 'admin' ? 'admin' : 'kepsek') %>/dashboard" style="display:inline-flex; align-items:center; gap:6px; color:#1d5fd6; text-decoration:none; font-size:14px; margin-bottom:15px;">
+                <a href="/<%= user.role === 'super_admin' ? 'superadmin' : (user.role === 'admin' ? 'admin' : 'kepsek') %>/dashboard" class="back-link">
                     <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
                 </a>
 

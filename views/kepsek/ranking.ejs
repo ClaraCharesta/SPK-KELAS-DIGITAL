@@ -30,13 +30,16 @@
                             <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
                             <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
                         </div>
+                        <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." 
+                               style="width:100%; max-width:350px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;"
+                               onkeyup="filterTabelSiswa()">
                         <table class="data-table">
                             <thead>
                                 <tr><th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th><th>Detail</th></tr>
                             </thead>
-                            <tbody>
+                            <tbody id="tabelBodyRanking">
                                 <% hasilRanking.forEach(function(h) { %>
-                                    <tr>
+                                    <tr class="baris-siswa" data-nama="<%= h.nama.toLowerCase() %>" data-nisn="<%= h.nisn %>">
                                         <td><strong>#<%= h.ranking %></strong></td>
                                         <td><%= h.nisn %></td>
                                         <td><%= h.nama %></td>
@@ -94,6 +97,14 @@
                 });
             }
             document.getElementById('modalDetailSiswa').style.display = 'flex';
+        }
+
+        function filterTabelSiswa() {
+            const keyword = document.getElementById('searchSiswa').value.toLowerCase();
+            document.querySelectorAll('.baris-siswa').forEach(row => {
+                const cocok = row.dataset.nama.includes(keyword) || row.dataset.nisn.includes(keyword);
+                row.style.display = cocok ? '' : 'none';
+            });
         }
     </script>
 </body>

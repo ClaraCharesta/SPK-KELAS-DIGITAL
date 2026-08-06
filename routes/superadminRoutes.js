@@ -7,6 +7,8 @@ const periodeController = require('../controllers/periodeController');
 const kriteriaController = require('../controllers/kriteriaController');
 const logController = require('../controllers/logController');
 const riwayatController = require('../controllers/riwayatController');
+const cekLock = require('../middlewares/lockMiddleware');
+
 
 router.use(isAuthenticated, checkRole('super_admin'));
 
@@ -23,10 +25,13 @@ router.post('/periode/create', periodeController.create);
 router.post('/periode/set-active/:id_periode', periodeController.setActive);
 router.post('/periode/update', periodeController.update);
 router.post('/periode/delete/:id_periode', periodeController.delete);
+
 router.get('/kriteria', kriteriaController.index);
-router.post('/kriteria/create', kriteriaController.create);
-router.post('/kriteria/update', kriteriaController.update);
-router.post('/kriteria/delete/:id_kriteria', kriteriaController.delete);
+
+router.post('/kriteria/create', cekLock, kriteriaController.create);
+router.post('/kriteria/update', cekLock, kriteriaController.update);
+router.post('/kriteria/delete/:id_kriteria', cekLock, kriteriaController.delete);
+
 router.post('/periode/update-kuota', periodeController.updateKuota);
 router.get('/log', logController.index);
 router.get('/riwayat', riwayatController.index);

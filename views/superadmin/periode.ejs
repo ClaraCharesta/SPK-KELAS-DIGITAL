@@ -56,7 +56,7 @@
         <button class="btn-icon" title="Edit Periode" onclick='bukaModalEdit(<%- JSON.stringify(p) %>)'>
             <i class="bi bi-pencil-square"></i>
         </button>
-        <form action="/superadmin/periode/delete/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Hapus periode ini? Tindakan ini tidak dapat dibatalkan.');">
+        <form action="/superadmin/periode/delete/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Menghapus periode ini akan menghapus SELURUH data terkait (siswa, nilai, kriteria, bobot FUCOM, dan hasil perankingan) secara permanen. Tindakan ini tidak dapat dibatalkan. Lanjutkan?');">
             <button type="submit" class="btn-icon btn-icon-danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
         </form>
     <% } %>

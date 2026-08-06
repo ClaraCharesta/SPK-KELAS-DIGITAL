@@ -52,17 +52,28 @@ const periodeModel = {
         );
     },
 
-    async delete(id_periode) {
+    async deleteCascade(id_periode) {
+        await db.query('DELETE FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
+        await db.query('DELETE FROM bobot_kriteria WHERE id_periode = ?', [id_periode]);
+        await db.query('DELETE FROM perbandingan_fucom WHERE id_periode = ?', [id_periode]);
+        await db.query('DELETE FROM nilai_siswa WHERE id_siswa IN (SELECT id_siswa FROM siswa WHERE id_periode = ?)', [id_periode]);
+        await db.query('DELETE FROM siswa WHERE id_periode = ?', [id_periode]);
+        await db.query('DELETE FROM kriteria WHERE id_periode = ?', [id_periode]);
         await db.query('DELETE FROM periode_seleksi WHERE id_periode = ?', [id_periode]);
     },
 
-    async checkAdaData(id_periode) {
-        const [[{ jumlah }]] = await db.query('SELECT COUNT(*) AS jumlah FROM siswa WHERE id_periode = ?', [id_periode]);
-        return jumlah > 0;
+    async getStatusPenyelesaian(id_periode) {
+        const [[row]] = await db.query('SELECT status_penyelesaian FROM periode_seleksi WHERE id_periode = ?', [id_periode]);
+        return row ? row.status_penyelesaian : null;
     },
 
     async tutupManual(id_periode) {
         await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode = ?", [id_periode]);
+    },
+
+    async getLatestPeriode() {
+        const [rows] = await db.query('SELECT * FROM periode_seleksi ORDER BY id_periode DESC LIMIT 1');
+        return rows[0];
     }
 };
 
