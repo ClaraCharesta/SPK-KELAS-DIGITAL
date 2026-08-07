@@ -20,12 +20,12 @@ const dashboardController = {
                 ? await dashboardModel.getAdminStats(periode.id_periode)
                 : { totalSiswa: 0, totalKriteria: 0, kriteriaTerisi: 0, statusFucom: 'Belum', statusWaspas: 'Belum' };
 
-            // Chart pakai periode TERAKHIR (bukan cuma aktif), supaya tetap tampil walau periode ditutup
             const latestPeriode = await periodeModel.getLatestPeriode();
             const chartData = await dashboardModel.getChartData(latestPeriode ? latestPeriode.id_periode : null);
+            const riwayatPeriode = await dashboardModel.getRiwayatAntarPeriode();
 
             res.render('admin/dashboard', {
-                user: req.session.user, stats, chartData, latestPeriode,
+                user: req.session.user, stats, chartData, latestPeriode, riwayatPeriode,
                 activePage: 'dashboard', pageTitle: 'Dashboard Admin'
             });
         } catch (error) {
@@ -38,9 +38,10 @@ const dashboardController = {
         try {
             const latestPeriode = await periodeModel.getLatestPeriode();
             const chartData = await dashboardModel.getChartData(latestPeriode ? latestPeriode.id_periode : null);
+            const riwayatPeriode = await dashboardModel.getRiwayatAntarPeriode();
 
             res.render('kepsek/dashboard', {
-                user: req.session.user, chartData, latestPeriode,
+                user: req.session.user, chartData, latestPeriode, riwayatPeriode,
                 activePage: 'dashboard', pageTitle: 'Dashboard Kepala Sekolah'
             });
         } catch (error) {

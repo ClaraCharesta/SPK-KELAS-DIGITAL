@@ -968,3 +968,35 @@ body {
 }
 
 .dot-legend.badge-mengundurkan_diri { background: #e74c3c; }
+
+.search-input {
+    width: 100%;
+    max-width: 350px;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.inline-status-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dropdown {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.badge-yellow {
+    background: #fdf3d7;
+    color: #b8860b;
+}

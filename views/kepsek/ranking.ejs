@@ -29,6 +29,7 @@
                             <span><span class="dot-legend badge-diusulkan"></span> Diusulkan</span>
                             <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
                             <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
+                            <span><span class="dot-legend badge-mengundurkan_diri"></span> Mengundurkan Diri</span>
                         </div>
                         <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." 
                                style="width:100%; max-width:350px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;"
@@ -46,7 +47,10 @@
                                         <td><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></td>
                                         <td>
                                             <span class="badge badge-<%= h.status_penerimaan %>">
-                                                <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' : (h.status_penerimaan === 'lulus' ? 'Lulus' : 'Cadangan') %>
+                                                <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' 
+                                                    : (h.status_penerimaan === 'lulus' ? 'Lulus' 
+                                                    : (h.status_penerimaan === 'mengundurkan_diri' ? 'Mengundurkan Diri' 
+                                                    : 'Cadangan')) %>
                                             </span>
                                         </td>
                                         <td>

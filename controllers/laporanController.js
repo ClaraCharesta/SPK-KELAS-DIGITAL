@@ -30,22 +30,27 @@ const laporanController = {
         }
     },
 
-    async unduhPDF(req, res) {
+async unduhPDF(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
-            if (!periode) return res.status(400).send('Belum ada periode seleksi aktif.');
+            const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'admin';
+
+            if (!periode) {
+                return res.redirect(`/${basePath}/dashboard?error=${encodeURIComponent('Belum ada periode seleksi aktif.')}`);
+            }
 
             const hasilRanking = await waspasModel.getHasilRanking(periode.id_periode);
             const bobotKriteria = await waspasModel.getBobotForLaporan(periode.id_periode);
 
             if (hasilRanking.length === 0) {
-                return res.status(400).send('Belum ada hasil ranking untuk dicetak. Lakukan perhitungan WASPAS terlebih dahulu.');
+                return res.redirect(`/${basePath}/dashboard?error=${encodeURIComponent('Belum ada hasil perankingan untuk dicetak. Admin perlu menjalankan perhitungan WASPAS terlebih dahulu.')}`);
             }
 
             generateLaporanPDF(res, { periode, hasilRanking, bobotKriteria });
         } catch (error) {
             console.error(error);
-            res.status(500).send('Terjadi kesalahan membuat laporan PDF.');
+            const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'admin';
+            res.redirect(`/${basePath}/dashboard?error=${encodeURIComponent('Terjadi kesalahan membuat laporan PDF.')}`);
         }
     }
 };

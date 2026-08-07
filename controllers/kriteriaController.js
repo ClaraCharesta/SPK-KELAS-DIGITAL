@@ -1,16 +1,18 @@
 const kriteriaModel = require('../models/kriteriaModel');
 const periodeModel = require('../models/periodeModel');
 const userModel = require('../models/userModel');
+const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
 
 const kriteriaController = {
     // Untuk Super Admin — full CRUD
         async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
-            if (!periode) {
+            if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.render('superadmin/kriteria', {
                     user: req.session.user, kriteriaList: [], terkunci: false, activePage: 'kriteria',
-                    pageTitle: 'Kelola Kriteria', success: null, error: 'Belum ada periode seleksi aktif.'
+                    pageTitle: 'Kelola Kriteria', success: null,
+                    error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)
                 });
             }
 
@@ -34,10 +36,12 @@ const kriteriaController = {
         try {
             const periode = await periodeModel.getActivePeriode();
 
-            if (!periode) {
+            if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.render('admin/kriteria', {
                     user: req.session.user, kriteriaList: [], activePage: 'kriteria',
-                    pageTitle: 'Kriteria Penilaian', error: 'Belum ada periode seleksi aktif.', success: null
+                    pageTitle: 'Kriteria Penilaian',
+                    error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
+                    success: null
                 });
             }
 
@@ -57,7 +61,9 @@ const kriteriaController = {
 
             
             const periode = await periodeModel.getActivePeriode();
-            if (!periode) return res.redirect('/superadmin/kriteria?error=Periode seleksi belum aktif.');
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return res.redirect('/superadmin/kriteria?error=' + encodeURIComponent(!periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode)));
+            }
 
             if (await kriteriaModel.checkPerankinganDimulai(periode.id_periode)) {
                 return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');

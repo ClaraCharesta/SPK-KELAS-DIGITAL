@@ -6,7 +6,8 @@ const kriteriaModel = require('../models/kriteriaModel');
 const xlsx = require('xlsx');
 const fs = require('fs');
 const { cekTerkunci } = require('../utils/lockHelper');
-const { generateNilaiSiswaPDF } = require('../utils/pdfGenerator');
+const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
+const waspasModel = require('../models/waspasModel');
 
 
 
@@ -14,16 +15,20 @@ const nilaiController = {
     async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
-            if (!periode) {
+            if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.render('admin/nilai', {
-                    user: req.session.user, siswaList: [], activePage: 'nilai',
-                    pageTitle: 'Input Nilai Siswa', error: 'Belum ada periode seleksi aktif.', success: null
+                    user: req.session.user, siswaList: [], terkunci: false, activePage: 'nilai',
+                    pageTitle: 'Input Nilai Siswa',
+                    error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
+                    success: null
                 });
             }
 
             const siswaList = await nilaiModel.getSiswaWithNilaiStatus(periode.id_periode);
+            const terkunci = await cekTerkunci(periode.id_periode);
+
             res.render('admin/nilai', {
-                user: req.session.user, siswaList, activePage: 'nilai',
+                user: req.session.user, siswaList, terkunci, activePage: 'nilai',
                 pageTitle: 'Input Nilai Siswa',
                 success: req.query.success || null,
                 error: req.query.error || null
@@ -44,9 +49,10 @@ const nilaiController = {
             if (!siswa) return res.redirect('/admin/nilai?error=Siswa tidak ditemukan.');
 
             const kriteriaList = await nilaiModel.getKriteriaWithNilai(id_siswa, periode.id_periode);
+            const terkunci = await cekTerkunci(periode.id_periode);
 
             res.render('admin/nilai-form', {
-                user: req.session.user, siswa, kriteriaList, activePage: 'nilai',
+                user: req.session.user, siswa, kriteriaList, terkunci, activePage: 'nilai',
                 pageTitle: 'Input Nilai: ' + siswa.nama,
                 success: req.query.success || null,
                 error: req.query.error || null
@@ -60,6 +66,19 @@ const nilaiController = {
     async saveNilai(req, res) {
         try {
             const { id_siswa } = req.params;
+            const periode = await periodeModel.getActivePeriode();
+
+            if (periode && await cekTerkunci(periode.id_periode)) {
+                return res.redirect(`/admin/nilai/${id_siswa}?error=` + encodeURIComponent('Nilai ini terkunci karena status siswa telah final.'));
+            }
+
+            if (periode) {
+                const bobotTersedia = await waspasModel.checkBobotTersedia(periode.id_periode);
+                if (!bobotTersedia) {
+                    return res.redirect(`/admin/nilai/${id_siswa}?error=` + encodeURIComponent('Belum bisa menginput nilai. Hitung bobot kriteria (FUCOM) terlebih dahulu di menu Pembobotan Kriteria.'));
+                }
+            }
+
             const { id_kriteria, nilai_mentah } = req.body;
 
             const idKriteriaArr = Array.isArray(id_kriteria) ? id_kriteria : [id_kriteria];
@@ -72,6 +91,8 @@ const nilaiController = {
 
             const siswa = await nilaiModel.getSiswaById(id_siswa);
             await userModel.logActivity(req.session.user.id_user, `Menginput/memperbarui nilai siswa: ${siswa.nama}`);
+
+            if (periode) await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
             res.redirect(`/admin/nilai?success=${encodeURIComponent('Nilai siswa ' + siswa.nama + ' berhasil disimpan.')}`);
         } catch (error) {
@@ -99,7 +120,9 @@ const nilaiController = {
     async downloadTemplate(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
-            if (!periode) return res.status(400).send('Periode seleksi belum aktif.');
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return res.status(400).send(!periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode));
+            }
 
             const siswaList = await nilaiModel.getSiswaWithAllNilai(periode.id_periode);
             const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
@@ -120,9 +143,20 @@ const nilaiController = {
             if (!req.file) return res.redirect('/admin/nilai?error=Silakan pilih file Excel terlebih dahulu.');
 
             const periode = await periodeModel.getActivePeriode();
-            if (!periode) {
+            if (!periode || !isPeriodeSudahMulai(periode)) {
                 fs.unlinkSync(req.file.path);
-                return res.redirect('/admin/nilai?error=Periode seleksi belum aktif.');
+                return res.redirect('/admin/nilai?error=' + encodeURIComponent(!periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode)));
+            }
+
+            if (await cekTerkunci(periode.id_periode)) {
+                fs.unlinkSync(req.file.path);
+                return res.redirect('/admin/nilai?error=' + encodeURIComponent('Nilai terkunci karena status siswa telah final.'));
+            }
+
+            const bobotTersedia = await waspasModel.checkBobotTersedia(periode.id_periode);
+            if (!bobotTersedia) {
+                fs.unlinkSync(req.file.path);
+                return res.redirect('/admin/nilai?error=' + encodeURIComponent('Belum bisa mengimpor nilai. Hitung bobot kriteria (FUCOM) terlebih dahulu di menu Pembobotan Kriteria.'));
             }
 
             const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
@@ -137,6 +171,7 @@ const nilaiController = {
 
             const dataToSave = [];
             const nisnTidakDitemukan = [];
+            const nisnTidakLengkap = [];
 
             for (const row of jsonData) {
                 const nisn = String(row['NISN'] || '').trim();
@@ -148,29 +183,40 @@ const nilaiController = {
                     continue;
                 }
 
-                // Cocokkan tiap kolom kriteria berdasarkan nama header
-                Object.keys(kriteriaMap).forEach(namaKriteria => {
-                    if (row[namaKriteria] !== undefined && row[namaKriteria] !== '') {
-                        dataToSave.push({
-                            id_siswa: siswa.id_siswa,
-                            nisn: nisn,
-                            id_kriteria: kriteriaMap[namaKriteria],
-                            nilai_mentah: row[namaKriteria]
-                        });
-                    }
+                const namaKriteriaList = Object.keys(kriteriaMap);
+                const semuaTerisi = namaKriteriaList.every(
+                    nk => row[nk] !== undefined && row[nk] !== null && row[nk] !== ''
+                );
+
+                if (!semuaTerisi) {
+                    nisnTidakLengkap.push(nisn);
+                    continue;
+                }
+
+                namaKriteriaList.forEach(namaKriteria => {
+                    dataToSave.push({
+                        id_siswa: siswa.id_siswa,
+                        nisn: nisn,
+                        id_kriteria: kriteriaMap[namaKriteria],
+                        nilai_mentah: row[namaKriteria]
+                    });
                 });
             }
 
             if (dataToSave.length === 0) {
-                return res.redirect('/admin/nilai?error=Tidak ada data nilai valid ditemukan. Pastikan NISN dan nama kolom kriteria sesuai template.');
+                return res.redirect('/admin/nilai?error=Tidak ada data nilai lengkap yang bisa disimpan. Pastikan setiap siswa punya nilai untuk SEMUA kolom kriteria.');
             }
 
             const hasil = await nilaiModel.bulkUpsertNilai(dataToSave);
             await userModel.logActivity(req.session.user.id_user, `Mengimpor nilai siswa dari Excel (${hasil.berhasil} data berhasil)`);
+            await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
             let pesan = `Import nilai selesai: ${hasil.berhasil} data berhasil disimpan.`;
             if (nisnTidakDitemukan.length > 0) {
                 pesan += ` ${nisnTidakDitemukan.length} NISN tidak ditemukan di sistem (dilewati).`;
+            }
+            if (nisnTidakLengkap.length > 0) {
+                pesan += ` ${nisnTidakLengkap.length} siswa dilewati karena nilai belum lengkap untuk semua kriteria.`;
             }
 
             res.redirect(`/admin/nilai?success=${encodeURIComponent(pesan)}`);
@@ -181,20 +227,7 @@ const nilaiController = {
         }
     },
 
-    async unduhPDF(req, res) {
-        try {
-            const periode = await periodeModel.getActivePeriode();
-            if (!periode) return res.status(400).send('Periode seleksi belum aktif.');
 
-            const siswaList = await nilaiModel.getSiswaWithAllNilai(periode.id_periode);
-            const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
-
-            generateNilaiSiswaPDF(res, { periode, siswaList, kriteriaList });
-        } catch (error) {
-            console.error(error);
-            res.status(500).send('Gagal membuat PDF.');
-        }
-    }
 };
 
 module.exports = nilaiController;

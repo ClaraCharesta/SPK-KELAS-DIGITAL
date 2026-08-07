@@ -52,7 +52,7 @@ router.post('/waspas/update-status', waspasController.updateStatusManual);
 // Laporan
 router.get('/laporan', laporanController.index);
 router.get('/laporan/unduh', laporanController.unduhPDF);
-router.get('/nilai/unduh-pdf', nilaiController.unduhPDF);
+
 
 
 
