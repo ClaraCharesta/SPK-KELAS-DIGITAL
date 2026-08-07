@@ -38,7 +38,7 @@
                 <div class="panel">
                     <% if (terkunci) { %>
                         <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
-                            <i class="bi bi-lock-fill"></i> Data siswa terkunci karena status siswa telah final.
+                            <i class="bi bi-lock-fill"></i> Sebagian data siswa terkunci karena status siswa telah final. Siswa yang belum ditetapkan Lulus/Mengundurkan Diri masih bisa dihapus.
                         </div>
                     <% } %>
                     <div class="panel-header-row">
@@ -71,6 +71,9 @@
                                 <tr><td colspan="7" class="empty-state">Belum ada data siswa. Tambahkan manual atau import dari Excel.</td></tr>
                             <% } %>
                             <% siswaList.forEach(function(s, index) { %>
+                                <%
+                                    const statusFinal = s.status_penerimaan === 'lulus' || s.status_penerimaan === 'mengundurkan_diri';
+                                %>
                                 <tr>
                                     <td><%= index + 1 %></td>
                                     <td><%= s.nisn %></td>
@@ -81,6 +84,8 @@
                                     <td class="action-cell">
                                         <% if (!terkunci) { %>
                                             <button class="btn-icon" onclick='bukaModalEdit(<%- JSON.stringify(s) %>)'><i class="bi bi-pencil-square"></i></button>
+                                        <% } %>
+                                        <% if (!statusFinal) { %>
                                             <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST" onsubmit="return confirmDelete(this, 'Hapus data siswa ini?');">
                                                 <button type="submit" class="btn-icon btn-icon-danger"><i class="bi bi-trash-fill"></i></button>
                                             </form>

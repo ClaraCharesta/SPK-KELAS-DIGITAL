@@ -92,6 +92,11 @@ const waspasModel = {
     async kunciJikaKuotaPenuh(id_periode, kuota) {
         const jumlahLulus = await waspasModel.hitungJumlahLulus(id_periode);
         if (jumlahLulus >= kuota) {
+            // Siswa yang masih Diusulkan/Cadangan otomatis jadi Tidak Lulus begitu kuota penuh
+            await db.query(
+                "UPDATE siswa SET status_penerimaan = 'tidak_lulus' WHERE id_periode = ? AND status_penerimaan IN ('diusulkan', 'cadangan')",
+                [id_periode]
+            );
             await db.query(`UPDATE hasil_waspas SET status_final = 'final' WHERE id_periode = ?`, [id_periode]);
             await db.query(`UPDATE periode_seleksi SET status_penyelesaian = 'selesai' WHERE id_periode = ?`, [id_periode]);
             return true;
