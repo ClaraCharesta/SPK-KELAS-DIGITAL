@@ -117,6 +117,7 @@
                             <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
                             <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
                             <span><span class="dot-legend badge-mengundurkan_diri"></span> Mengundurkan Diri</span>
+                            <span><span class="dot-legend badge-tidak_lulus"></span> Tidak Lulus</span>
                         </div>
 
                         <% if (!kuotaPenuh) { %>
@@ -134,7 +135,7 @@
                                     </thead>
                                     <tbody>
                                         <% hasilRanking.forEach(function(h) { %>
-                                            <tr class="baris-siswa" data-nama="<%= h.nama.toLowerCase() %>" data-nisn="<%= h.nisn %>">
+                                            <tr class="baris-siswa" data-nama="<%= h.nama.toLowerCase() %>" data-nisn="<%= h.nisn %>" data-status="<%= h.status_penerimaan %>">
                                                 <% if (tampilkanKontrolPilih) { %>
                                                     <td>
                                                         <% if (h.status_penerimaan === 'diusulkan' || h.status_penerimaan === 'cadangan') { %>
@@ -148,7 +149,11 @@
                                                 <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
                                                 <td>
                                                     <span class="badge badge-<%= h.status_penerimaan %>">
-                                                        <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' : (h.status_penerimaan === 'lulus' ? 'Lulus' : (h.status_penerimaan === 'mengundurkan_diri' ? 'Mundur' : 'Cadangan')) %>
+                                                        <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' 
+                                                            : (h.status_penerimaan === 'lulus' ? 'Lulus' 
+                                                            : (h.status_penerimaan === 'mengundurkan_diri' ? 'Mundur' 
+                                                            : (h.status_penerimaan === 'tidak_lulus' ? 'Tidak Lulus' 
+                                                            : 'Cadangan'))) %>
                                                     </span>
                                                 </td>
                                                 <td>
@@ -179,8 +184,11 @@
                                 </table>
                             </div>
                             <% if (tampilkanKontrolPilih) { %>
-                                <div class="modal-footer" style="justify-content:flex-start; margin-top:15px;">
+                                <div class="modal-footer" style="justify-content:flex-start; margin-top:15px; gap:10px;">
                                     <button type="submit" class="btn-primary"><i class="bi bi-check-circle-fill"></i> Tetapkan Terpilih sebagai Lulus</button>
+                                    <button type="button" class="btn-secondary" onclick="return tetapkanSemuaDiusulkan()">
+                                        <i class="bi bi-check2-all"></i> Tetapkan Seluruh yang Diusulkan sebagai Lulus
+                                    </button>
                                 </div>
                             <% } else { %>
                                 <div class="alert" style="background:#e2f8ea; color:#1e8449; margin-top:15px;">
@@ -209,6 +217,25 @@
                 const cocok = row.dataset.nama.includes(keyword) || row.dataset.nisn.includes(keyword);
                 row.style.display = cocok ? '' : 'none';
             });
+        }
+
+        function tetapkanSemuaDiusulkan() {
+            const checkboxes = document.querySelectorAll('input[name="id_siswa_lulus"]');
+            let ada = false;
+            checkboxes.forEach(function(cb) {
+                const row = cb.closest('tr');
+                if (row.dataset.status === 'diusulkan') {
+                    cb.checked = true;
+                    ada = true;
+                } else {
+                    cb.checked = false;
+                }
+            });
+            if (!ada) {
+                alert('Tidak ada siswa berstatus "Diusulkan" saat ini.');
+                return false;
+            }
+            return confirmDelete(document.getElementById('formTetapkanLulus'), 'Tetapkan SELURUH siswa berstatus "Diusulkan" sebagai Lulus? Pastikan sisa kuota mencukupi — jika jumlahnya melebihi sisa kuota, penetapan akan ditolak sistem.');
         }
 
         // Case 2: dropdown ubah status TIDAK submit form checkbox utama, pakai form terpisah

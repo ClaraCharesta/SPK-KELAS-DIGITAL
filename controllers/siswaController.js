@@ -122,28 +122,44 @@ const siswaController = {
         }
     },
 
-async delete(req, res) {
+    async delete(req, res) {
         try {
             const { id_siswa } = req.params;
             const siswa = await siswaModel.getSiswaById(id_siswa);
+
+            if (!siswa) {
+                return res.redirect('/admin/siswa?error=Siswa tidak ditemukan.');
+            }
+
+            if (
+                siswa.status_penerimaan === 'lulus' ||
+                siswa.status_penerimaan === 'mengundurkan_diri'
+            ) {
+                return res.redirect(
+                    '/admin/siswa?error=' +
+                    encodeURIComponent(
+                        'Siswa ini tidak dapat dihapus karena statusnya sudah final (Lulus/Mengundurkan Diri).'
+                    )
+                );
+            }
+
             const periode = await siswaModel.getActivePeriode();
 
-            if (periode && await cekTerkunci(periode.id_periode)) {
-                return res.redirect('/admin/siswa?error=' + encodeURIComponent('Data siswa terkunci karena status siswa telah final.'));
-            }
-
-            const punyaHasil = await siswaModel.checkPunyaHasilRanking(id_siswa);
-            if (punyaHasil) {
-                return res.redirect('/admin/siswa?error=Siswa ini tidak dapat dihapus karena sudah termasuk dalam hasil perankingan. Hapus hasil perankingan terlebih dahulu di menu Perankingan jika ingin menghapus siswa ini.');
-            }
-
             await siswaModel.deleteSiswa(id_siswa);
-            await userModel.logActivity(req.session.user.id_user, `Admin menghapus data siswa: ${siswa ? siswa.nama : id_siswa}`);
-            if (periode) await waspasModel.invalidateHasilJikaAda(periode.id_periode);
+
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `Admin menghapus data siswa: ${siswa.nama}`
+            );
+
+            if (periode) {
+                await waspasModel.invalidateHasilJikaAda(periode.id_periode);
+            }
+
             res.redirect('/admin/siswa?success=Data siswa berhasil dihapus.');
         } catch (error) {
             console.error(error);
-            res.redirect('/admin/siswa?error=Terjadi kesalahan sistem. Pastikan siswa ini belum memiliki nilai/hasil terkait.');
+            res.redirect('/admin/siswa?error=Terjadi kesalahan sistem.');
         }
     },
 
