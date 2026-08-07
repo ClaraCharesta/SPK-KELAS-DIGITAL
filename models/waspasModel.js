@@ -37,17 +37,20 @@ const waspasModel = {
     },
 
     async checkDataLengkap(id_periode) {
-        const [[{ totalSiswa }]] = await db.query('SELECT COUNT(*) AS totalSiswa FROM siswa WHERE id_periode = ?', [id_periode]);
-        const [[{ totalKriteria }]] = await db.query('SELECT COUNT(*) AS totalKriteria FROM kriteria WHERE id_periode = ?', [id_periode]);
-        const [[{ totalBobot }]] = await db.query('SELECT COUNT(*) AS totalBobot FROM bobot_kriteria WHERE id_periode = ?', [id_periode]);
-        const [[{ siswaBelumLengkap }]] = await db.query(
-            `SELECT COUNT(*) AS siswaBelumLengkap FROM siswa s
-             WHERE s.id_periode = ? AND (
-                SELECT COUNT(*) FROM nilai_siswa ns WHERE ns.id_siswa = s.id_siswa AND ns.nilai_mentah IS NOT NULL
-             ) < ?`, [id_periode, totalKriteria]
-        );
-        return { totalSiswa, totalKriteria, totalBobot, siswaBelumLengkap };
-    },
+            const [[{ totalSiswa }]] = await db.query('SELECT COUNT(*) AS totalSiswa FROM siswa WHERE id_periode = ?', [id_periode]);
+            const [[{ totalKriteria }]] = await db.query('SELECT COUNT(*) AS totalKriteria FROM kriteria WHERE id_periode = ?', [id_periode]);
+            const [[{ totalBobot }]] = await db.query('SELECT COUNT(*) AS totalBobot FROM bobot_kriteria WHERE id_periode = ?', [id_periode]);
+            const [[{ siswaBelumLengkap }]] = await db.query(
+                `SELECT COUNT(*) AS siswaBelumLengkap FROM siswa s
+                WHERE s.id_periode = ? AND (
+                    SELECT COUNT(*) FROM nilai_siswa ns WHERE ns.id_siswa = s.id_siswa AND ns.nilai_mentah IS NOT NULL
+                ) < ?`, [id_periode, totalKriteria]
+            );
+
+            const bisaHitung = totalSiswa > 0 && totalKriteria > 0 && totalBobot > 0 && siswaBelumLengkap === 0;
+
+            return { totalSiswa, totalKriteria, totalBobot, siswaBelumLengkap, bisaHitung };
+        },
 
     async saveHasil(id_periode, hasilArray) {
         await db.query('DELETE FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
@@ -126,12 +129,21 @@ const waspasModel = {
         return jumlah > 0;
     },
 
+    // checkAdaSiswaLulus tetap dipertahankan terpisah, dipakai khusus untuk logic invalidasi hasil (bukan lock)
+    async checkStatusFinalisasi(id_periode) {
+        const [[{ jumlah }]] = await db.query(
+            "SELECT COUNT(*) AS jumlah FROM siswa WHERE id_periode = ? AND status_penerimaan IN ('lulus', 'mengundurkan_diri')",
+            [id_periode]
+        );
+        return jumlah > 0;
+    },
+
     // Hapus hasil_waspas otomatis kalau BELUM ada yang lulus (data lama jadi stale karena ada perubahan)
     async invalidateHasilJikaAda(id_periode) {
         const adaLulus = await waspasModel.checkAdaSiswaLulus(id_periode);
         if (!adaLulus) {
             await db.query('DELETE FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
-            await db.query("UPDATE siswa SET status_penerimaan = 'cadangan' WHERE id_periode = ? AND status_penerimaan != 'lulus'", [id_periode]);
+            await db.query("UPDATE siswa SET status_penerimaan = 'cadangan' WHERE id_periode = ? AND status_penerimaan NOT IN ('lulus', 'mengundurkan_diri')", [id_periode]);
         }
     },
 
@@ -159,7 +171,14 @@ const waspasModel = {
 
     async updateStatusManual(id_siswa, status_baru) {
         await db.query('UPDATE siswa SET status_penerimaan = ? WHERE id_siswa = ?', [status_baru, id_siswa]);
-    }
+    },
+
+    async checkBobotTersedia(id_periode) {
+        const [[{ jumlah }]] = await db.query(
+            'SELECT COUNT(*) AS jumlah FROM bobot_kriteria WHERE id_periode = ?', [id_periode]
+        );
+        return jumlah > 0;
+    },
 };
 
 module.exports = waspasModel;

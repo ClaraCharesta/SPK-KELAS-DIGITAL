@@ -1,10 +1,31 @@
 const periodeModel = require('../models/periodeModel');
+const kriteriaModel = require('../models/kriteriaModel');
 const userModel = require('../models/userModel');
+
+function computeDisplayStatus(p) {
+    if (p.status_periode !== 'aktif') {
+        return { label: 'Ditutup', badgeClass: 'badge-red' };
+    }
+    if (p.tanggal_mulai) {
+        const tglMulai = new Date(p.tanggal_mulai);
+        const tglMulaiStr = tglMulai.toISOString().split('T')[0];
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        if (tglMulaiStr > todayStr) {
+            return { label: 'Belum Aktif', badgeClass: 'badge-yellow' };
+        }
+    }
+    return { label: 'Aktif', badgeClass: 'badge-green' };
+}
 
 const periodeController = {
     async index(req, res) {
         try {
-            const periodeList = await periodeModel.getAll();
+            const periodeListRaw = await periodeModel.getAll();
+            const periodeList = periodeListRaw.map(p => ({
+                ...p,
+                display_status: computeDisplayStatus(p)
+            }));
             const latestId = await periodeModel.getLatestId();
             res.render('superadmin/periode', {
                 user: req.session.user, periodeList, latestId, activePage: 'periode',
@@ -18,22 +39,32 @@ const periodeController = {
         }
     },
 
-    async create(req, res) {
-        try {
-            const { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = req.body;
+async create(req, res) {
+    try {
+        const { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = req.body;
 
-            if (!tahun_ajaran || !kuota_kelas_digital) {
-                return res.redirect('/superadmin/periode?error=Tahun ajaran dan kuota wajib diisi.');
-            }
-
-            await periodeModel.create({ tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai });
-            await userModel.logActivity(req.session.user.id_user, `Super Admin membuka periode seleksi baru: ${tahun_ajaran}`);
-
-            res.redirect('/superadmin/periode?success=Periode seleksi berhasil dibuat dan diaktifkan.');
-        } catch (error) {
-            console.error(error);
-            res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
+        if (!tahun_ajaran || !kuota_kelas_digital) {
+            return res.redirect('/superadmin/periode?error=Tahun ajaran dan kuota wajib diisi.');
         }
+        if (parseInt(kuota_kelas_digital) < 30) {
+            return res.redirect('/superadmin/periode?error=Kuota minimal 30 siswa.');
+        }
+
+        const sudahAda = await periodeModel.existsByTahunAjaran(tahun_ajaran);
+        if (sudahAda) {
+            return res.redirect(`/superadmin/periode?error=Tahun ajaran "${tahun_ajaran}" sudah pernah dibuat sebelumnya. Gunakan nama lain, atau edit periode yang sudah ada.`);
+        }
+
+        const id_periode_baru = await periodeModel.create({ tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai });
+
+        await kriteriaModel.createDefault(id_periode_baru);
+        await userModel.logActivity(req.session.user.id_user, `Super Admin membuka periode seleksi baru: ${tahun_ajaran}`);
+
+        res.redirect('/superadmin/periode?success=Periode seleksi berhasil dibuat dan diaktifkan beserta 6 kriteria default.');
+    } catch (error) {
+        console.error(error);
+        res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
+    }
     },
 
     async updateKuota(req, res) {
@@ -67,6 +98,20 @@ const periodeController = {
 
             if (parseInt(id_periode) !== latestId) {
                 return res.redirect('/superadmin/periode?error=Hanya periode terbaru yang dapat diedit.');
+            }
+
+            const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
+            if (statusPenyelesaian === 'selesai') {
+                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat diedit karena sudah dinyatakan selesai (kuota terpenuhi).');
+            }
+
+            if (parseInt(kuota_kelas_digital) < 30) {
+                return res.redirect('/superadmin/periode?error=Kuota minimal 30 siswa.');
+            }
+
+            const sudahAda = await periodeModel.existsByTahunAjaran(tahun_ajaran, id_periode);
+            if (sudahAda) {
+                return res.redirect(`/superadmin/periode?error=Tahun ajaran "${tahun_ajaran}" sudah dipakai periode lain.`);
             }
 
             await periodeModel.update(id_periode, { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai });

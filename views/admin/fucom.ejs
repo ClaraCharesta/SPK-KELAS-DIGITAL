@@ -16,11 +16,10 @@
                 <% if (error) { %>
     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
 <% } %>
-
 <% if (terkunci) { %>
     <div class="alert" style="background:#fdf1de; color:#b35c00;">
         <i class="bi bi-lock-fill"></i>
-        Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.
+        Pembobotan terkunci karena status siswa telah final.
     </div>
 <% } %>
                 <!-- Panel Tutorial -->
@@ -37,7 +36,7 @@
                             <li>Klik <strong>"Input Data Responden"</strong> dan isi nama guru/pengambil keputusan yang mengisi kuesioner.</li>
                             <li>Urutkan 6 kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong> menurut penilaian responden tersebut.</li>
                             <li>Isi nilai perbandingan antar kriteria yang bersebelahan, skala 1-9. Gunakan angka <strong>1-4</strong> untuk selisih yang wajar, dan angka besar (7-9) hanya jika benar-benar yakin ada kesenjangan sangat besar.</li>
-                            <li>Ulangi untuk responden kedua (minimal 2 responden diperlukan).</li>
+                            <li>Ulangi untuk responden berikutnya (minimal 2 responden diperlukan, boleh lebih).</li>
                             <li>Setelah minimal 2 responden lengkap, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
                         </ol>
                     </div>
@@ -45,33 +44,35 @@
                 <!-- Panel Data Responden -->
                 <div class="panel">
                     <div class="panel-header-row">
-    <div class="panel-header">
-        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clipboard-data"></i></div>
-        <h3>Data Perbandingan Kriteria (Minimal 2 Responden)</h3>
-    </div>
-
-    <% if (respondenList.length < 2) { %>
-        <button
-            class="btn-primary"
-            <%= terkunci ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '' %>
-            onclick="<%= terkunci ? '' : "document.getElementById('modalInput').style.display='flex'" %>">
-            <i class="bi bi-plus-lg"></i> Input Data Responden
-        </button>
-    <% } %>
-</div>
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clipboard-data"></i></div>
+                            <h3>Data Perbandingan Kriteria (Minimal 2 Responden)</h3>
+                        </div>
+                        <% if (!terkunci && bobotFinal.length === 0) { %>
+                            <button
+                                class="btn-primary"
+                                onclick="document.getElementById('modalInput').style.display='flex'">
+                                <i class="bi bi-plus-lg"></i> Input Data Responden
+                            </button>
+                        <% } %>
+                    </div>
                     <% if (respondenList.length === 0) { %>
-                        <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner dari guru (maksimal 2 orang).</p>
+                        <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner dari guru (minimal 2 orang).</p>
                     <% } else { %>
                         <% respondenList.forEach(function(nama) { %>
                             <div style="margin-bottom:20px; padding:15px; background:#fafbfd; border-radius:10px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                                     <strong style="font-size:14px; color:#0b2545;"><i class="bi bi-person-fill"></i> <%= nama %></strong>
-                                    <form action="/admin/fucom/hapus" method="POST" onsubmit="return confirmDelete(this,'Hapus data responden ini?');">
-                                        <input type="hidden" name="nama_responden" value="<%= nama %>">
-                                        <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    </form>
+                                    <% if (!terkunci && bobotFinal.length === 0) { %>
+                                        <form action="/admin/fucom/hapus" method="POST" onsubmit="return confirmDelete(this,'Hapus data responden ini?');">
+                                            <input type="hidden" name="nama_responden" value="<%= nama %>">
+                                            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    <% } else { %>
+                                        <span style="color:#999; font-size:12px;">Terkunci</span>
+                                    <% } %>
                                 </div>
                                 <table class="data-table">
                                     <thead><tr><th>Perbandingan</th><th>Nilai</th></tr></thead>
@@ -98,12 +99,9 @@
                             <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-sliders"></i></div>
                             <h3>Hasil Perhitungan Bobot Kriteria (Agregasi)</h3>
                         </div>
-                        <% if (respondenList.length >= 2) { %>
-    <form action="/admin/fucom/hitung" method="POST" onsubmit="return <%= terkunci ? 'false' : 'true' %>;">
-        <button
-            type="submit"
-            class="btn-primary"
-            <%= terkunci ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '' %>>
+                        <% if (respondenList.length >= 2 && !terkunci && bobotFinal.length === 0) { %>
+    <form action="/admin/fucom/hitung" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Setelah bobot dihitung, data responden TIDAK bisa lagi ditambah atau dihapus. Pastikan seluruh data responden sudah benar sebelum melanjutkan. Lanjutkan menghitung bobot?');">
+        <button type="submit" class="btn-primary">
             <i class="bi bi-calculator-fill"></i> Hitung Bobot FUCOM
         </button>
     </form>
@@ -112,26 +110,32 @@
                     <% if (respondenList.length < 2) { %>
                         <p class="empty-state">Tombol perhitungan akan muncul setelah data 2 responden lengkap. Saat ini: <strong><%= respondenList.length %>/2</strong> responden.</p>
                     <% } else if (bobotFinal.length === 0) { %>
-                        <p class="empty-state">Data sudah lengkap. Klik "Hitung Bobot FUCOM" untuk memulai perhitungan.</p>
+                        <p class="empty-state">
+                            <% if (terkunci) { %>
+                                Data terkunci, perhitungan tidak dapat dijalankan lagi.
+                            <% } else { %>
+                                Data sudah lengkap. Klik "Hitung Bobot FUCOM" untuk memulai perhitungan.
+                            <% } %>
+                        </p>
                     <% } else { %>
                         <% 
                             const bobotTerkecil = Math.min(...bobotFinal.map(b => parseFloat(b.nilai_bobot)));
                         %>
                       <% if (bobotTerkecil < 0.03) { %>
-    <div class="alert" style="background:#fdf1de; color:#b35c00; ...">
-        <i class="bi bi-exclamation-triangle-fill"></i> Distribusi bobot sangat timpang...
+    <div class="alert" style="background:#fdf1de; color:#b35c00;">
+        <i class="bi bi-exclamation-triangle-fill"></i> Distribusi bobot sangat timpang, salah satu kriteria memiliki bobot sangat kecil. Pertimbangkan untuk meninjau ulang perbandingan.
     </div>
 <% } %>
                         <table class="data-table">
-                            <thead><tr><th>Kriteria</th><th>Bobot</th><th>Nilai DFC (rata-rata 2 responden)</th></tr></thead>
+                            <thead><tr><th>Kriteria</th><th>Bobot</th><th>Nilai DFC (rata-rata responden)</th></tr></thead>
                             <tbody>
                                 <% bobotFinal.forEach(function(b) { %>
                                     <tr>
                                         <td><%= b.nama_kriteria %></td>
                                         <td><strong><%= b.nilai_bobot < 0.01 ? (b.nilai_bobot * 100).toFixed(3) : (b.nilai_bobot * 100).toFixed(2) %>%</strong></td>
                                         <td>
-                                            <span class="badge badge-<%= b.nilai_dfc < 0.1 ? 'green' : 'red' %>">
-                                                <%= parseFloat(b.nilai_dfc).toFixed(4) %>
+                                            <span class="badge badge-<%= b.nilai_dfc < 0.1 ? 'lulus' : 'mengundurkan_diri' %>">
+                                                <%= parseFloat(b.nilai_dfc).toExponential(4) %>
                                                 <%= b.nilai_dfc < 0.1 ? '(Konsisten)' : '(Perlu Ditinjau)' %>
                                             </span>
                                         </td>
@@ -146,6 +150,7 @@
         </div>
     </div>
     <!-- Modal Input Data Responden -->
+    <% if (!terkunci && bobotFinal.length === 0) { %>
     <div class="modal-overlay" id="modalInput">
         <div class="modal-box" style="max-width:550px;">
             <div class="modal-header">
@@ -171,7 +176,7 @@
                 </p>
                 <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>
                     <label>Peringkat <%= i + 1 %> dibanding Peringkat <%= i + 2 %></label>
-                    <input type="number" name="nilai_perbandingan" min="1" max="9" step="0.5" required style="margin-bottom:8px;">
+                    <input type="number" name="nilai_perbandingan" min="1" max="9" step="1" required style="margin-bottom:8px;">
                 <% } %>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalInput').style.display='none'">Batal</button>
@@ -180,5 +185,6 @@
             </form>
         </div>
     </div>
+    <% } %>
 </body>
 </html>

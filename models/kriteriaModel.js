@@ -73,6 +73,24 @@ const kriteriaModel = {
     async checkPerankinganDimulai(id_periode) {
         const [[{ jumlah }]] = await db.query('SELECT COUNT(*) AS jumlah FROM hasil_waspas WHERE id_periode = ?', [id_periode]);
         return jumlah > 0;
+    },
+
+    async createDefault(id_periode) {
+        const daftarDefault = [
+            { nama: 'Nilai Akademik', jenis: 'benefit' },
+            { nama: 'Hasil Psikotes', jenis: 'benefit' },
+            { nama: 'Kemampuan Komputer', jenis: 'benefit' },
+            { nama: 'Kepemilikan Perangkat Digital', jenis: 'benefit' },
+            { nama: 'Kondisi Ekonomi Keluarga', jenis: 'benefit' },
+            { nama: 'Minat Belajar Teknologi', jenis: 'benefit' }
+        ];
+
+        for (const k of daftarDefault) {
+            await db.query(
+                'INSERT INTO kriteria (id_periode, nama_kriteria, jenis, keterangan) VALUES (?, ?, ?, ?)',
+                [id_periode, k.nama, k.jenis, 'Kriteria dasar sistem']
+            );
+        }
     }
 };
 

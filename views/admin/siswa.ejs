@@ -27,13 +27,20 @@
                         </ol>
                     </div>
                 </div>
+
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
                 <% } %>
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
+
                 <div class="panel">
+                    <% if (terkunci) { %>
+                        <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
+                            <i class="bi bi-lock-fill"></i> Data siswa terkunci karena status siswa telah final.
+                        </div>
+                    <% } %>
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-person-fill"></i></div>
@@ -43,12 +50,14 @@
                             <a href="/admin/siswa/template" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
                                 <i class="bi bi-download"></i> Unduh Template
                             </a>
-                            <button class="btn-secondary" onclick="document.getElementById('modalImport').style.display='flex'">
-                                <i class="bi bi-file-earmark-excel-fill"></i> Import Excel
-                            </button>
-                            <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
-                                <i class="bi bi-plus-lg"></i> Tambah Siswa
-                            </button>
+                            <% if (!terkunci) { %>
+                                <button class="btn-secondary" onclick="document.getElementById('modalImport').style.display='flex'">
+                                    <i class="bi bi-file-earmark-excel-fill"></i> Import Excel
+                                </button>
+                                <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
+                                    <i class="bi bi-plus-lg"></i> Tambah Siswa
+                                </button>
+                            <% } %>
                         </div>
                     </div>
                     <table class="data-table">
@@ -70,24 +79,26 @@
                                     <td><%= s.sekolah_asal %></td>
                                     <td><span class="badge badge-<%= s.status_pip_pkh ? 'green' : 'red' %>"><%= s.status_pip_pkh ? 'Ya' : 'Tidak' %></span></td>
                                     <td class="action-cell">
-    <% if (!terkunci) { %>
-        <button class="btn-icon" onclick='bukaModalEdit(<%- JSON.stringify(s) %>)'><i class="bi bi-pencil-square"></i></button>
-        <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST" onsubmit="return confirmDelete(this, 'Hapus data siswa ini?');">
-            <button type="submit" class="btn-icon btn-icon-danger"><i class="bi bi-trash-fill"></i></button>
-        </form>
-    <% } else { %>
-        <span style="color:#999; font-size:12px;">Terkunci</span>
-    <% } %>
-</td>
+                                        <% if (!terkunci) { %>
+                                            <button class="btn-icon" onclick='bukaModalEdit(<%- JSON.stringify(s) %>)'><i class="bi bi-pencil-square"></i></button>
+                                            <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST" onsubmit="return confirmDelete(this, 'Hapus data siswa ini?');">
+                                                <button type="submit" class="btn-icon btn-icon-danger"><i class="bi bi-trash-fill"></i></button>
+                                            </form>
+                                        <% } else { %>
+                                            <span style="color:#999; font-size:12px;">Terkunci</span>
+                                        <% } %>
+                                    </td>
                                 </tr>
                             <% }); %>
                         </tbody>
                     </table>
                 </div>
+
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
+
     <!-- Modal Tambah Siswa -->
     <div class="modal-overlay" id="modalTambah">
         <div class="modal-box">
@@ -106,11 +117,11 @@
                     <option value="P">Perempuan</option>
                 </select>
                 <label>Sekolah Asal</label>
-                <input type="text" name="sekolah_asal">
+                <input type="text" name="sekolah_asal" required>
                 <label>Pekerjaan Ayah</label>
-                <input type="text" name="pekerjaan_ayah">
+                <input type="text" name="pekerjaan_ayah" required>
                 <label>Pekerjaan Ibu</label>
-                <input type="text" name="pekerjaan_ibu">
+                <input type="text" name="pekerjaan_ibu" required>
                 <label>Penerima PIP/PKH?</label>
                 <select name="status_pip_pkh">
                     <option value="tidak">Tidak</option>
@@ -123,6 +134,7 @@
             </form>
         </div>
     </div>
+
     <!-- Modal Edit Siswa -->
     <div class="modal-overlay" id="modalEdit">
         <div class="modal-box">
@@ -142,11 +154,11 @@
                     <option value="P">Perempuan</option>
                 </select>
                 <label>Sekolah Asal</label>
-                <input type="text" name="sekolah_asal" id="edit_sekolah">
+                <input type="text" name="sekolah_asal" id="edit_sekolah" required>
                 <label>Pekerjaan Ayah</label>
-                <input type="text" name="pekerjaan_ayah" id="edit_ayah">
+                <input type="text" name="pekerjaan_ayah" id="edit_ayah" required>
                 <label>Pekerjaan Ibu</label>
-                <input type="text" name="pekerjaan_ibu" id="edit_ibu">
+                <input type="text" name="pekerjaan_ibu" id="edit_ibu" required>
                 <label>Penerima PIP/PKH?</label>
                 <select name="status_pip_pkh" id="edit_pip">
                     <option value="tidak">Tidak</option>
@@ -159,6 +171,7 @@
             </form>
         </div>
     </div>
+
     <!-- Modal Import Excel -->
     <div class="modal-overlay" id="modalImport">
         <div class="modal-box">
@@ -178,20 +191,8 @@
                 </div>
             </form>
         </div>
-        <% if (terkunci) { %>
-    <div class="alert" style="background:#fdf1de; color:#b35c00;">
-        <i class="bi bi-lock-fill"></i> Data siswa terkunci karena sudah ada siswa yang ditetapkan Lulus.
     </div>
-<% } %>
 
-<div style="display:flex; gap:10px;">
-    <a href="/admin/siswa/template" class="btn-secondary" ...>Unduh Template</a>
-    <% if (!terkunci) { %>
-        <button class="btn-secondary" onclick="document.getElementById('modalImport').style.display='flex'">Import Excel</button>
-        <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">Tambah Siswa</button>
-    <% } %>
-</div>
-    </div>
     <script>
         function bukaModalEdit(s) {
             document.getElementById('edit_id_siswa').value = s.id_siswa;

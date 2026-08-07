@@ -3,7 +3,6 @@
 <head>
     <title>Dashboard Kepala Sekolah</title>
     <%- include('../partials/head') %>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="app-layout">
@@ -11,7 +10,10 @@
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
-            <div class="content-wrapper">
+                <div class="content-wrapper">
+                    <% if (typeof error !== 'undefined' && error) { %>
+                        <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                    <% } %>
                 <div class="welcome-banner">
                     <div class="welcome-icon"><i class="bi bi-mortarboard-fill"></i></div>
                     <div>
@@ -44,10 +46,23 @@
                     </div>
                 </div>
 
+                <!-- CHART RIWAYAT ANTAR PERIODE -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clock-history"></i></div>
+                        <h3>Riwayat Perkembangan Antar Periode</h3>
+                    </div>
+                    <% if (riwayatPeriode.length === 0) { %>
+                        <p class="empty-state">Belum ada data periode.</p>
+                    <% } else { %>
+                        <canvas id="chartRiwayatKepsek" height="90"></canvas>
+                    <% } %>
+                </div>
+
                 <div class="panel">
                     <div class="panel-header">
                         <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bar-chart-fill"></i></div>
-                        <h3>Sebaran Nilai Siswa <% if (latestPeriode) { %>(<%= latestPeriode.tahun_ajaran %>)<% } %></h3>
+                        <h3>Sebaran Nilai Siswa <% if (latestPeriode) { %>(<%= latestPeriode.tahun_ajaran %> — Periode Terbaru)<% } %></h3>
                     </div>
                     <canvas id="chartSebaran" height="90"></canvas>
                 </div>
@@ -55,7 +70,7 @@
                 <div class="panel">
                     <div class="panel-header">
                         <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
-                        <h3>Bobot Tiap Kriteria (Hasil FUCOM)</h3>
+                        <h3>Bobot Tiap Kriteria (Hasil FUCOM) <% if (latestPeriode) { %>— <%= latestPeriode.tahun_ajaran %><% } %></h3>
                     </div>
                     <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
                         <div class="chart-with-legend">
@@ -69,37 +84,44 @@
                             </ul>
                         </div>
                     <% } else { %>
-                        <p class="empty-state">Bobot kriteria belum tersedia. Perhitungan FUCOM belum dilakukan oleh Admin.</p>
+                        <p class="empty-state">Bobot kriteria untuk periode terbaru belum tersedia. Lihat grafik riwayat di atas untuk data periode sebelumnya.</p>
                     <% } %>
                 </div>
 
-                <div class="panel laporan-panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-file-earmark-text-fill"></i></div>
-                        <div>
-                            <h3>Unduh Laporan</h3>
-                            <p class="stat-desc">Unduh laporan hasil penempatan siswa kelas digital dalam format PDF.</p>
-                        </div>
-                    </div>
-                    <a href="/kepsek/laporan/unduh" class="btn-primary"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
-                </div>
+
 
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        <% if (riwayatPeriode.length > 0) { %>
+        new Chart(document.getElementById('chartRiwayatKepsek'), {
+            type: 'bar',
+            data: {
+                labels: <%- JSON.stringify(riwayatPeriode.map(p => p.tahun_ajaran)) %>,
+                datasets: [
+                    { label: 'Total Siswa', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalSiswa)) %>, backgroundColor: '#94b8f0' },
+                    { label: 'Lulus', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalLulus)) %>, backgroundColor: '#27ae60' },
+                    { label: 'Cadangan', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalCadangan)) %>, backgroundColor: '#e67e22' },
+                    { label: 'Mengundurkan Diri', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalMundur)) %>, backgroundColor: '#e74c3c' }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: true, position: 'bottom' } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+        <% } %>
+
         new Chart(document.getElementById('chartSebaran'), {
             type: 'bar',
             data: {
                 labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
-                datasets: [{
-                    label: 'Jumlah Siswa',
-                    data: <%- JSON.stringify(chartData.sebaranNilai) %>,
-                    backgroundColor: '#1d5fd6',
-                    borderRadius: 6
-                }]
+                datasets: [{ label: 'Jumlah Siswa', data: <%- JSON.stringify(chartData.sebaranNilai) %>, backgroundColor: '#1d5fd6', borderRadius: 6 }]
             },
             options: { plugins: { legend: { display: false } } }
         });
@@ -109,10 +131,7 @@
             type: 'pie',
             data: {
                 labels: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nama_kriteria)) %>,
-                datasets: [{
-                    data: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nilai_bobot)) %>,
-                    backgroundColor: ['#1d5fd6', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e74c3c']
-                }]
+                datasets: [{ data: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nilai_bobot)) %>, backgroundColor: ['#1d5fd6', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e74c3c'] }]
             },
             options: { maintainAspectRatio: true, plugins: { legend: { display: false } } }
         });
@@ -120,8 +139,7 @@
     </script>
 
     <script>
-    setTimeout(() => { window.location.reload(); }, 60000); // refresh otomatis tiap 60 detik
+        setTimeout(() => { window.location.reload(); }, 60000);
     </script>
-
 </body>
 </html>

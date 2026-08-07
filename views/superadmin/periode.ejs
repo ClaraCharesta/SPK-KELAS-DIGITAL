@@ -5,6 +5,14 @@
     <%- include('../partials/head') %>
 </head>
 <body>
+    <%
+    function formatTgl(val) {
+        if (!val) return '-';
+        const iso = (val instanceof Date) ? val.toISOString() : String(val);
+        const [y, m, d] = iso.split('T')[0].split('-');
+        return `${d}/${m}/${y}`;
+    }
+    %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
@@ -45,14 +53,14 @@
                                 <tr>
                                     <td><%= p.tahun_ajaran %></td>
                                     <td><%= p.kuota_kelas_digital %></td>
-                                    <td><%= p.tanggal_mulai ? new Date(p.tanggal_mulai).toLocaleDateString('id-ID') : '-' %></td>
-                                    <td><%= p.tanggal_selesai ? new Date(p.tanggal_selesai).toLocaleDateString('id-ID') : '-' %></td>
+                                    <td><%= p.tanggal_mulai ? formatTgl(p.tanggal_mulai) : '-' %></td>
+                                    <td><%= p.tanggal_selesai ? formatTgl(p.tanggal_selesai) : '-' %></td>
                                     <td>
-                                        <span class="badge badge-<%= p.status_periode === 'aktif' ? 'green' : 'red' %>">
-                                            <%= p.status_periode === 'aktif' ? 'Aktif' : 'Ditutup' %>
-                                        </span>
+    <span class="badge <%= p.display_status.badgeClass %>">
+        <%= p.display_status.label %>
+    </span>
                                     <td class="action-cell">
-    <% if (p.id_periode === latestId) { %>
+    <% if (p.id_periode === latestId && p.status_penyelesaian !== 'selesai') { %>
         <button class="btn-icon" title="Edit Periode" onclick='bukaModalEdit(<%- JSON.stringify(p) %>)'>
             <i class="bi bi-pencil-square"></i>
         </button>
@@ -60,6 +68,7 @@
             <button type="submit" class="btn-icon btn-icon-danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
         </form>
     <% } %>
+
     <% if (p.status_periode === 'aktif') { %>
         <form action="/superadmin/periode/tutup/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Tutup periode ini sekarang? Anda perlu mengaktifkan periode baru untuk melanjutkan proses seleksi berikutnya.');">
             <button type="submit" class="btn-icon" title="Tutup Periode"><i class="bi bi-lock-fill"></i></button>
@@ -68,6 +77,10 @@
         <form action="/superadmin/periode/set-active/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Aktifkan periode ini?');">
             <button type="submit" class="btn-icon" title="Aktifkan"><i class="bi bi-toggle-off"></i></button>
         </form>
+    <% } %>
+
+    <% if (p.status_penyelesaian === 'selesai') { %>
+        <span class="badge badge-lulus" style="margin-left:4px;">Selesai</span>
     <% } %>
 </td>
                                 </tr>
@@ -86,14 +99,14 @@
                 <h3><i class="bi bi-calendar-plus-fill"></i> Buka Periode Seleksi Baru</h3>
                 <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/periode/create" method="POST">
+            <form action="/superadmin/periode/create" method="POST" onsubmit="return handleTambahSubmit(this)">
                 <p style="font-size:13px; color:#e67e22; margin-bottom:15px; background:#fdf1de; padding:10px; border-radius:8px;">
                     <i class="bi bi-info-circle-fill"></i> Membuat periode baru akan otomatis menutup periode yang sedang aktif.
                 </p>
                 <label>Tahun Ajaran</label>
                 <input type="text" name="tahun_ajaran" placeholder="Contoh: 2026/2027" required>
-                <label>Kuota Kelas Digital</label>
-                <input type="number" name="kuota_kelas_digital" placeholder="Contoh: 30" required min="1">
+                <label>Kuota Kelas Digital (Minimal 30)</label>
+                <input type="number" name="kuota_kelas_digital" min="30" required placeholder="Minimal 30">
                 <label>Tanggal Mulai</label>
                 <input type="date" name="tanggal_mulai">
                 <label>Tanggal Selesai</label>
@@ -117,7 +130,7 @@
                 <label>Tahun Ajaran</label>
                 <input type="text" name="tahun_ajaran" id="edit_tahun_ajaran" required>
                 <label>Kuota Kelas Digital</label>
-                <input type="number" name="kuota_kelas_digital" id="edit_kuota" min="1" required>
+                <input type="number" name="kuota_kelas_digital" id="edit_kuota" min="30" required>
                 <label>Tanggal Mulai</label>
                 <input type="date" name="tanggal_mulai" id="edit_tgl_mulai">
                 <label>Tanggal Selesai</label>
@@ -129,15 +142,45 @@
             </form>
         </div>
     </div>
-    <script>
-        function bukaModalEdit(p) {
-            document.getElementById('edit_id_periode').value = p.id_periode;
-            document.getElementById('edit_tahun_ajaran').value = p.tahun_ajaran;
-            document.getElementById('edit_kuota').value = p.kuota_kelas_digital;
-            document.getElementById('edit_tgl_mulai').value = p.tanggal_mulai ? p.tanggal_mulai.split('T')[0] : '';
-            document.getElementById('edit_tgl_selesai').value = p.tanggal_selesai ? p.tanggal_selesai.split('T')[0] : '';
-            document.getElementById('modalEdit').style.display = 'flex';
+ <script>
+    function bukaModalEdit(p) {
+        document.getElementById('edit_id_periode').value = p.id_periode;
+        document.getElementById('edit_tahun_ajaran').value = p.tahun_ajaran;
+        document.getElementById('edit_kuota').value = p.kuota_kelas_digital;
+        document.getElementById('edit_tgl_mulai').value = p.tanggal_mulai || '';
+        document.getElementById('edit_tgl_selesai').value = p.tanggal_selesai || '';
+        document.getElementById('modalEdit').style.display = 'flex';
+    }
+
+    function getTodayStr() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`; // real tanggal lokal hari ini, no shifting
+    }
+
+    function formatTanggalIndo(str) {
+        const [y, m, d] = str.split('-');
+        const bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        return `${parseInt(d)} ${bulan[parseInt(m) - 1]} ${y}`;
+    }
+
+    function handleTambahSubmit(form) {
+        const tanggalMulai = form.tanggal_mulai.value; // format YYYY-MM-DD dari <input type="date">
+        if (tanggalMulai) {
+            const today = getTodayStr();
+            if (tanggalMulai > today) { // aman dibandingin sebagai string krn formatnya YYYY-MM-DD
+                const pesan = `Perhatian: Tanggal mulai yang Anda pilih adalah ${formatTanggalIndo(tanggalMulai)}, sedangkan hari ini masih ${formatTanggalIndo(today)}.\n\nPeriode ini baru bisa mulai diisi (siswa/admin) setelah tanggal tersebut tiba. Jika ingin mengubah tanggal mulai nanti, Anda bisa mengklik aksi Edit.\n\nLanjutkan membuka periode ini?`;
+
+                // pastikan modal konfirmasi tampil DI ATAS modal Tambah Periode
+                document.getElementById('confirmModal').style.zIndex = '10000';
+
+                return confirmDelete(form, pesan);
+            }
         }
-    </script>
+        return true;
+    }
+</script>
 </body>
 </html>

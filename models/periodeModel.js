@@ -14,6 +14,7 @@ const periodeModel = {
     async create(data) {
         const { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = data;
         // Nonaktifkan semua periode lain dulu supaya cuma 1 yang aktif
+        
         await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup'");
         const [result] = await db.query(
             `INSERT INTO periode_seleksi (tahun_ajaran, kuota_kelas_digital, status_periode, tanggal_mulai, tanggal_selesai) 
@@ -21,6 +22,17 @@ const periodeModel = {
             [tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai]
         );
         return result.insertId;
+    },
+
+    async existsByTahunAjaran(tahun_ajaran, excludeId = null) {
+    let query = 'SELECT id_periode FROM periode_seleksi WHERE LOWER(TRIM(tahun_ajaran)) = LOWER(TRIM(?))';
+    const params = [tahun_ajaran];
+    if (excludeId) {
+        query += ' AND id_periode != ?';
+        params.push(excludeId);
+    }
+    const [rows] = await db.query(query, params);
+    return rows.length > 0;
     },
 
     async setActive(id_periode) {

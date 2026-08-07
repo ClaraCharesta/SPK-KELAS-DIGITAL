@@ -79,6 +79,13 @@ const fucomModel = {
         return rows;
     },
 
+    async checkBobotSudahDihitung(id_periode) {
+    const [[{ jumlah }]] = await db.query(
+        'SELECT COUNT(*) AS jumlah FROM bobot_kriteria WHERE id_periode = ?', [id_periode]
+    );
+    return jumlah > 0;
+    },
+
     async hapusBobotFinal(id_periode) {
         await db.query('DELETE FROM bobot_kriteria WHERE id_periode = ?', [id_periode]);
         // PENTING: hasil WASPAS otomatis tidak valid lagi tanpa bobot, ikut dihapus

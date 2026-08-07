@@ -27,36 +27,55 @@
                         </ol>
                     </div>
                 </div>
-                <% if (success) { %>
-                    <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
-                <% } %>
-                <% if (error) { %>
-                    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
-                <% } %>
-                <% 
-                    const belumLengkap = siswaList.filter(s => s.jumlah_terisi < s.total_kriteria);
-                %>
-                <% if (belumLengkap.length > 0) { %>
-                <div class="panel" style="border-left:4px solid #e67e22;">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-exclamation-triangle-fill"></i></div>
-                        <h3>Siswa Belum Lengkap Nilai (<%= belumLengkap.length %>)</h3>
+                <% if (terkunci) { %>
+                    <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
+                        <i class="bi bi-lock-fill"></i> Nilai siswa terkunci karena status siswa telah final
                     </div>
-                    <table class="data-table">
-                        <thead><tr><th>NISN</th><th>Nama</th><th>Kelengkapan</th><th>Aksi</th></tr></thead>
-                        <tbody>
-                            <% belumLengkap.forEach(function(s) { %>
-                                <tr>
-                                    <td><%= s.nisn %></td>
-                                    <td><%= s.nama %></td>
-                                    <td><span class="badge badge-mengundurkan_diri"><%= s.jumlah_terisi %> / <%= s.total_kriteria %></span></td>
-                                    <td><a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Lengkapi"><i class="bi bi-pencil-square"></i></a></td>
-                                </tr>
-                            <% }); %>
-                        </tbody>
-                    </table>
-                </div>
                 <% } %>
+                <% if (success) { %>
+    <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+<% } %>
+
+<% if (error) { %>
+    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+<% } %>
+
+<%
+const belumLengkap = siswaList.filter(s => s.jumlah_terisi < s.total_kriteria);
+%>
+
+<% if (belumLengkap.length > 0) { %>
+<div class="panel" style="border-left:4px solid #e67e22;">
+    <div class="panel-header-row" style="cursor:pointer;" onclick="toggleBelumLengkap()">
+        <div class="panel-header">
+            <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <h3>Siswa Belum Lengkap Nilai (<%= belumLengkap.length %>)</h3>
+        </div>
+        <i class="bi bi-chevron-down" id="iconBelumLengkap"></i>
+    </div>
+    <div id="belumLengkapContent" style="display:none; max-height:420px; overflow-y:auto; margin-top:10px;">
+        <table class="data-table">
+            <thead><tr><th>NISN</th><th>Nama</th><th>Kelengkapan</th><th>Aksi</th></tr></thead>
+            <tbody>
+                <% belumLengkap.forEach(function(s) { %>
+                    <tr>
+                        <td><%= s.nisn %></td>
+                        <td><%= s.nama %></td>
+                        <td><span class="badge badge-mengundurkan_diri"><%= s.jumlah_terisi %> / <%= s.total_kriteria %></span></td>
+                        <td>
+                            <% if (!terkunci) { %>
+                                <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Lengkapi"><i class="bi bi-pencil-square"></i></a>
+                            <% } else { %>
+                                <span style="color:#999; font-size:12px;">Terkunci</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
@@ -64,15 +83,14 @@
                             <h3>Input Nilai Siswa per Kriteria</h3>
                         </div>
                         <div style="display:flex; gap:10px;">
-                            <a href="/admin/nilai/unduh-pdf" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
-                                <i class="bi bi-file-earmark-pdf-fill"></i> Unduh PDF Nilai
-                            </a>
                             <a href="/admin/nilai/template" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
                                 <i class="bi bi-download"></i> Unduh Template
                             </a>
-                            <button class="btn-primary" onclick="document.getElementById('modalImportNilai').style.display='flex'">
-                                <i class="bi bi-file-earmark-excel-fill"></i> Import Nilai (Excel)
-                            </button>
+                            <% if (!terkunci) { %>
+                                <button class="btn-primary" onclick="document.getElementById('modalImportNilai').style.display='flex'">
+                                    <i class="bi bi-file-earmark-excel-fill"></i> Import Nilai (Excel)
+                                </button>
+                            <% } %>
                         </div>
                     </div>
                     <table class="data-table">
@@ -100,9 +118,13 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </a>
+                                        <% if (!terkunci) { %>
+                                            <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                        <% } else { %>
+                                            <span style="color:#999; font-size:12px;">Terkunci</span>
+                                        <% } %>
                                     </td>
                                 </tr>
                             <% }); %>
@@ -114,6 +136,7 @@
         </div>
     </div>
     <!-- Modal Import Nilai -->
+    <% if (!terkunci) { %>
     <div class="modal-overlay" id="modalImportNilai">
         <div class="modal-box">
             <div class="modal-header">
@@ -133,5 +156,14 @@
             </form>
         </div>
     </div>
+    <% } %>
+    <script>
+        function toggleBelumLengkap() {
+            const el = document.getElementById('belumLengkapContent');
+            const icon = document.getElementById('iconBelumLengkap');
+            el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
+            icon.classList.toggle('bi-chevron-up');
+        }
+    </script>
 </body>
 </html>

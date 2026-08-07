@@ -13,12 +13,18 @@
                 <a href="/admin/nilai" class="back-link">
                     <i class="bi bi-arrow-left"></i> Kembali ke Daftar Siswa
                 </a>
+                <% if (terkunci) { %>
+                    <div class="alert" style="background:#fdf1de; color:#b35c00;">
+                        <i class="bi bi-lock-fill"></i> Nilai ini terkunci karena status siswa telah final.
+                    </div>
+                <% } %>
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
                 <% } %>
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
+
                 <div class="panel">
                     <div class="panel-header">
                         <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-person-fill"></i></div>
@@ -27,36 +33,96 @@
                             <p style="font-size:13px; color:#888;">NISN: <%= siswa.nisn %></p>
                         </div>
                     </div>
+
                     <form action="/admin/nilai/<%= siswa.id_siswa %>/save" method="POST">
                         <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>Kriteria</th>
                                     <th>Jenis</th>
-                                    <th>Nilai (Skala 1-5, kecuali Nilai Akademik & Psikotes: 0-100)</th>
+                                    <th>Nilai</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <% kriteriaList.forEach(function(k) { %>
+                                <% kriteriaList.forEach(function(k) {
+                                    var namaLower = (k.nama_kriteria || '').toLowerCase();
+                                    var isSkor100 = namaLower.indexOf('akademik') !== -1 || namaLower.indexOf('psikotes') !== -1;
+                                    var minVal = isSkor100 ? 10 : 1;
+                                    var maxVal = isSkor100 ? 100 : 5;
+                                    var stepVal = isSkor100 ? '0.01' : '1';
+                                %>
                                     <tr>
                                         <td><%= k.nama_kriteria %></td>
                                         <td><span class="badge badge-<%= k.jenis === 'benefit' ? 'green' : 'red' %>"><%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %></span></td>
                                         <td>
-                                            <input type="hidden" name="id_kriteria" value="<%= k.id_kriteria %>">
-                                            <input type="number" step="0.01" name="nilai_mentah" value="<%= k.nilai_mentah !== null ? k.nilai_mentah : '' %>" style="width:150px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
+                                        <input type="hidden" name="id_kriteria" value="<%= k.id_kriteria %>">
+                                        <input type="number"
+                                            step="<%= stepVal %>"
+                                            min="<%= minVal %>"
+                                            max="<%= maxVal %>"
+                                            name="nilai_mentah"
+                                            data-skala="<%= isSkor100 ? '100' : '5' %>"
+                                            value="<%= k.nilai_mentah !== null ? k.nilai_mentah : '' %>"
+                                            style="width:150px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;"
+                                            required
+                                            <%= terkunci ? 'disabled' : '' %>>
+                                        <div style="font-size:11px; color:#999; margin-top:4px;">
+                                            <% if (isSkor100) { %>
+                                                Skala 10 - 100
+                                            <% } else { %>
+                                                Skala 1 - 5 (bulat, tanpa desimal)
+                                            <% } %>
+                                        </div>
                                         </td>
                                     </tr>
                                 <% }); %>
                             </tbody>
                         </table>
-                        <div class="modal-footer" style="margin-top:20px;">
-                            <button type="submit" class="btn-primary"><i class="bi bi-save-fill"></i> Simpan Semua Nilai</button>
-                        </div>
+                        <% if (!terkunci) { %>
+                            <div class="modal-footer" style="margin-top:20px;">
+                                <button type="submit" class="btn-primary"><i class="bi bi-save-fill"></i> Simpan Semua Nilai</button>
+                            </div>
+                        <% } %>
                     </form>
                 </div>
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
+    <script>
+document.querySelector('form[action$="/save"]').addEventListener('submit', function(e) {
+    const inputs = this.querySelectorAll('input[name="nilai_mentah"]:not([disabled])');
+    let invalid = false;
+
+    inputs.forEach(inp => {
+        const val = parseFloat(inp.value);
+        const skala = inp.getAttribute('data-skala');
+        const min = parseFloat(inp.getAttribute('min'));
+        const max = parseFloat(inp.getAttribute('max'));
+        let isValid = true;
+
+        if (inp.value.trim() === '' || isNaN(val)) {
+            isValid = false;
+        } else if (val < min || val > max) {
+            isValid = false;
+        } else if (skala === '5' && !Number.isInteger(val)) {
+            // Skala 1-5 wajib bilangan bulat, tidak boleh desimal
+            isValid = false;
+        }
+
+        if (!isValid) {
+            invalid = true;
+            inp.style.border = '2px solid #e74c3c';
+        } else {
+            inp.style.border = '1px solid #ddd';
+        }
+    });
+
+    if (invalid) {
+        e.preventDefault();
+        alert('Ada nilai yang belum valid. Cek kembali: skala Akademik/Psikotes harus 10-100, skala kriteria lain harus 1-5 dan bilangan bulat (tanpa desimal). Kolom yang ditandai merah perlu diperbaiki.');
+    }
+});
+</script>
 </body>
 </html>

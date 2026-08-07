@@ -3,12 +3,13 @@ const periodeModel = require('../models/periodeModel');
 const userModel = require('../models/userModel');
 const { hitungWASPAS } = require('../utils/waspasCalculator');
 const { cekTerkunci } = require('../utils/lockHelper');
+const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
 
 const waspasController = {
     async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
-            if (!periode) {
+            if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.render('admin/waspas', {
         user: req.session.user,
         activePage: 'waspas',
@@ -16,7 +17,7 @@ const waspasController = {
         hasilRanking: [],
         cekData: null,
         kuota: 0,
-        error: 'Belum ada periode seleksi aktif.',
+        error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
         success: null,
         terkunci: false
                 });
@@ -47,8 +48,14 @@ const waspasController = {
         try {
             const periode = await periodeModel.getActivePeriode();
 
-            if (!periode) {
-                return res.redirect('/admin/waspas?error=Belum ada periode seleksi aktif.');
+
+            if (await cekTerkunci(periode.id_periode)) {
+                 return res.redirect('/admin/waspas?error=Perhitungan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
+            }
+
+                        
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
             }
 
             // Blokir hitung ulang kalau sudah terkunci
@@ -61,6 +68,9 @@ const waspasController = {
             if (cekData.totalBobot === 0) {
                 return res.redirect('/admin/waspas?error=Bobot kriteria belum dihitung. Lakukan perhitungan FUCOM terlebih dahulu.');
             }
+            if (!cekData.bisaHitung) {
+                            return res.redirect('/admin/waspas?error=Perhitungan tidak dapat dijalankan. Pastikan bobot kriteria tersedia dan seluruh siswa memiliki nilai lengkap.');
+                        }
             if (cekData.totalSiswa === 0) {
                 return res.redirect('/admin/waspas?error=Belum ada data siswa.');
             }
@@ -92,8 +102,8 @@ const waspasController = {
         try {
             const periode = await periodeModel.getActivePeriode();
 
-            if (!periode) {
-                return res.redirect('/admin/waspas?error=Belum ada periode seleksi aktif.');
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
             }
 
             // Blokir hapus hasil kalau sudah terkunci
@@ -115,8 +125,8 @@ const waspasController = {
         try {
             const periode = await periodeModel.getActivePeriode();
 
-            if (!periode) {
-                return res.redirect('/admin/waspas?error=Belum ada periode seleksi aktif.');
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
             }
 
             let { id_siswa_lulus } = req.body;
@@ -170,7 +180,9 @@ const waspasController = {
             console.error(error);
             res.redirect('/admin/waspas?error=Terjadi kesalahan sistem.');
         }
-    }
+    },
+
+    
 };
 
 module.exports = waspasController;

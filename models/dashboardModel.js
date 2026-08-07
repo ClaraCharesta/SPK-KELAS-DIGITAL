@@ -78,6 +78,24 @@ const dashboardModel = {
         });
 
         return { diusulkan, cadangan, lulus, bobotKriteria, sebaranNilai: sebaran };
+    },
+
+    async getRiwayatAntarPeriode() {
+        const [rows] = await db.query(`
+            SELECT 
+                p.id_periode,
+                p.tahun_ajaran,
+                p.status_periode,
+                p.kuota_kelas_digital,
+                (SELECT COUNT(*) FROM siswa s WHERE s.id_periode = p.id_periode) AS totalSiswa,
+                (SELECT COUNT(*) FROM siswa s WHERE s.id_periode = p.id_periode AND s.status_penerimaan = 'lulus') AS totalLulus,
+                (SELECT COUNT(*) FROM siswa s WHERE s.id_periode = p.id_periode AND s.status_penerimaan = 'cadangan') AS totalCadangan,
+                (SELECT COUNT(*) FROM siswa s WHERE s.id_periode = p.id_periode AND s.status_penerimaan = 'diusulkan') AS totalDiusulkan,
+                (SELECT COUNT(*) FROM siswa s WHERE s.id_periode = p.id_periode AND s.status_penerimaan = 'mengundurkan_diri') AS totalMundur
+            FROM periode_seleksi p
+            ORDER BY p.id_periode ASC
+        `);
+        return rows;
     }
 };
 
