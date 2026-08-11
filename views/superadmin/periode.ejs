@@ -104,7 +104,8 @@
                     <i class="bi bi-info-circle-fill"></i> Membuat periode baru akan otomatis menutup periode yang sedang aktif.
                 </p>
                 <label>Tahun Ajaran</label>
-                <input type="text" name="tahun_ajaran" placeholder="Contoh: 2026/2027" required>
+                <input type="text" name="tahun_ajaran" id="tahun_ajaran_tambah" placeholder="Contoh: 2027/2028" required maxlength="9" autocomplete="off">
+                <p id="peringatan_tahun_tambah" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;">Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.</p>
                 <label>Kuota Kelas Digital (Minimal 30)</label>
                 <input type="number" name="kuota_kelas_digital" min="30" required placeholder="Minimal 30">
                 <label>Tanggal Mulai</label>
@@ -125,10 +126,11 @@
                 <h3><i class="bi bi-pencil-square"></i> Edit Periode Seleksi</h3>
                 <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/periode/update" method="POST">
+            <form action="/superadmin/periode/update" method="POST" onsubmit="return handleEditSubmit(this)">
                 <input type="hidden" name="id_periode" id="edit_id_periode">
                 <label>Tahun Ajaran</label>
-                <input type="text" name="tahun_ajaran" id="edit_tahun_ajaran" required>
+                <input type="text" name="tahun_ajaran" id="edit_tahun_ajaran" placeholder="Contoh: 2027/2028" required maxlength="9" autocomplete="off">
+                <p id="peringatan_tahun_edit" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;">Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.</p>
                 <label>Kuota Kelas Digital</label>
                 <input type="number" name="kuota_kelas_digital" id="edit_kuota" min="30" required>
                 <label>Tanggal Mulai</label>
@@ -157,7 +159,7 @@
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`; // real tanggal lokal hari ini, no shifting
+        return `${y}-${m}-${day}`;
     }
 
     function formatTanggalIndo(str) {
@@ -166,18 +168,72 @@
         return `${parseInt(d)} ${bulan[parseInt(m) - 1]} ${y}`;
     }
 
+    // ==== VALIDASI FORMAT TAHUN AJARAN (STRICT) ====
+    const REGEX_TAHUN_AJARAN = /^\d{4}\/\d{4}$/;
+
+    function sanitizeTahunInput(input) {
+        // hanya izinkan digit dan satu garis miring
+        let val = input.value.replace(/[^0-9\/]/g, '');
+        // cegah lebih dari satu garis miring
+        const firstSlash = val.indexOf('/');
+        if (firstSlash !== -1) {
+            val = val.slice(0, firstSlash + 1) + val.slice(firstSlash + 1).replace(/\//g, '');
+        }
+        // batasi 4 digit sebelum slash dan 4 digit sesudah slash
+        if (firstSlash !== -1) {
+            const before = val.slice(0, firstSlash).slice(0, 4);
+            const after = val.slice(firstSlash + 1).slice(0, 4);
+            val = before + '/' + after;
+        } else {
+            val = val.slice(0, 4);
+        }
+        input.value = val;
+    }
+
+    function isTahunAjaranValid(val) {
+        if (!REGEX_TAHUN_AJARAN.test(val)) return false;
+        const [y1, y2] = val.split('/').map(Number);
+        return y2 === y1 + 1; // tahun kedua harus persis tahun pertama + 1
+    }
+
+    const inputTambah = document.getElementById('tahun_ajaran_tambah');
+    const inputEdit = document.getElementById('edit_tahun_ajaran');
+
+    inputTambah.addEventListener('input', function() {
+        sanitizeTahunInput(this);
+        document.getElementById('peringatan_tahun_tambah').style.display = 'none';
+    });
+    inputEdit.addEventListener('input', function() {
+        sanitizeTahunInput(this);
+        document.getElementById('peringatan_tahun_edit').style.display = 'none';
+    });
+
     function handleTambahSubmit(form) {
-        const tanggalMulai = form.tanggal_mulai.value; // format YYYY-MM-DD dari <input type="date">
+        const tahunVal = form.tahun_ajaran.value.trim();
+        if (!isTahunAjaranValid(tahunVal)) {
+            document.getElementById('peringatan_tahun_tambah').style.display = 'block';
+            form.tahun_ajaran.focus();
+            return false;
+        }
+
+        const tanggalMulai = form.tanggal_mulai.value;
         if (tanggalMulai) {
             const today = getTodayStr();
-            if (tanggalMulai > today) { // aman dibandingin sebagai string krn formatnya YYYY-MM-DD
+            if (tanggalMulai > today) {
                 const pesan = `Perhatian: Tanggal mulai yang Anda pilih adalah ${formatTanggalIndo(tanggalMulai)}, sedangkan hari ini masih ${formatTanggalIndo(today)}.\n\nPeriode ini baru bisa mulai diisi (siswa/admin) setelah tanggal tersebut tiba. Jika ingin mengubah tanggal mulai nanti, Anda bisa mengklik aksi Edit.\n\nLanjutkan membuka periode ini?`;
-
-                // pastikan modal konfirmasi tampil DI ATAS modal Tambah Periode
                 document.getElementById('confirmModal').style.zIndex = '10000';
-
                 return confirmDelete(form, pesan);
             }
+        }
+        return true;
+    }
+
+    function handleEditSubmit(form) {
+        const tahunVal = form.tahun_ajaran.value.trim();
+        if (!isTahunAjaranValid(tahunVal)) {
+            document.getElementById('peringatan_tahun_edit').style.display = 'block';
+            form.tahun_ajaran.focus();
+            return false;
         }
         return true;
     }

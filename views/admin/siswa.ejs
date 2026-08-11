@@ -21,7 +21,7 @@
                     <div id="tutorialSiswa" class="tutorial-content">
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
                             <li>Klik <strong>"Unduh Template"</strong> untuk mendapatkan format Excel yang sesuai (kolom NISN akan berwarna kuning, wajib diisi dan tidak boleh sama).</li>
-                            <li>Isi data siswa di template tersebut, satu baris untuk satu siswa.</li>
+                            <li>Isi data siswa di template tersebut, satu baris untuk satu siswa. NISN hanya angka, Nama dan Pekerjaan hanya huruf.</li>
                             <li>Klik <strong>"Import Excel"</strong> dan unggah file yang sudah diisi.</li>
                             <li>Atau gunakan <strong>"Tambah Siswa"</strong> untuk menambahkan data satu per satu secara manual.</li>
                         </ol>
@@ -81,18 +81,18 @@
                                     <td><%= s.jenis_kelamin %></td>
                                     <td><%= s.sekolah_asal %></td>
                                     <td><span class="badge badge-<%= s.status_pip_pkh ? 'green' : 'red' %>"><%= s.status_pip_pkh ? 'Ya' : 'Tidak' %></span></td>
-                                    <td class="action-cell">
-                                        <% if (!terkunci) { %>
-                                            <button class="btn-icon" onclick='bukaModalEdit(<%- JSON.stringify(s) %>)'><i class="bi bi-pencil-square"></i></button>
-                                        <% } %>
-                                        <% if (!statusFinal) { %>
-                                            <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST" onsubmit="return confirmDelete(this, 'Hapus data siswa ini?');">
-                                                <button type="submit" class="btn-icon btn-icon-danger"><i class="bi bi-trash-fill"></i></button>
-                                            </form>
-                                        <% } else { %>
-                                            <span style="color:#999; font-size:12px;">Terkunci</span>
-                                        <% } %>
-                                    </td>
+                                        <td class="action-cell">
+                                            <% if (!terkunci) { %>
+                                                <button class="btn-icon" onclick='bukaModalEdit(<%- JSON.stringify(s) %>)'><i class="bi bi-pencil-square"></i></button>
+                                            <% } %>
+                                            <% if (!terkunci && !statusFinal) { %>
+                                                <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST" onsubmit="return confirmDelete(this, 'Hapus data siswa ini?');">
+                                                    <button type="submit" class="btn-icon btn-icon-danger"><i class="bi bi-trash-fill"></i></button>
+                                                </form>
+                                            <% } else { %>
+                                                <span style="color:#999; font-size:12px;">Terkunci</span>
+                                            <% } %>
+                                        </td>
                                 </tr>
                             <% }); %>
                         </tbody>
@@ -111,27 +111,28 @@
                 <h3><i class="bi bi-person-plus-fill"></i> Tambah Data Siswa</h3>
                 <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
             </div>
-            <form action="/admin/siswa/create" method="POST">
-                <label>NISN</label>
-                <input type="text" name="nisn" required>
-                <label>Nama Lengkap</label>
-                <input type="text" name="nama" required>
+            <form action="/admin/siswa/create" method="POST" onsubmit="return validasiFormSiswa(this)">
+                <label>NISN (Hanya Angka)</label>
+                <input type="text" name="nisn" id="nisn_tambah" required autocomplete="off" maxlength="20">
+                <label>Nama Lengkap (Hanya Huruf)</label>
+                <input type="text" name="nama" id="nama_tambah" required autocomplete="off">
                 <label>Jenis Kelamin</label>
                 <select name="jenis_kelamin" required>
                     <option value="L">Laki-laki</option>
                     <option value="P">Perempuan</option>
                 </select>
-                <label>Sekolah Asal</label>
-                <input type="text" name="sekolah_asal" required>
-                <label>Pekerjaan Ayah</label>
-                <input type="text" name="pekerjaan_ayah" required>
-                <label>Pekerjaan Ibu</label>
-                <input type="text" name="pekerjaan_ibu" required>
+                <label>Sekolah Asal (Hanya Huruf)</label>
+                <input type="text" name="sekolah_asal" id="sekolah_tambah" required autocomplete="off">
+                <label>Pekerjaan Ayah (Hanya Huruf)</label>
+                <input type="text" name="pekerjaan_ayah" id="ayah_tambah" required autocomplete="off">
+                <label>Pekerjaan Ibu (Hanya Huruf)</label>
+                <input type="text" name="pekerjaan_ibu" id="ibu_tambah" required autocomplete="off">
                 <label>Penerima PIP/PKH?</label>
                 <select name="status_pip_pkh">
                     <option value="tidak">Tidak</option>
                     <option value="ya">Ya</option>
                 </select>
+                <p id="peringatan_siswa_tambah" style="color:#e74c3c; font-size:12px; margin-top:8px; display:none;"></p>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan</button>
@@ -147,28 +148,29 @@
                 <h3><i class="bi bi-pencil-square"></i> Edit Data Siswa</h3>
                 <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
             </div>
-            <form action="/admin/siswa/update" method="POST">
+            <form action="/admin/siswa/update" method="POST" onsubmit="return validasiFormSiswa(this)">
                 <input type="hidden" name="id_siswa" id="edit_id_siswa">
-                <label>NISN</label>
-                <input type="text" name="nisn" id="edit_nisn" required>
-                <label>Nama Lengkap</label>
-                <input type="text" name="nama" id="edit_nama" required>
+                <label>NISN (Hanya Angka)</label>
+                <input type="text" name="nisn" id="edit_nisn" required autocomplete="off" maxlength="20">
+                <label>Nama Lengkap (Hanya Huruf)</label>
+                <input type="text" name="nama" id="edit_nama" required autocomplete="off">
                 <label>Jenis Kelamin</label>
                 <select name="jenis_kelamin" id="edit_jk" required>
                     <option value="L">Laki-laki</option>
                     <option value="P">Perempuan</option>
                 </select>
-                <label>Sekolah Asal</label>
-                <input type="text" name="sekolah_asal" id="edit_sekolah" required>
-                <label>Pekerjaan Ayah</label>
-                <input type="text" name="pekerjaan_ayah" id="edit_ayah" required>
-                <label>Pekerjaan Ibu</label>
-                <input type="text" name="pekerjaan_ibu" id="edit_ibu" required>
+                <label>Sekolah Asal (Hanya Huruf)</label>
+                <input type="text" name="sekolah_asal" id="edit_sekolah" required autocomplete="off">
+                <label>Pekerjaan Ayah (Hanya Huruf)</label>
+                <input type="text" name="pekerjaan_ayah" id="edit_ayah" required autocomplete="off">
+                <label>Pekerjaan Ibu (Hanya Huruf)</label>
+                <input type="text" name="pekerjaan_ibu" id="edit_ibu" required autocomplete="off">
                 <label>Penerima PIP/PKH?</label>
                 <select name="status_pip_pkh" id="edit_pip">
                     <option value="tidak">Tidak</option>
                     <option value="ya">Ya</option>
                 </select>
+                <p id="peringatan_siswa_edit" style="color:#e74c3c; font-size:12px; margin-top:8px; display:none;"></p>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -186,7 +188,7 @@
             </div>
             <form action="/admin/siswa/import" method="POST" enctype="multipart/form-data">
                 <p style="font-size:13px; color:#777; margin-bottom:15px;">
-                    Pastikan file Excel memiliki kolom: NISN, NAMA SISWA, JENIS KELAMIN SISWA, ASAL SEKOLAH, PEKERJAAAN AYAH, PEKERJAAN IBU, APAKAH ANANDA PENERIMA PIP / PKH.
+                    Pastikan file Excel memiliki kolom: NISN (hanya angka), NAMA SISWA (hanya huruf), JENIS KELAMIN SISWA, ASAL SEKOLAH (hanya huruf), PEKERJAAAN AYAH (hanya huruf), PEKERJAAN IBU (hanya huruf), APAKAH ANANDA PENERIMA PIP / PKH. Baris dengan data yang tidak sesuai format akan otomatis dilewati.
                 </p>
                 <label>Pilih File Excel (.xlsx / .xls)</label>
                 <input type="file" name="fileExcel" accept=".xlsx,.xls" required>
@@ -209,6 +211,79 @@
             document.getElementById('edit_ibu').value = s.pekerjaan_ibu || '';
             document.getElementById('edit_pip').value = s.status_pip_pkh ? 'ya' : 'tidak';
             document.getElementById('modalEdit').style.display = 'flex';
+        }
+
+        // ==== VALIDASI STRICT: NISN ANGKA SAJA, NAMA/PEKERJAAN HURUF SAJA ====
+        const REGEX_ANGKA_SAJA = /^[0-9]+$/;
+        const REGEX_HURUF_SAJA_SISWA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+
+        function sanitizeAngka(input) {
+            input.value = input.value.replace(/[^0-9]/g, '');
+        }
+
+        function sanitizeHurufSiswa(input) {
+            let val = input.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '');
+            val = val.replace(/\s{2,}/g, ' ');
+            input.value = val;
+        }
+
+        ['nisn_tambah', 'edit_nisn'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', function() { sanitizeAngka(this); });
+        });
+
+        ['nama_tambah', 'sekolah_tambah', 'ayah_tambah', 'ibu_tambah',
+         'edit_nama', 'edit_sekolah', 'edit_ayah', 'edit_ibu'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', function() { sanitizeHurufSiswa(this); });
+        });
+
+        function validasiFormSiswa(form) {
+            const isEdit = form.querySelector('#edit_id_siswa') !== null;
+            const peringatanEl = document.getElementById(isEdit ? 'peringatan_siswa_edit' : 'peringatan_siswa_tambah');
+
+            const nisnVal = form.nisn.value.trim();
+            const namaVal = form.nama.value.trim();
+            const sekolahVal = form.sekolah_asal.value.trim();
+            const ayahVal = form.pekerjaan_ayah.value.trim();
+            const ibuVal = form.pekerjaan_ibu.value.trim();
+
+            if (!nisnVal || !REGEX_ANGKA_SAJA.test(nisnVal)) {
+                peringatanEl.innerText = 'NISN wajib diisi dan hanya boleh berisi angka.';
+                peringatanEl.style.display = 'block';
+                form.nisn.focus();
+                return false;
+            }
+            if (!namaVal || !REGEX_HURUF_SAJA_SISWA.test(namaVal)) {
+                peringatanEl.innerText = 'Nama lengkap wajib diisi dan hanya boleh berisi huruf.';
+                peringatanEl.style.display = 'block';
+                form.nama.focus();
+                return false;
+            }
+            if (!sekolahVal || !REGEX_HURUF_SAJA_SISWA.test(sekolahVal)) {
+                peringatanEl.innerText = 'Sekolah asal wajib diisi dan hanya boleh berisi huruf.';
+                peringatanEl.style.display = 'block';
+                form.sekolah_asal.focus();
+                return false;
+            }
+            if (!ayahVal || !REGEX_HURUF_SAJA_SISWA.test(ayahVal)) {
+                peringatanEl.innerText = 'Pekerjaan ayah wajib diisi dan hanya boleh berisi huruf.';
+                peringatanEl.style.display = 'block';
+                form.pekerjaan_ayah.focus();
+                return false;
+            }
+            if (!ibuVal || !REGEX_HURUF_SAJA_SISWA.test(ibuVal)) {
+                peringatanEl.innerText = 'Pekerjaan ibu wajib diisi dan hanya boleh berisi huruf.';
+                peringatanEl.style.display = 'block';
+                form.pekerjaan_ibu.focus();
+                return false;
+            }
+
+            form.nama.value = namaVal;
+            form.sekolah_asal.value = sekolahVal;
+            form.pekerjaan_ayah.value = ayahVal;
+            form.pekerjaan_ibu.value = ibuVal;
+            return true;
         }
     </script>
 </body>

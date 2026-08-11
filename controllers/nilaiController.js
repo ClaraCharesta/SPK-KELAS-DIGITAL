@@ -9,8 +9,6 @@ const { cekTerkunci } = require('../utils/lockHelper');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
 const waspasModel = require('../models/waspasModel');
 
-
-
 const nilaiController = {
     async index(req, res) {
         try {
@@ -23,10 +21,8 @@ const nilaiController = {
                     success: null
                 });
             }
-
             const siswaList = await nilaiModel.getSiswaWithNilaiStatus(periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
-
             res.render('admin/nilai', {
                 user: req.session.user, siswaList, terkunci, activePage: 'nilai',
                 pageTitle: 'Input Nilai Siswa',
@@ -39,18 +35,14 @@ const nilaiController = {
         }
     },
 
-
     async showForm(req, res) {
         try {
             const { id_siswa } = req.params;
             const periode = await periodeModel.getActivePeriode();
             const siswa = await nilaiModel.getSiswaById(id_siswa);
-
             if (!siswa) return res.redirect('/admin/nilai?error=Siswa tidak ditemukan.');
-
             const kriteriaList = await nilaiModel.getKriteriaWithNilai(id_siswa, periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
-
             res.render('admin/nilai-form', {
                 user: req.session.user, siswa, kriteriaList, terkunci, activePage: 'nilai',
                 pageTitle: 'Input Nilai: ' + siswa.nama,
@@ -67,33 +59,25 @@ const nilaiController = {
         try {
             const { id_siswa } = req.params;
             const periode = await periodeModel.getActivePeriode();
-
             if (periode && await cekTerkunci(periode.id_periode)) {
                 return res.redirect(`/admin/nilai/${id_siswa}?error=` + encodeURIComponent('Nilai ini terkunci karena status siswa telah final.'));
             }
-
             if (periode) {
                 const bobotTersedia = await waspasModel.checkBobotTersedia(periode.id_periode);
                 if (!bobotTersedia) {
                     return res.redirect(`/admin/nilai/${id_siswa}?error=` + encodeURIComponent('Belum bisa menginput nilai. Hitung bobot kriteria (FUCOM) terlebih dahulu di menu Pembobotan Kriteria.'));
                 }
             }
-
             const { id_kriteria, nilai_mentah } = req.body;
-
             const idKriteriaArr = Array.isArray(id_kriteria) ? id_kriteria : [id_kriteria];
             const nilaiArr = Array.isArray(nilai_mentah) ? nilai_mentah : [nilai_mentah];
-
             for (let i = 0; i < idKriteriaArr.length; i++) {
                 const nilai = nilaiArr[i] === '' ? null : nilaiArr[i];
                 await nilaiModel.upsertNilai(id_siswa, idKriteriaArr[i], nilai);
             }
-
             const siswa = await nilaiModel.getSiswaById(id_siswa);
             await userModel.logActivity(req.session.user.id_user, `Menginput/memperbarui nilai siswa: ${siswa.nama}`);
-
             if (periode) await waspasModel.invalidateHasilJikaAda(periode.id_periode);
-
             res.redirect(`/admin/nilai?success=${encodeURIComponent('Nilai siswa ' + siswa.nama + ' berhasil disimpan.')}`);
         } catch (error) {
             console.error(error);
@@ -104,7 +88,6 @@ const nilaiController = {
     async getSiswaWithAllNilai(id_periode) {
         const siswaList = await nilaiModel.getSiswaWithNilaiStatus(id_periode);
         const result = [];
-
         for (const s of siswaList) {
             const [nilaiRows] = await db.query(
                 'SELECT id_kriteria, nilai_mentah FROM nilai_siswa WHERE id_siswa = ?', [s.id_siswa]
@@ -113,7 +96,6 @@ const nilaiController = {
             nilaiRows.forEach(n => { nilai[n.id_kriteria] = n.nilai_mentah; });
             result.push({ ...s, nilai });
         }
-
         return result;
     },
 
@@ -123,14 +105,11 @@ const nilaiController = {
             if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.status(400).send(!periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode));
             }
-
             const siswaList = await nilaiModel.getSiswaWithAllNilai(periode.id_periode);
             const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
-
             if (kriteriaList.length === 0) {
                 return res.status(400).send('Belum ada kriteria terdaftar. Hubungi Super Admin.');
             }
-
             await generateTemplateNilai(res, siswaList, kriteriaList);
         } catch (error) {
             console.error('ERROR DOWNLOAD TEMPLATE NILAI:', error);
@@ -156,7 +135,7 @@ const nilaiController = {
             const bobotTersedia = await waspasModel.checkBobotTersedia(periode.id_periode);
             if (!bobotTersedia) {
                 fs.unlinkSync(req.file.path);
-                return res.redirect('/admin/nilai?error=' + encodeURIComponent('Belum bisa mengimpor nilai. Hitung bobot kriteria (FUCOM) terlebih dahulu di menu Pembobotan Kriteria.'));
+                return res.redirect('/admin/nilai?error=' + encodeURIComponent('Belum bisa mengimpor nilai. Hitung bobot kriteria (FUCOM) terlebih dahulu.'));
             }
 
             const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
@@ -171,7 +150,7 @@ const nilaiController = {
 
             const dataToSave = [];
             const nisnTidakDitemukan = [];
-            const nisnTidakLengkap = [];
+            const nilaiTidakValid = [];
 
             for (const row of jsonData) {
                 const nisn = String(row['NISN'] || '').trim();
@@ -183,28 +162,50 @@ const nilaiController = {
                     continue;
                 }
 
-                const namaKriteriaList = Object.keys(kriteriaMap);
-                const semuaTerisi = namaKriteriaList.every(
-                    nk => row[nk] !== undefined && row[nk] !== null && row[nk] !== ''
-                );
+                Object.keys(kriteriaMap).forEach(namaKriteria => {
+                    if (row[namaKriteria] === undefined || row[namaKriteria] === '') return;
 
-                if (!semuaTerisi) {
-                    nisnTidakLengkap.push(nisn);
-                    continue;
-                }
+                    const rawVal = row[namaKriteria];
+                    const namaLower = namaKriteria.toLowerCase();
+                    const isSkor100 = namaLower.indexOf('akademik') !== -1 || namaLower.indexOf('psikotes') !== -1;
+                    const minVal = isSkor100 ? 10 : 1;
+                    const maxVal = isSkor100 ? 100 : 5;
 
-                namaKriteriaList.forEach(namaKriteria => {
+                    // Validasi ketat: HARUS berupa angka murni (bukan string huruf, bukan campuran)
+                    const nilaiNumerik = Number(rawVal);
+                    const isNumberValid = typeof rawVal === 'number' || (typeof rawVal === 'string' && /^-?\d*\.?\d+$/.test(rawVal.trim()));
+
+                    let alasanGagal = null;
+
+                    if (!isNumberValid || isNaN(nilaiNumerik)) {
+                        alasanGagal = 'nilai bukan angka';
+                    } else if (nilaiNumerik < minVal || nilaiNumerik > maxVal) {
+                        alasanGagal = `nilai di luar skala (harus ${minVal}-${maxVal})`;
+                    } else if (!isSkor100 && !Number.isInteger(nilaiNumerik)) {
+                        alasanGagal = 'skala 1-5 harus bilangan bulat, tanpa desimal';
+                    }
+
+                    if (alasanGagal) {
+                        nilaiTidakValid.push(`NISN ${nisn} - ${namaKriteria}: ${alasanGagal} (nilai diinput: "${rawVal}")`);
+                        return; // baris kriteria ini dilewati, tidak disimpan
+                    }
+
                     dataToSave.push({
                         id_siswa: siswa.id_siswa,
                         nisn: nisn,
                         id_kriteria: kriteriaMap[namaKriteria],
-                        nilai_mentah: row[namaKriteria]
+                        nilai_mentah: nilaiNumerik
                     });
                 });
             }
 
             if (dataToSave.length === 0) {
-                return res.redirect('/admin/nilai?error=Tidak ada data nilai lengkap yang bisa disimpan. Pastikan setiap siswa punya nilai untuk SEMUA kolom kriteria.');
+                let pesanGagalTotal = 'Tidak ada data nilai valid yang bisa disimpan.';
+                if (nilaiTidakValid.length > 0) {
+                    pesanGagalTotal += ' Detail kegagalan: ' + nilaiTidakValid.slice(0, 5).join('; ');
+                    if (nilaiTidakValid.length > 5) pesanGagalTotal += ` (dan ${nilaiTidakValid.length - 5} lainnya)`;
+                }
+                return res.redirect('/admin/nilai?error=' + encodeURIComponent(pesanGagalTotal));
             }
 
             const hasil = await nilaiModel.bulkUpsertNilai(dataToSave);
@@ -215,8 +216,8 @@ const nilaiController = {
             if (nisnTidakDitemukan.length > 0) {
                 pesan += ` ${nisnTidakDitemukan.length} NISN tidak ditemukan di sistem (dilewati).`;
             }
-            if (nisnTidakLengkap.length > 0) {
-                pesan += ` ${nisnTidakLengkap.length} siswa dilewati karena nilai belum lengkap untuk semua kriteria.`;
+            if (nilaiTidakValid.length > 0) {
+                pesan += ` ${nilaiTidakValid.length} nilai gagal disimpan karena tidak valid (skala/format salah).`;
             }
 
             res.redirect(`/admin/nilai?success=${encodeURIComponent(pesan)}`);
@@ -226,8 +227,6 @@ const nilaiController = {
             res.redirect('/admin/nilai?error=Gagal membaca file Excel. Pastikan format sesuai template.');
         }
     },
-
-
 };
 
 module.exports = nilaiController;

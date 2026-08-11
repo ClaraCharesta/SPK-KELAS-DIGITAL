@@ -27,6 +27,7 @@
                             <li>Jika ada perubahan data siswa, nilai, kriteria, atau bobot setelah ini, hasil akan otomatis dikosongkan dan perlu dihitung ulang.</li>
                             <li>Centang siswa yang ingin ditetapkan <strong>Lulus</strong> secara bertahap sesuai kuota, atau gunakan dropdown status per siswa.</li>
                             <li>Begitu ada siswa Lulus atau Mengundurkan Diri, perhitungan ulang dan penghapusan hasil akan terkunci. Anda tetap bisa menetapkan status siswa lain sampai kuota terpenuhi.</li>
+                            <li>Begitu kuota Lulus terpenuhi, seluruh siswa yang masih berstatus Diusulkan/Cadangan otomatis ditandai <strong>"Tidak Masuk Kelas Digital"</strong>.</li>
                         </ol>
                     </div>
                 </div>
@@ -117,7 +118,7 @@
                             <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
                             <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
                             <span><span class="dot-legend badge-mengundurkan_diri"></span> Mengundurkan Diri</span>
-                            <span><span class="dot-legend badge-tidak_lulus"></span> Tidak Lulus</span>
+                            <span><span class="dot-legend badge-tidak_lulus"></span> Tidak Masuk Kelas Digital</span>
                         </div>
 
                         <% if (!kuotaPenuh) { %>
@@ -152,7 +153,7 @@
                                                         <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' 
                                                             : (h.status_penerimaan === 'lulus' ? 'Lulus' 
                                                             : (h.status_penerimaan === 'mengundurkan_diri' ? 'Mundur' 
-                                                            : (h.status_penerimaan === 'tidak_lulus' ? 'Tidak Lulus' 
+                                                            : (h.status_penerimaan === 'tidak_lulus' ? 'Tidak Masuk Kelas Digital' 
                                                             : 'Cadangan'))) %>
                                                     </span>
                                                 </td>
