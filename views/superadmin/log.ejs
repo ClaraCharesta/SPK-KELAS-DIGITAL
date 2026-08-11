@@ -9,7 +9,6 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <div class="panel">
                     <div class="panel-header-row">
@@ -30,31 +29,31 @@
                             <% } %>
                         </form>
                     </div>
-
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Waktu</th><th>Nama</th><th>Role</th><th>Aktivitas</th></tr>
-                        </thead>
-                        <tbody>
-                            <% if (logs.length === 0) { %>
-                                <tr><td colspan="4" class="empty-state">Belum ada aktivitas tercatat.</td></tr>
-                            <% } %>
-                            <% logs.forEach(function(l) { %>
-                                <tr>
-                                    <td style="white-space:nowrap;"><%= new Date(l.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) %></td>
-                                    <td><%= l.nama %></td>
-                                    <td>
-                                        <span class="badge badge-<%= l.role === 'super_admin' ? 'purple' : (l.role === 'admin' ? 'blue' : 'green') %>">
-                                            <%= l.role === 'super_admin' ? 'Super Admin' : (l.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %>
-                                        </span>
-                                    </td>
-                                    <td><%= l.aktivitas %></td>
-                                </tr>
-                            <% }); %>
-                        </tbody>
-                    </table>
+                    <div class="table-scroll">
+                        <table class="data-table" style="min-width:700px;">
+                            <thead>
+                                <tr><th style="white-space:nowrap;">Waktu</th><th style="white-space:nowrap;">Nama</th><th style="white-space:nowrap;">Role</th><th>Aktivitas</th></tr>
+                            </thead>
+                            <tbody>
+                                <% if (logs.length === 0) { %>
+                                    <tr><td colspan="4" class="empty-state">Belum ada aktivitas tercatat.</td></tr>
+                                <% } %>
+                                <% logs.forEach(function(l) { %>
+                                    <tr>
+                                        <td style="white-space:nowrap;"><%= new Date(l.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) %></td>
+                                        <td style="white-space:nowrap;"><%= l.nama %></td>
+                                        <td style="white-space:nowrap;">
+                                            <span class="badge badge-<%= l.role === 'super_admin' ? 'purple' : (l.role === 'admin' ? 'blue' : 'green') %>">
+                                                <%= l.role === 'super_admin' ? 'Super Admin' : (l.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %>
+                                            </span>
+                                        </td>
+                                        <td><%= l.aktivitas %></td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>

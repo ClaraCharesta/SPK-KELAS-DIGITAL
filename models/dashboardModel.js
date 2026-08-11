@@ -55,12 +55,22 @@ const dashboardModel = {
     // Dipakai untuk chart — pakai periode TERAKHIR (bukan cuma yang aktif), supaya tetap tampil walau ditutup
     async getChartData(id_periode) {
         if (!id_periode) {
-            return { diusulkan: 0, cadangan: 0, lulus: 0, bobotKriteria: [], sebaranNilai: [0, 0, 0, 0, 0] };
+            return {
+                diusulkan: 0,
+                cadangan: 0,
+                lulus: 0,
+                tidak_lulus: 0,
+                mengundurkan_diri: 0,
+                bobotKriteria: [],
+                sebaranNilai: [0, 0, 0, 0, 0]
+            };
         }
 
         const [[{ diusulkan }]] = await db.query("SELECT COUNT(*) AS diusulkan FROM siswa WHERE id_periode = ? AND status_penerimaan = 'diusulkan'", [id_periode]);
         const [[{ cadangan }]] = await db.query("SELECT COUNT(*) AS cadangan FROM siswa WHERE id_periode = ? AND status_penerimaan = 'cadangan'", [id_periode]);
         const [[{ lulus }]] = await db.query("SELECT COUNT(*) AS lulus FROM siswa WHERE id_periode = ? AND status_penerimaan = 'lulus'", [id_periode]);
+        const [[{ tidak_lulus }]] = await db.query("SELECT COUNT(*) AS tidak_lulus FROM siswa WHERE id_periode = ? AND status_penerimaan = 'tidak_lulus'", [id_periode]);
+        const [[{ mengundurkan_diri }]] = await db.query("SELECT COUNT(*) AS mengundurkan_diri FROM siswa WHERE id_periode = ? AND status_penerimaan = 'mengundurkan_diri'", [id_periode]);
 
         const [bobotKriteria] = await db.query(
             'SELECT nama_kriteria, nilai_bobot FROM bobot_kriteria bk JOIN kriteria k ON bk.id_kriteria = k.id_kriteria WHERE bk.id_periode = ?', [id_periode]
@@ -77,7 +87,7 @@ const dashboardModel = {
             else sebaran[4]++;
         });
 
-        return { diusulkan, cadangan, lulus, bobotKriteria, sebaranNilai: sebaran };
+        return { diusulkan, cadangan, lulus, tidak_lulus, mengundurkan_diri, bobotKriteria, sebaranNilai: sebaran };
     },
 
     async getRiwayatAntarPeriode() {

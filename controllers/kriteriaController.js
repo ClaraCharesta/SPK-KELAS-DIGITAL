@@ -3,6 +3,8 @@ const periodeModel = require('../models/periodeModel');
 const userModel = require('../models/userModel');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
 
+const REGEX_HURUF_SAJA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+
 const kriteriaController = {
     // Untuk Super Admin — full CRUD
         async index(req, res) {
@@ -58,8 +60,17 @@ const kriteriaController = {
 
     async create(req, res) {
         try {
+            const { nama_kriteria, jenis, keterangan } = req.body;
 
-            
+            if (!nama_kriteria || !jenis) {
+                return res.redirect('/superadmin/kriteria?error=Nama kriteria dan jenis wajib diisi.');
+            }
+
+            // VALIDASI BARU: Nama kriteria hanya boleh huruf dan spasi
+            if (!REGEX_HURUF_SAJA.test(nama_kriteria.trim())) {
+                return res.redirect('/superadmin/kriteria?error=Nama kriteria hanya boleh berisi huruf dan spasi.');
+            }
+
             const periode = await periodeModel.getActivePeriode();
             if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.redirect('/superadmin/kriteria?error=' + encodeURIComponent(!periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode)));
@@ -69,12 +80,7 @@ const kriteriaController = {
                 return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');
             }
 
-            const { nama_kriteria, jenis, keterangan } = req.body;
-            if (!nama_kriteria || !jenis) {
-                return res.redirect('/superadmin/kriteria?error=Nama kriteria dan jenis wajib diisi.');
-            }
-
-            // VALIDASI BARU: Cek duplikasi nama kriteria dalam periode yang sama
+            // VALIDASI: Cek duplikasi nama kriteria dalam periode yang sama
             const namaSudahAda = await kriteriaModel.checkNamaExists(periode.id_periode, nama_kriteria.trim());
             if (namaSudahAda) {
                 return res.redirect('/superadmin/kriteria?error=Kriteria dengan nama tersebut sudah ada pada periode ini.');
@@ -92,10 +98,20 @@ const kriteriaController = {
 
     async update(req, res) {
         try {
-            const periode = await periodeModel.getActivePeriode();
             const { id_kriteria, nama_kriteria, jenis, keterangan } = req.body;
 
-            // VALIDASI BARU: Cek duplikasi nama kriteria (kecuali dirinya sendiri)
+            if (!nama_kriteria || !jenis) {
+                return res.redirect('/superadmin/kriteria?error=Nama kriteria dan jenis wajib diisi.');
+            }
+
+            // VALIDASI BARU: Nama kriteria hanya boleh huruf dan spasi
+            if (!REGEX_HURUF_SAJA.test(nama_kriteria.trim())) {
+                return res.redirect('/superadmin/kriteria?error=Nama kriteria hanya boleh berisi huruf dan spasi.');
+            }
+
+            const periode = await periodeModel.getActivePeriode();
+
+            // VALIDASI: Cek duplikasi nama kriteria (kecuali dirinya sendiri)
             const namaSudahAda = await kriteriaModel.checkNamaExists(periode.id_periode, nama_kriteria.trim(), id_kriteria);
             if (namaSudahAda) {
                 return res.redirect('/superadmin/kriteria?error=Kriteria dengan nama tersebut sudah ada pada periode ini.');
@@ -116,7 +132,7 @@ const kriteriaController = {
             const { id_kriteria } = req.params;
             const kriteria = await kriteriaModel.getById(id_kriteria);
 
-            // VALIDASI BARU: Cegah hapus kriteria yang sudah punya nilai siswa atau bobot FUCOM
+            // VALIDASI: Cegah hapus kriteria yang sudah punya nilai siswa atau bobot FUCOM
             const sedangDipakai = await kriteriaModel.checkSedangDipakai(id_kriteria);
             if (sedangDipakai) {
                 return res.redirect('/superadmin/kriteria?error=Kriteria ini tidak dapat dihapus karena sudah memiliki data nilai siswa atau bobot FUCOM terkait.');
@@ -132,7 +148,6 @@ const kriteriaController = {
         }
     },
 
-    
 };
 
 module.exports = kriteriaController;
