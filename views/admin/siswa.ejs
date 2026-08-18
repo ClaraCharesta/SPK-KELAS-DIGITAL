@@ -21,7 +21,7 @@
                     <div id="tutorialSiswa" class="tutorial-content">
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
                             <li>Klik <strong>"Unduh Template"</strong> untuk mendapatkan format Excel yang sesuai (kolom NISN akan berwarna kuning, wajib diisi dan tidak boleh sama).</li>
-                            <li>Isi data siswa di template tersebut, satu baris untuk satu siswa. NISN hanya angka, Nama dan Pekerjaan hanya huruf.</li>
+                            <li>Isi data siswa di template tersebut, satu baris untuk satu siswa. NISN hanya angka, Nama dan Pekerjaan hanya huruf, Sekolah Asal boleh huruf dan angka.</li>
                             <li>Klik <strong>"Import Excel"</strong> dan unggah file yang sudah diisi.</li>
                             <li>Atau gunakan <strong>"Tambah Siswa"</strong> untuk menambahkan data satu per satu secara manual.</li>
                         </ol>
@@ -121,7 +121,7 @@
                     <option value="L">Laki-laki</option>
                     <option value="P">Perempuan</option>
                 </select>
-                <label>Sekolah Asal (Hanya Huruf)</label>
+                <label>Sekolah Asal (Huruf dan Angka, contoh: SMPN 1 Padang)</label>
                 <input type="text" name="sekolah_asal" id="sekolah_tambah" required autocomplete="off">
                 <label>Pekerjaan Ayah (Hanya Huruf)</label>
                 <input type="text" name="pekerjaan_ayah" id="ayah_tambah" required autocomplete="off">
@@ -159,7 +159,7 @@
                     <option value="L">Laki-laki</option>
                     <option value="P">Perempuan</option>
                 </select>
-                <label>Sekolah Asal (Hanya Huruf)</label>
+                <label>Sekolah Asal (Huruf dan Angka, contoh: SMPN 1 Padang)</label>
                 <input type="text" name="sekolah_asal" id="edit_sekolah" required autocomplete="off">
                 <label>Pekerjaan Ayah (Hanya Huruf)</label>
                 <input type="text" name="pekerjaan_ayah" id="edit_ayah" required autocomplete="off">
@@ -188,7 +188,7 @@
             </div>
             <form action="/admin/siswa/import" method="POST" enctype="multipart/form-data">
                 <p style="font-size:13px; color:#777; margin-bottom:15px;">
-                    Pastikan file Excel memiliki kolom: NISN (hanya angka), NAMA SISWA (hanya huruf), JENIS KELAMIN SISWA, ASAL SEKOLAH (hanya huruf), PEKERJAAAN AYAH (hanya huruf), PEKERJAAN IBU (hanya huruf), APAKAH ANANDA PENERIMA PIP / PKH. Baris dengan data yang tidak sesuai format akan otomatis dilewati.
+                    Pastikan file Excel memiliki kolom: NISN (hanya angka), NAMA SISWA (hanya huruf), JENIS KELAMIN SISWA, ASAL SEKOLAH (huruf dan angka diperbolehkan, contoh: SMPN 1 Padang), PEKERJAAAN AYAH (hanya huruf), PEKERJAAN IBU (hanya huruf), APAKAH ANANDA PENERIMA PIP / PKH. Baris dengan data yang tidak sesuai format akan otomatis dilewati.
                 </p>
                 <label>Pilih File Excel (.xlsx / .xls)</label>
                 <input type="file" name="fileExcel" accept=".xlsx,.xls" required>
@@ -213,9 +213,13 @@
             document.getElementById('modalEdit').style.display = 'flex';
         }
 
-        // ==== VALIDASI STRICT: NISN ANGKA SAJA, NAMA/PEKERJAAN HURUF SAJA ====
+        // ==== VALIDASI STRICT ====
+        // NISN: angka saja
+        // Nama & Pekerjaan: huruf saja
+        // Sekolah Asal: huruf DAN angka (contoh: "SMPN 1 Padang")
         const REGEX_ANGKA_SAJA = /^[0-9]+$/;
         const REGEX_HURUF_SAJA_SISWA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+        const REGEX_SEKOLAH_SISWA = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9]+( [A-Za-zÀ-ÖØ-öø-ÿ0-9]+)*$/;
 
         function sanitizeAngka(input) {
             input.value = input.value.replace(/[^0-9]/g, '');
@@ -227,15 +231,26 @@
             input.value = val;
         }
 
+        function sanitizeSekolahSiswa(input) {
+            let val = input.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ0-9\s]/g, '');
+            val = val.replace(/\s{2,}/g, ' ');
+            input.value = val;
+        }
+
         ['nisn_tambah', 'edit_nisn'].forEach(function(id) {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', function() { sanitizeAngka(this); });
         });
 
-        ['nama_tambah', 'sekolah_tambah', 'ayah_tambah', 'ibu_tambah',
-         'edit_nama', 'edit_sekolah', 'edit_ayah', 'edit_ibu'].forEach(function(id) {
+        ['nama_tambah', 'ayah_tambah', 'ibu_tambah',
+         'edit_nama', 'edit_ayah', 'edit_ibu'].forEach(function(id) {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', function() { sanitizeHurufSiswa(this); });
+        });
+
+        ['sekolah_tambah', 'edit_sekolah'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', function() { sanitizeSekolahSiswa(this); });
         });
 
         function validasiFormSiswa(form) {
@@ -260,8 +275,8 @@
                 form.nama.focus();
                 return false;
             }
-            if (!sekolahVal || !REGEX_HURUF_SAJA_SISWA.test(sekolahVal)) {
-                peringatanEl.innerText = 'Sekolah asal wajib diisi dan hanya boleh berisi huruf.';
+            if (!sekolahVal || !REGEX_SEKOLAH_SISWA.test(sekolahVal)) {
+                peringatanEl.innerText = 'Sekolah asal wajib diisi (huruf dan angka diperbolehkan, contoh: SMPN 1 Padang).';
                 peringatanEl.style.display = 'block';
                 form.sekolah_asal.focus();
                 return false;

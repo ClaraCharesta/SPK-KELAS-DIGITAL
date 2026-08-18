@@ -19,7 +19,7 @@
                 <div class="panel">
                     <% if (terkunci) { %>
                         <div class="alert" style="background:#fdf1de; color:#b35c00;">
-                            <i class="bi bi-lock-fill"></i> Kriteria terkunci karena perankingan sudah dijalankan pada periode ini. Buka periode baru untuk mengubah kriteria.
+                            <i class="bi bi-lock-fill"></i> Kriteria terkunci karena pembobotan FUCOM sudah final dan/atau perankingan sudah dijalankan pada periode ini. Buka periode baru untuk mengubah kriteria.
                         </div>
                     <% } %>
                     <div class="panel-header-row">
@@ -77,6 +77,7 @@
             </div>
         </div>
     </div>
+
     <!-- Modal Tambah Kriteria -->
     <div class="modal-overlay" id="modalTambah">
         <div class="modal-box">
@@ -94,7 +95,7 @@
                     <option value="cost">Cost (semakin rendah semakin baik)</option>
                 </select>
                 <label>Keterangan (Opsional)</label>
-                <input type="text" name="keterangan" placeholder="Penjelasan singkat kriteria">
+                <input type="text" name="keterangan" value="Kriteria tambahan" placeholder="Penjelasan singkat kriteria">
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan</button>
@@ -102,6 +103,7 @@
             </form>
         </div>
     </div>
+
     <!-- Modal Edit Kriteria -->
     <div class="modal-overlay" id="modalEdit">
         <div class="modal-box">
@@ -127,8 +129,8 @@
                 </div>
             </form>
         </div>
-        
     </div>
+
     <script>
         function bukaModalEdit(k) {
             document.getElementById('edit_id_kriteria').value = k.id_kriteria;

@@ -1,6 +1,8 @@
 const userManagementModel = require('../models/userManagementModel');
 const userModel = require('../models/userModel');
 
+const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const userManagementController = {
     async index(req, res) {
         try {
@@ -21,18 +23,27 @@ const userManagementController = {
 
     async create(req, res) {
         try {
-            const { nama, username, password, role } = req.body;
+            const { nama, username, email, password, role } = req.body;
 
-            if (!nama || !username || !password || !role) {
-                return res.redirect('/superadmin/akun-admin?error=Semua field wajib diisi.');
+            if (!nama || !username || !email || !password || !role) {
+                return res.redirect('/superadmin/akun-admin?error=Semua field wajib diisi, termasuk email.');
             }
 
-            const exists = await userManagementModel.checkUsernameExists(username);
-            if (exists) {
+            if (!REGEX_EMAIL.test(email.trim())) {
+                return res.redirect('/superadmin/akun-admin?error=Format email tidak valid.');
+            }
+
+            const usernameExists = await userManagementModel.checkUsernameExists(username);
+            if (usernameExists) {
                 return res.redirect('/superadmin/akun-admin?error=Username sudah digunakan.');
             }
 
-            await userManagementModel.createUser(nama, username, password, role);
+            const emailExists = await userManagementModel.checkEmailExists(email.trim());
+            if (emailExists) {
+                return res.redirect('/superadmin/akun-admin?error=Email sudah digunakan oleh akun lain.');
+            }
+
+            await userManagementModel.createUser(nama, username, email.trim(), password, role);
             await userModel.logActivity(req.session.user.id_user, `Super Admin menambahkan akun baru: ${nama} (${role})`);
 
             res.redirect('/superadmin/akun-admin?success=Akun berhasil ditambahkan.');
@@ -44,8 +55,22 @@ const userManagementController = {
 
     async update(req, res) {
         try {
-            const { id_user, nama, username, role } = req.body;
-            await userManagementModel.updateUser(id_user, nama, username, role);
+            const { id_user, nama, username, email, role } = req.body;
+
+            if (!nama || !username || !email || !role) {
+                return res.redirect('/superadmin/akun-admin?error=Semua field wajib diisi, termasuk email.');
+            }
+
+            if (!REGEX_EMAIL.test(email.trim())) {
+                return res.redirect('/superadmin/akun-admin?error=Format email tidak valid.');
+            }
+
+            const emailExists = await userManagementModel.checkEmailExists(email.trim(), id_user);
+            if (emailExists) {
+                return res.redirect('/superadmin/akun-admin?error=Email sudah digunakan oleh akun lain.');
+            }
+
+            await userManagementModel.updateUser(id_user, nama, username, email.trim(), role);
             await userModel.logActivity(req.session.user.id_user, `Super Admin memperbarui akun: ${nama}`);
             res.redirect('/superadmin/akun-admin?success=Akun berhasil diperbarui.');
         } catch (error) {

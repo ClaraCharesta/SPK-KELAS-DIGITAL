@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const userManagementModel = {
     async getAllUsers() {
         const [rows] = await db.query(
-            "SELECT id_user, nama, username, role, status_aktif, created_at FROM users WHERE role IN ('admin','kepsek') ORDER BY created_at DESC"
+            "SELECT id_user, nama, username, email, role, status_aktif, created_at FROM users WHERE role IN ('admin','kepsek') ORDER BY created_at DESC"
         );
         return rows;
     },
@@ -19,19 +19,33 @@ const userManagementModel = {
         return rows.length > 0;
     },
 
-    async createUser(nama, username, password, role) {
+    // BARU: cek duplikasi email (dipakai supaya tidak ada 2 akun dengan email sama)
+    async checkEmailExists(email, excludeId = null) {
+        let query = 'SELECT id_user FROM users WHERE email = ?';
+        const params = [email];
+
+        if (excludeId) {
+            query += ' AND id_user != ?';
+            params.push(excludeId);
+        }
+
+        const [rows] = await db.query(query, params);
+        return rows.length > 0;
+    },
+
+    async createUser(nama, username, email, password, role) {
         const hashedPassword = await bcrypt.hash(password, 10);
         const [result] = await db.query(
-            'INSERT INTO users (nama, username, password, role, status_aktif) VALUES (?, ?, ?, ?, TRUE)',
-            [nama, username, hashedPassword, role]
+            'INSERT INTO users (nama, username, email, password, role, status_aktif) VALUES (?, ?, ?, ?, ?, TRUE)',
+            [nama, username, email, hashedPassword, role]
         );
         return result.insertId;
     },
 
-    async updateUser(id_user, nama, username, role) {
+    async updateUser(id_user, nama, username, email, role) {
         await db.query(
-            'UPDATE users SET nama = ?, username = ?, role = ? WHERE id_user = ?',
-            [nama, username, role, id_user]
+            'UPDATE users SET nama = ?, username = ?, email = ?, role = ? WHERE id_user = ?',
+            [nama, username, email, role, id_user]
         );
     },
 

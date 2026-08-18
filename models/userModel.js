@@ -35,6 +35,15 @@ const userModel = {
 
     async updateLastLogin(id_user) {
         await db.query('UPDATE users SET last_login = NOW() WHERE id_user = ?', [id_user]);
+    },
+
+    // Cari user berdasarkan email (hanya akun aktif) — dipakai saat proses "Lupa Password"
+    async findByEmail(email) {
+        const [rows] = await db.query(
+            'SELECT * FROM users WHERE email = ? AND status_aktif = TRUE',
+            [email]
+        );
+        return rows[0];
     }
 };
 

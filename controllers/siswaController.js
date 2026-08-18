@@ -8,13 +8,16 @@ const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper
 const waspasModel = require('../models/waspasModel');
 
 const REGEX_ANGKA_SAJA = /^[0-9]+$/;
+// Untuk nama & pekerjaan: huruf saja (boleh spasi antar kata)
 const REGEX_HURUF_SAJA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+// Untuk sekolah asal: huruf DAN angka (contoh: "SMPN 1 Padang", "SMPN 27 Padang")
+const REGEX_SEKOLAH = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9]+( [A-Za-zÀ-ÖØ-öø-ÿ0-9]+)*$/;
 
 function validasiDataSiswa(data) {
     const { nisn, nama, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu } = data;
     if (!nisn || !REGEX_ANGKA_SAJA.test(String(nisn).trim())) return 'NISN wajib diisi dan hanya boleh berisi angka.';
     if (!nama || !REGEX_HURUF_SAJA.test(String(nama).trim())) return 'Nama wajib diisi dan hanya boleh berisi huruf.';
-    if (!sekolah_asal || !REGEX_HURUF_SAJA.test(String(sekolah_asal).trim())) return 'Sekolah asal wajib diisi dan hanya boleh berisi huruf.';
+    if (!sekolah_asal || !REGEX_SEKOLAH.test(String(sekolah_asal).trim())) return 'Sekolah asal wajib diisi (huruf dan angka diperbolehkan, contoh: SMPN 1 Padang).';
     if (!pekerjaan_ayah || !REGEX_HURUF_SAJA.test(String(pekerjaan_ayah).trim())) return 'Pekerjaan ayah wajib diisi dan hanya boleh berisi huruf.';
     if (!pekerjaan_ibu || !REGEX_HURUF_SAJA.test(String(pekerjaan_ibu).trim())) return 'Pekerjaan ibu wajib diisi dan hanya boleh berisi huruf.';
     return null;
@@ -241,14 +244,14 @@ async delete(req, res) {
             const dataSiswa = dataSiswaRaw.filter(row =>
                 row.nisn && REGEX_ANGKA_SAJA.test(row.nisn) &&
                 row.nama && REGEX_HURUF_SAJA.test(row.nama) &&
-                row.sekolah_asal && REGEX_HURUF_SAJA.test(row.sekolah_asal) &&
+                row.sekolah_asal && REGEX_SEKOLAH.test(row.sekolah_asal) &&
                 row.pekerjaan_ayah && REGEX_HURUF_SAJA.test(row.pekerjaan_ayah) &&
                 row.pekerjaan_ibu && REGEX_HURUF_SAJA.test(row.pekerjaan_ibu)
             );
             const dataTidakLengkap = dataSiswaRaw.filter(row =>
                 !(row.nisn && REGEX_ANGKA_SAJA.test(row.nisn) &&
                   row.nama && REGEX_HURUF_SAJA.test(row.nama) &&
-                  row.sekolah_asal && REGEX_HURUF_SAJA.test(row.sekolah_asal) &&
+                  row.sekolah_asal && REGEX_SEKOLAH.test(row.sekolah_asal) &&
                   row.pekerjaan_ayah && REGEX_HURUF_SAJA.test(row.pekerjaan_ayah) &&
                   row.pekerjaan_ibu && REGEX_HURUF_SAJA.test(row.pekerjaan_ibu))
             );
@@ -256,7 +259,7 @@ async delete(req, res) {
             fs.unlinkSync(req.file.path); // hapus file sementara setelah dibaca
 
             if (dataSiswa.length === 0) {
-                return res.redirect('/admin/siswa?error=Tidak ada data valid ditemukan di file Excel. Periksa kembali format kolom, dan pastikan semua kolom terisi dengan format yang benar (NISN angka, nama/sekolah/pekerjaan huruf).');
+                return res.redirect('/admin/siswa?error=Tidak ada data valid ditemukan di file Excel. Periksa kembali format kolom, dan pastikan semua kolom terisi dengan format yang benar (NISN angka, nama/pekerjaan huruf, sekolah huruf/angka).');
             }
 
             const hasil = await siswaModel.bulkInsert(dataSiswa, periode.id_periode);
@@ -265,7 +268,7 @@ async delete(req, res) {
 
             let pesan = `Import selesai: ${hasil.berhasil} berhasil, ${hasil.gagal} gagal.`;
             if (dataTidakLengkap.length > 0) {
-                pesan += ` ${dataTidakLengkap.length} baris dilewati karena ada kolom yang kosong atau format tidak sesuai (NISN harus angka, nama/sekolah/pekerjaan harus huruf).`;
+                pesan += ` ${dataTidakLengkap.length} baris dilewati karena ada kolom yang kosong atau format tidak sesuai (NISN harus angka, nama/pekerjaan harus huruf, sekolah harus huruf/angka).`;
             }
             res.redirect(`/admin/siswa?success=${encodeURIComponent(pesan)}`);
         } catch (error) {

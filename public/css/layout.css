@@ -1005,3 +1005,88 @@ body {
     background: #fdecea;
     color: #b3261e;
 }
+
+.skala-pills {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.skala-pill-label {
+    cursor: pointer;
+    display: inline-block;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.skala-pill-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.skala-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid #ccd6e6;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0b2545;
+    background: #fff;
+    transition: all 0.15s ease-in-out;
+    user-select: none;
+}
+
+/* Hover: kerasa responsif walau belum diklik */
+.skala-pill-label:hover .skala-pill {
+    border-color: #1c64f2;
+    background: #eaf1fe;
+    transform: scale(1.08);
+}
+
+/* Aktif saat ditekan (mouse down / tap) */
+.skala-pill-label:active .skala-pill {
+    transform: scale(0.95);
+}
+
+/* Terpilih */
+.skala-pill-input:checked + .skala-pill {
+    background: #1c64f2;
+    border-color: #1c64f2;
+    color: #fff;
+    transform: scale(1.08);
+    box-shadow: 0 2px 8px rgba(28, 100, 242, 0.35);
+}
+
+/* Fokus keyboard (aksesibilitas — Tab + Space/Enter) */
+.skala-pill-input:focus-visible + .skala-pill {
+    outline: 2px solid #1c64f2;
+    outline-offset: 2px;
+}
+
+.skala-caption {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #999;
+    margin-top: 6px;
+    max-width: 380px;
+}
+
+/* Biar tetap nyaman di layar sempit */
+@media (max-width: 480px) {
+    .skala-pill {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+    .skala-pills {
+        gap: 6px;
+    }
+}

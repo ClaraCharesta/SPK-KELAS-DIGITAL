@@ -41,6 +41,7 @@ router.get('/fucom', fucomController.index);
 router.post('/fucom/input', cekLock, fucomController.saveInput);
 router.post('/fucom/hapus', cekLock, fucomController.hapusResponden);
 router.post('/fucom/hitung', cekLock, fucomController.hitungBobot);
+router.post('/fucom/edit', fucomController.editInput);
 
 // Perankingan (WASPAS)
 router.get('/waspas', waspasController.index);

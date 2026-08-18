@@ -3,6 +3,15 @@ const session = require('express-session');
 const path = require('path');
 require('dotenv').config();
 
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('UNHANDLED REJECTION! Alasan:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION! Error:', err);
+});
+
 const db = require('./config/database');
 
 const app = express();
