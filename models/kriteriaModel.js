@@ -75,6 +75,18 @@ const kriteriaModel = {
         return jumlah > 0;
     },
 
+    // BARU: cek apakah bobot FUCOM untuk periode ini sudah final (sudah dihitung DAN konsisten, DFC < 0.1)
+    // Kalau sudah final, kriteria harus dikunci (tidak bisa tambah/edit/hapus) karena bobot dihitung
+    // berdasarkan urutan & jumlah kriteria yang ada saat itu — mengubahnya akan merusak validitas bobot.
+    async checkBobotSudahFinal(id_periode) {
+        const [rows] = await db.query(
+            'SELECT nilai_dfc FROM bobot_kriteria WHERE id_periode = ? LIMIT 1',
+            [id_periode]
+        );
+        if (rows.length === 0) return false;
+        return parseFloat(rows[0].nilai_dfc) < 0.1;
+    },
+
     async createDefault(id_periode) {
         const daftarDefault = [
             { nama: 'Nilai Akademik', jenis: 'benefit' },

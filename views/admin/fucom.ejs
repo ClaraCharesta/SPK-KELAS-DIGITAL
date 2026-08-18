@@ -3,6 +3,7 @@
 <head>
     <title>Perhitungan FUCOM</title>
     <%- include('../partials/head') %>
+    <link rel="stylesheet" href="/css/fucom.css">
 </head>
 <body>
     <div class="app-layout">
@@ -14,14 +15,15 @@
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
                 <% } %>
                 <% if (error) { %>
-    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
-<% } %>
-<% if (terkunci) { %>
-    <div class="alert" style="background:#fdf1de; color:#b35c00;">
-        <i class="bi bi-lock-fill"></i>
-        Pembobotan terkunci karena status siswa telah final.
-    </div>
-<% } %>
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+                <% if (terkunci) { %>
+                    <div class="alert" style="background:#fdf1de; color:#b35c00;">
+                        <i class="bi bi-lock-fill"></i>
+                        Pembobotan terkunci karena status siswa telah final.
+                    </div>
+                <% } %>
+
                 <!-- Panel Tutorial -->
                 <div class="panel" style="background:#f4f8ff;">
                     <div class="panel-header-row" style="cursor:pointer;" onclick="document.getElementById('isiTutorial').classList.toggle('show')">
@@ -33,22 +35,46 @@
                     </div>
                     <div id="isiTutorial" class="tutorial-content">
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
-                            <li>Klik <strong>"Input Data Responden"</strong> dan isi nama guru/pengambil keputusan yang mengisi kuesioner.</li>
-                            <li>Urutkan 6 kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong> menurut penilaian responden tersebut.</li>
-                            <li>Isi nilai perbandingan antar kriteria yang bersebelahan, skala 1-9. Gunakan angka <strong>1-4</strong> untuk selisih yang wajar, dan angka besar (7-9) hanya jika benar-benar yakin ada kesenjangan sangat besar.</li>
-                            <li>Ulangi untuk responden berikutnya (minimal 2 responden diperlukan, boleh lebih).</li>
-                            <li>Setelah minimal 2 responden lengkap, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
+                            <li>Klik <strong>"Input Data Responden"</strong> dan isi nama pengambil keputusan resmi (misalnya Waka Kurikulum) yang menginput hasil kuesioner.</li>
+                            <li>Urutkan 6 kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>. Urutan dan nilai yang diinput merupakan hasil kesepakatan/musyawarah bersama guru-guru terkait, bukan opini pribadi satu orang saja.</li>
+                            <li>Isi nilai perbandingan antar kriteria yang bersebelahan dengan memilih skala 1-9 pada tombol yang tersedia (bukan mengetik angka manual). Panduan skala:</li>
+                        </ol>
+
+                        <table class="data-table" style="margin: 10px 0 15px 20px; max-width: 620px;">
+                            <thead>
+                                <tr><th style="width:70px;">Skala</th><th>Makna</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>1</strong></td><td>Kedua kriteria sama penting</td></tr>
+                                <tr><td><strong>2 - 3</strong></td><td>Kriteria sebelumnya sedikit lebih penting</td></tr>
+                                <tr><td><strong>4 - 5</strong></td><td>Kriteria sebelumnya cukup/jelas lebih penting</td></tr>
+                                <tr><td><strong>6 - 7</strong></td><td>Kriteria sebelumnya jauh lebih penting</td></tr>
+                                <tr><td><strong>8 - 9</strong></td><td>Kriteria sebelumnya mutlak/sangat jauh lebih penting</td></tr>
+                            </tbody>
+                        </table>
+
+                        <ol start="4" style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
+                            <li>Gunakan skala <strong>1-4</strong> untuk sebagian besar perbandingan. Skala besar (7-9) hanya dipakai jika benar-benar yakin ada kesenjangan kepentingan yang sangat besar antar dua kriteria — semakin sering skala besar dipakai, semakin besar risiko hasil pembobotan menjadi tidak konsisten.</li>
+                            <li>Data hanya diinput <strong>satu kali</strong> (1 responden resmi mewakili hasil musyawarah). Selama bobot belum dihitung, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
+                            <li>
+                                Setelah dihitung, sistem akan menampilkan nilai <strong>DFC (Deviation from Full Consistency)</strong> — semacam skor yang menunjukkan seberapa konsisten urutan dan nilai yang diinput tadi secara matematis.
+                                <ul style="margin-top:6px;">
+                                    <li><strong>DFC di bawah 0,1</strong> → hasil dianggap <strong>konsisten</strong>. Bobot otomatis menjadi final dan terkunci, Admin dapat melanjutkan ke pengelolaan data siswa.</li>
+                                    <li><strong>DFC di atas atau sama dengan 0,1</strong> → hasil dianggap <strong>belum konsisten</strong>. Ini bukan berarti sistem error — artinya urutan atau nilai perbandingan yang diinput tadi kurang logis secara matematis (misalnya lompatan skala terlalu ekstrem). Bobot <strong>tidak</strong> dikunci, dan Admin perlu mengedit atau menghapus data responden lalu menginput ulang dengan urutan/nilai yang lebih moderat.</li>
+                                </ul>
+                            </li>
                         </ol>
                     </div>
                 </div>
+
                 <!-- Panel Data Responden -->
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clipboard-data"></i></div>
-                            <h3>Data Perbandingan Kriteria (Minimal 2 Responden)</h3>
+                            <h3>Data Perbandingan Kriteria (1 Responden - Hasil Musyawarah)</h3>
                         </div>
-                        <% if (!terkunci && bobotFinal.length === 0) { %>
+                        <% if (!terkunci && respondenList.length === 0) { %>
                             <button
                                 class="btn-primary"
                                 onclick="document.getElementById('modalInput').style.display='flex'">
@@ -57,19 +83,28 @@
                         <% } %>
                     </div>
                     <% if (respondenList.length === 0) { %>
-                        <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner dari guru (minimal 2 orang).</p>
+                        <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner (hasil musyawarah, diinput oleh 1 responden resmi).</p>
                     <% } else { %>
                         <% respondenList.forEach(function(nama) { %>
                             <div style="margin-bottom:20px; padding:15px; background:#fafbfd; border-radius:10px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                                     <strong style="font-size:14px; color:#0b2545;"><i class="bi bi-person-fill"></i> <%= nama %></strong>
-                                    <% if (!terkunci && bobotFinal.length === 0) { %>
-                                        <form action="/admin/fucom/hapus" method="POST" onsubmit="return confirmDelete(this,'Hapus data responden ini?');">
-                                            <input type="hidden" name="nama_responden" value="<%= nama %>">
-                                            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
-                                                <i class="bi bi-trash-fill"></i>
+                                    <% if (!terkunci && (bobotFinal.length === 0 || !dfcKonsisten)) { %>
+                                        <div style="display:flex; gap:6px;">
+                                            <button
+                                                type="button"
+                                                class="btn-icon"
+                                                title="Edit"
+                                                onclick="bukaModalEdit()">
+                                                <i class="bi bi-pencil-fill"></i>
                                             </button>
-                                        </form>
+                                            <form action="/admin/fucom/hapus" method="POST" onsubmit="return confirmDelete(this,'Hapus data responden ini?');">
+                                                <input type="hidden" name="nama_responden" value="<%= nama %>">
+                                                <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
+                                                    <i class="bi bi-trash-fill"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     <% } else { %>
                                         <span style="color:#999; font-size:12px;">Terkunci</span>
                                     <% } %>
@@ -87,28 +122,27 @@
                                 </table>
                             </div>
                         <% }); %>
-                        <% if (respondenList.length < 2) { %>
-                            <p style="font-size:13px; color:#e67e22;"><i class="bi bi-info-circle-fill"></i> Masih perlu minimal <%= 2 - respondenList.length %> responden lagi sebelum bisa menghitung bobot.</p>
-                        <% } %>
                     <% } %>
                 </div>
+
                 <!-- Panel Hitung Bobot -->
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-sliders"></i></div>
-                            <h3>Hasil Perhitungan Bobot Kriteria (Agregasi)</h3>
+                            <h3>Hasil Perhitungan Bobot Kriteria</h3>
                         </div>
-                        <% if (respondenList.length >= 2 && !terkunci && bobotFinal.length === 0) { %>
-    <form action="/admin/fucom/hitung" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Setelah bobot dihitung, data responden TIDAK bisa lagi ditambah atau dihapus. Pastikan seluruh data responden sudah benar sebelum melanjutkan. Lanjutkan menghitung bobot?');">
-        <button type="submit" class="btn-primary">
-            <i class="bi bi-calculator-fill"></i> Hitung Bobot FUCOM
-        </button>
-    </form>
-<% } %>
+                        <% if (respondenList.length >= 1 && !terkunci && (bobotFinal.length === 0 || !dfcKonsisten)) { %>
+                            <form action="/admin/fucom/hitung" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Setelah bobot dihitung dan hasilnya konsisten, data responden TIDAK bisa lagi diedit atau dihapus. Pastikan seluruh data responden sudah benar sebelum melanjutkan. Lanjutkan menghitung bobot?');">
+                                <button type="submit" class="btn-primary">
+                                    <i class="bi bi-calculator-fill"></i> Hitung Bobot FUCOM
+                                </button>
+                            </form>
+                        <% } %>
                     </div>
-                    <% if (respondenList.length < 2) { %>
-                        <p class="empty-state">Tombol perhitungan akan muncul setelah data 2 responden lengkap. Saat ini: <strong><%= respondenList.length %>/2</strong> responden.</p>
+
+                    <% if (respondenList.length < 1) { %>
+                        <p class="empty-state">Tombol perhitungan akan muncul setelah data responden diisi. Saat ini: <strong><%= respondenList.length %>/1</strong> responden.</p>
                     <% } else if (bobotFinal.length === 0) { %>
                         <p class="empty-state">
                             <% if (terkunci) { %>
@@ -118,25 +152,35 @@
                             <% } %>
                         </p>
                     <% } else { %>
-                        <% 
+
+                        <% if (!dfcKonsisten) { %>
+                            <div class="alert alert-danger" style="margin-bottom:15px;">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                <strong>Hasil belum konsisten (DFC melebihi ambang batas 0,1).</strong>
+                                Urutan atau nilai perbandingan kriteria yang diinput perlu ditinjau ulang. Silakan edit atau hapus data responden pada panel di atas dengan urutan/nilai yang lebih moderat, kemudian hitung ulang.
+                            </div>
+                        <% } %>
+
+                        <%
                             const bobotTerkecil = Math.min(...bobotFinal.map(b => parseFloat(b.nilai_bobot)));
                         %>
-                      <% if (bobotTerkecil < 0.03) { %>
-    <div class="alert" style="background:#fdf1de; color:#b35c00;">
-        <i class="bi bi-exclamation-triangle-fill"></i> Distribusi bobot sangat timpang, salah satu kriteria memiliki bobot sangat kecil. Pertimbangkan untuk meninjau ulang perbandingan.
-    </div>
-<% } %>
+                        <% if (bobotTerkecil < 0.03) { %>
+                            <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Distribusi bobot sangat timpang, salah satu kriteria memiliki bobot sangat kecil. Pertimbangkan untuk meninjau ulang perbandingan.
+                            </div>
+                        <% } %>
+
                         <table class="data-table">
-                            <thead><tr><th>Kriteria</th><th>Bobot</th><th>Nilai DFC (rata-rata responden)</th></tr></thead>
+                            <thead><tr><th>Kriteria</th><th>Bobot</th><th>Nilai DFC (Tingkat Konsistensi)</th></tr></thead>
                             <tbody>
                                 <% bobotFinal.forEach(function(b) { %>
                                     <tr>
                                         <td><%= b.nama_kriteria %></td>
                                         <td><strong><%= b.nilai_bobot < 0.01 ? (b.nilai_bobot * 100).toFixed(3) : (b.nilai_bobot * 100).toFixed(2) %>%</strong></td>
                                         <td>
-                                            <span class="badge badge-<%= b.nilai_dfc < 0.1 ? 'lulus' : 'mengundurkan_diri' %>">
-                                                <%= parseFloat(b.nilai_dfc).toExponential(4) %>
-                                                <%= b.nilai_dfc < 0.1 ? '(Konsisten)' : '(Perlu Ditinjau)' %>
+                                            <span class="badge badge-<%= dfcKonsisten ? 'lulus' : 'mengundurkan_diri' %>">
+                                                <%= parseFloat(b.nilai_dfc).toFixed(3) %>
+                                                <%= dfcKonsisten ? '(Konsisten)' : '(Perlu Ditinjau)' %>
                                             </span>
                                         </td>
                                     </tr>
@@ -145,27 +189,30 @@
                         </table>
                     <% } %>
                 </div>
+
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
+
     <!-- Modal Input Data Responden -->
-    <% if (!terkunci && bobotFinal.length === 0) { %>
+    <% if (!terkunci && respondenList.length === 0) { %>
     <div class="modal-overlay" id="modalInput">
-        <div class="modal-box" style="max-width:550px;">
+        <div class="modal-box" style="max-width:600px;">
             <div class="modal-header">
-                <h3><i class="bi bi-clipboard-data"></i> Input Data Kuesioner Responden</h3>
+                <h3><i class="bi bi-clipboard-data"></i> Input Data Perbandingan Kriteria (Hasil Musyawarah)</h3>
                 <button class="modal-close" onclick="document.getElementById('modalInput').style.display='none'">&times;</button>
             </div>
             <form action="/admin/fucom/input" method="POST" onsubmit="return validasiFormResponden(this)">
-                <label>Nama Responden (Hanya Huruf)</label>
+                <label>Nama Pengambil Keputusan Resmi (Hanya Huruf)</label>
                 <input type="text" name="nama_responden" id="nama_responden_input" required placeholder="Contoh: Desi Wahyuni" autocomplete="off">
                 <p id="peringatan_nama_responden" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
+
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
-                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>.
+                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong> berdasarkan hasil musyawarah.
                 </p>
                 <% kriteriaList.forEach(function(k, idx) { %>
-                    <label>Peringkat <%= idx + 1 %></label>
+                    <label>Kriteria <%= idx + 1 %></label>
                     <select name="id_kriteria_urutan" class="urutan-select" data-index="<%= idx %>" required style="margin-bottom:8px;">
                         <option value="">-- Pilih Kriteria --</option>
                         <% kriteriaList.forEach(function(k2) { %>
@@ -173,13 +220,33 @@
                         <% }); %>
                     </select>
                 <% }); %>
-                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
-                    Nilai perbandingan antar peringkat berurutan (skala 1-9). <strong>Gunakan nilai moderat (1-4)</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
+
+                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
+                    Nilai perbandingan antar peringkat berurutan. Pilih salah satu skala 1-9 (lihat panduan skala pada bagian tutorial di atas). <strong>Gunakan skala 1-4</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
                 </p>
                 <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>
-                    <label>Peringkat <%= i + 1 %> dibanding Peringkat <%= i + 2 %></label>
-                    <input type="number" name="nilai_perbandingan" min="1" max="9" step="1" required style="margin-bottom:8px;">
+                    <div class="skala-group" style="margin-bottom:20px;">
+                        <label id="label_pair_<%= i %>">Kriteria <%= i + 1 %> dibanding Kriteria <%= i + 2 %></label>
+                        <div class="skala-pills" data-pair-index="<%= i %>" style="display:flex; flex-wrap:wrap; gap:8px;">
+                            <% for (let s = 1; s <= 9; s++) { %>
+                                <label class="skala-pill-label">
+                                    <input
+                                        type="radio"
+                                        name="nilai_perbandingan_<%= i %>"
+                                        value="<%= s %>"
+                                        required
+                                        class="skala-pill-input">
+                                    <span class="skala-pill"><%= s %></span>
+                                </label>
+                            <% } %>
+                        </div>
+                        <div class="skala-caption">
+                            <span>Sama penting</span>
+                            <span>Mutlak lebih penting</span>
+                        </div>
+                    </div>
                 <% } %>
+
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalInput').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Data</button>
@@ -189,15 +256,105 @@
     </div>
     <% } %>
 
+    <!-- Modal Edit Data Responden -->
+    <% if (!terkunci && respondenList.length === 1 && (bobotFinal.length === 0 || !dfcKonsisten)) { %>
+    <div class="modal-overlay" id="modalEdit">
+        <div class="modal-box" style="max-width:600px;">
+            <div class="modal-header">
+                <h3><i class="bi bi-pencil-fill"></i> Edit Data Perbandingan Kriteria</h3>
+                <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
+            </div>
+            <form action="/admin/fucom/edit" method="POST" onsubmit="return validasiFormRespondenEdit(this)">
+                <input type="hidden" name="nama_asli" id="nama_asli_edit" value="<%= respondenList[0] %>">
+
+                <label>Nama Pengambil Keputusan Resmi (Hanya Huruf)</label>
+                <input type="text" name="nama_responden" id="nama_responden_edit" required placeholder="Contoh: Desi Wahyuni" autocomplete="off">
+                <p id="peringatan_nama_responden_edit" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
+
+                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
+                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong> berdasarkan hasil musyawarah.
+                </p>
+                <% kriteriaList.forEach(function(k, idx) { %>
+                    <label>Kriteria <%= idx + 1 %></label>
+                    <select name="id_kriteria_urutan" class="urutan-select-edit" data-index="<%= idx %>" required style="margin-bottom:8px;">
+                        <option value="">-- Pilih Kriteria --</option>
+                        <% kriteriaList.forEach(function(k2) { %>
+                            <option value="<%= k2.id_kriteria %>"><%= k2.nama_kriteria %></option>
+                        <% }); %>
+                    </select>
+                <% }); %>
+
+                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
+                    Nilai perbandingan antar peringkat berurutan. Pilih salah satu skala 1-9 (lihat panduan skala pada bagian tutorial di atas). <strong>Gunakan skala 1-4</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
+                </p>
+                <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>
+                    <div class="skala-group" style="margin-bottom:20px;">
+                        <label id="label_pair_edit_<%= i %>">Kriteria <%= i + 1 %> dibanding Kriteria <%= i + 2 %></label>
+                        <div class="skala-pills-edit" data-pair-index="<%= i %>" style="display:flex; flex-wrap:wrap; gap:8px;">
+                            <% for (let s = 1; s <= 9; s++) { %>
+                                <label class="skala-pill-label">
+                                    <input
+                                        type="radio"
+                                        name="nilai_perbandingan_<%= i %>"
+                                        value="<%= s %>"
+                                        required
+                                        class="skala-pill-input-edit">
+                                    <span class="skala-pill"><%= s %></span>
+                                </label>
+                            <% } %>
+                        </div>
+                        <div class="skala-caption">
+                            <span>Sama penting</span>
+                            <span>Mutlak lebih penting</span>
+                        </div>
+                    </div>
+                <% } %>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <% } %>
+
     <script>
-    // ==== VALIDASI NAMA RESPONDEN: HANYA HURUF, TIDAK DUPLIKAT, TIDAK BOLEH KOSONG/SPASI SAJA ====
+    // ==== DATA RESPONDEN SAAT INI (UNTUK PREFILL MODAL EDIT) ====
+    // Karena hanya 1 responden yang diizinkan, kita ambil data urutan & nilai dari respondenList[0] jika ada
+    <% if (respondenList.length === 1) { %>
+    const dataEditFucom = {
+        nama: <%- JSON.stringify(respondenList[0]) %>,
+        urutan: <%- JSON.stringify(
+            (function() {
+                const rows = dataResponden[respondenList[0]];
+                const urutan = [];
+                rows.forEach(function(r) {
+                    if (!urutan.includes(r.id_kriteria_asal)) urutan.push(r.id_kriteria_asal);
+                });
+                if (rows.length > 0) {
+                    const last = rows[rows.length - 1];
+                    if (!urutan.includes(last.id_kriteria_pembanding)) urutan.push(last.id_kriteria_pembanding);
+                }
+                return urutan;
+            })()
+        ) %>,
+        nilai: <%- JSON.stringify(dataResponden[respondenList[0]].map(r => String(r.nilai_perbandingan))) %>
+    };
+    <% } else { %>
+    const dataEditFucom = null;
+    <% } %>
+
+    // ==== PETA ID KRITERIA -> NAMA KRITERIA (UNTUK LABEL PERBANDINGAN OTOMATIS) ====
+    const kriteriaMap = <%- JSON.stringify(Object.fromEntries(kriteriaList.map(k => [String(k.id_kriteria), k.nama_kriteria]))) %>;
+
+    // ==== VALIDASI NAMA RESPONDEN (MODAL INPUT): HANYA HURUF, TIDAK DUPLIKAT, TIDAK BOLEH KOSONG/SPASI SAJA ====
     const daftarResponden = <%- JSON.stringify(respondenList.map(n => n.trim().toLowerCase())) %>;
     const REGEX_HURUF_SAJA_FUCOM = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
 
     const inputNamaResponden = document.getElementById('nama_responden_input');
     if (inputNamaResponden) {
         inputNamaResponden.addEventListener('input', function() {
-            // buang karakter selain huruf dan spasi, cegah spasi ganda
             let val = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '');
             val = val.replace(/\s{2,}/g, ' ');
             this.value = val;
@@ -227,7 +384,72 @@
         return true;
     }
 
-    // ==== DROPDOWN URUTAN PERINGKAT: KRITERIA YANG SUDAH DIPILIH TIDAK MUNCUL LAGI DI SELECT LAIN ====
+    // ==== VALIDASI NAMA RESPONDEN (MODAL EDIT): HANYA HURUF, TIDAK BOLEH KOSONG/SPASI SAJA ====
+    // (tidak dicek duplikat terhadap dirinya sendiri karena hanya ada 1 responden)
+    const inputNamaRespondenEdit = document.getElementById('nama_responden_edit');
+    if (inputNamaRespondenEdit) {
+        inputNamaRespondenEdit.addEventListener('input', function() {
+            let val = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '');
+            val = val.replace(/\s{2,}/g, ' ');
+            this.value = val;
+            document.getElementById('peringatan_nama_responden_edit').style.display = 'none';
+        });
+    }
+
+    function validasiFormRespondenEdit(form) {
+        const namaTrim = form.nama_responden.value.trim();
+        const peringatanEl = document.getElementById('peringatan_nama_responden_edit');
+
+        if (namaTrim === '' || !REGEX_HURUF_SAJA_FUCOM.test(namaTrim)) {
+            peringatanEl.innerText = 'Nama responden hanya boleh berisi huruf dan spasi antar kata, tidak boleh angka/simbol/kosong.';
+            peringatanEl.style.display = 'block';
+            form.nama_responden.focus();
+            return false;
+        }
+
+        form.nama_responden.value = namaTrim;
+        return true;
+    }
+
+    // ==== LABEL PERBANDINGAN OTOMATIS (MODAL INPUT) ====
+    // Begitu kriteria dipilih di dropdown, label "Kriteria X dibanding Kriteria Y" berubah
+    // menjadi nama kriteria asli yang dipilih, misalnya "Nilai Akademik dibanding Hasil Psikotes"
+    function perbaruiLabelPerbandingan() {
+        const selects = document.querySelectorAll('.urutan-select');
+        for (let i = 0; i < selects.length - 1; i++) {
+            const labelEl = document.getElementById('label_pair_' + i);
+            if (!labelEl) continue;
+            const idAsal = selects[i].value;
+            const idPembanding = selects[i + 1].value;
+            const namaAsal = idAsal ? kriteriaMap[idAsal] : null;
+            const namaPembanding = idPembanding ? kriteriaMap[idPembanding] : null;
+            if (namaAsal && namaPembanding) {
+                labelEl.innerText = namaAsal + ' dibanding ' + namaPembanding;
+            } else {
+                labelEl.innerText = 'Kriteria ' + (i + 1) + ' dibanding Kriteria ' + (i + 2);
+            }
+        }
+    }
+
+    // ==== LABEL PERBANDINGAN OTOMATIS (MODAL EDIT) ====
+    function perbaruiLabelPerbandinganEdit() {
+        const selects = document.querySelectorAll('.urutan-select-edit');
+        for (let i = 0; i < selects.length - 1; i++) {
+            const labelEl = document.getElementById('label_pair_edit_' + i);
+            if (!labelEl) continue;
+            const idAsal = selects[i].value;
+            const idPembanding = selects[i + 1].value;
+            const namaAsal = idAsal ? kriteriaMap[idAsal] : null;
+            const namaPembanding = idPembanding ? kriteriaMap[idPembanding] : null;
+            if (namaAsal && namaPembanding) {
+                labelEl.innerText = namaAsal + ' dibanding ' + namaPembanding;
+            } else {
+                labelEl.innerText = 'Kriteria ' + (i + 1) + ' dibanding Kriteria ' + (i + 2);
+            }
+        }
+    }
+
+    // ==== DROPDOWN URUTAN PERINGKAT (MODAL INPUT): KRITERIA YANG SUDAH DIPILIH TIDAK MUNCUL LAGI DI SELECT LAIN ====
     function perbaruiOpsiUrutanSelect() {
         const semuaSelect = document.querySelectorAll('.urutan-select');
         const nilaiTerpilih = Array.from(semuaSelect).map(s => s.value).filter(v => v !== '');
@@ -235,22 +457,86 @@
         semuaSelect.forEach(function(select) {
             const nilaiSaatIni = select.value;
             Array.from(select.options).forEach(function(opt) {
-                if (opt.value === '') return; // biarkan opsi placeholder tetap ada
+                if (opt.value === '') return;
                 if (opt.value === nilaiSaatIni) {
-                    opt.hidden = false; // opsi yang sedang dipilih select ini tetap terlihat di select ini
+                    opt.hidden = false;
                 } else {
-                    opt.hidden = nilaiTerpilih.includes(opt.value); // sembunyikan jika sudah dipilih select lain
+                    opt.hidden = nilaiTerpilih.includes(opt.value);
                 }
             });
         });
     }
 
     document.querySelectorAll('.urutan-select').forEach(function(select) {
-        select.addEventListener('change', perbaruiOpsiUrutanSelect);
+        select.addEventListener('change', function() {
+            perbaruiOpsiUrutanSelect();
+            perbaruiLabelPerbandingan();
+        });
     });
 
-    // jalankan sekali saat modal dibuka (misal user buka lagi modal setelah batal)
-    document.querySelector('button[onclick*="modalInput"]')?.addEventListener('click', perbaruiOpsiUrutanSelect);
+    document.querySelector('button[onclick*="modalInput"]')?.addEventListener('click', function() {
+        perbaruiOpsiUrutanSelect();
+        perbaruiLabelPerbandingan();
+        // ==== RESET VISUAL SKALA PILL SAAT MODAL DIBUKA ULANG ====
+        document.querySelectorAll('.skala-pill-input').forEach(function(input) {
+            input.checked = false;
+        });
+    });
+
+    // ==== DROPDOWN URUTAN PERINGKAT (MODAL EDIT): KRITERIA YANG SUDAH DIPILIH TIDAK MUNCUL LAGI DI SELECT LAIN ====
+    function perbaruiOpsiUrutanSelectEdit() {
+        const semuaSelect = document.querySelectorAll('.urutan-select-edit');
+        const nilaiTerpilih = Array.from(semuaSelect).map(s => s.value).filter(v => v !== '');
+
+        semuaSelect.forEach(function(select) {
+            const nilaiSaatIni = select.value;
+            Array.from(select.options).forEach(function(opt) {
+                if (opt.value === '') return;
+                if (opt.value === nilaiSaatIni) {
+                    opt.hidden = false;
+                } else {
+                    opt.hidden = nilaiTerpilih.includes(opt.value);
+                }
+            });
+        });
+    }
+
+    document.querySelectorAll('.urutan-select-edit').forEach(function(select) {
+        select.addEventListener('change', function() {
+            perbaruiOpsiUrutanSelectEdit();
+            perbaruiLabelPerbandinganEdit();
+        });
+    });
+
+    // ==== BUKA MODAL EDIT & PREFILL DATA YANG SUDAH TERSIMPAN ====
+    function bukaModalEdit() {
+        const modal = document.getElementById('modalEdit');
+        if (!modal || !dataEditFucom) return;
+
+        // Prefill nama
+        const inputNama = document.getElementById('nama_responden_edit');
+        if (inputNama) inputNama.value = dataEditFucom.nama;
+        const peringatanNama = document.getElementById('peringatan_nama_responden_edit');
+        if (peringatanNama) peringatanNama.style.display = 'none';
+
+        // Prefill urutan select
+        const selects = document.querySelectorAll('.urutan-select-edit');
+        selects.forEach(function(select, idx) {
+            select.value = dataEditFucom.urutan[idx] || '';
+        });
+        perbaruiOpsiUrutanSelectEdit();
+        perbaruiLabelPerbandinganEdit();
+
+        // Prefill nilai skala pills
+        dataEditFucom.nilai.forEach(function(nilai, i) {
+            const radio = document.querySelector(
+                `.skala-pills-edit[data-pair-index="${i}"] input[value="${nilai}"]`
+            );
+            if (radio) radio.checked = true;
+        });
+
+        modal.style.display = 'flex';
+    }
     </script>
 </body>
 </html>

@@ -1,5 +1,9 @@
 const db = require('../config/database');
 
+// Jumlah siswa "cadangan" yang ditampilkan tepat di bawah batas kuota (cutoff).
+// Contoh: kuota 30 -> rank 31-40 berstatus 'cadangan', rank 41 dst langsung 'tidak_lulus'.
+const CADANGAN_RANGE = 10;
+
 const waspasModel = {
     async getSiswaWithNilai(id_periode) {
         const [siswaRows] = await db.query(
@@ -64,12 +68,20 @@ const waspasModel = {
     },
 
     async updateStatusPenerimaan(id_periode, kuota) {
+        // rank <= kuota            -> 'diusulkan'
+        // kuota < rank <= kuota+10 -> 'cadangan'  (10 siswa terdekat di bawah cutoff)
+        // rank > kuota+10          -> 'tidak_lulus'
+        const batasCadangan = kuota + CADANGAN_RANGE;
         await db.query(
             `UPDATE siswa s
              JOIN hasil_waspas hw ON s.id_siswa = hw.id_siswa
-             SET s.status_penerimaan = IF(hw.ranking <= ?, 'diusulkan', 'cadangan')
+             SET s.status_penerimaan = CASE
+                 WHEN hw.ranking <= ? THEN 'diusulkan'
+                 WHEN hw.ranking <= ? THEN 'cadangan'
+                 ELSE 'tidak_lulus'
+             END
              WHERE s.id_periode = ? AND s.status_penerimaan != 'lulus'`,
-            [kuota, id_periode]
+            [kuota, batasCadangan, id_periode]
         );
     },
 

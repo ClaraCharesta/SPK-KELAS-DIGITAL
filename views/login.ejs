@@ -20,6 +20,11 @@
                 <p class="desc">Silakan login untuk melanjutkan ke sistem</p>
                 <hr>
 
+                <% if (typeof success !== 'undefined' && success) { %>
+                    <div class="alert-success" style="background:#e6f7ec; color:#1e7e34; padding:10px 14px; border-radius:8px; margin-bottom:15px; font-size:14px;">
+                        <i class="bi bi-check-circle-fill"></i> <%= success %>
+                    </div>
+                <% } %>
                 <% if (error) { %>
                     <div class="alert-error"><%= error %></div>
                 <% } %>
@@ -37,6 +42,10 @@
                     </div>
                     <button type="submit">Login</button>
                 </form>
+
+                <p style="text-align:center; margin-top:15px; font-size:14px;">
+                    <a href="/forgot-password" style="color:#1d5fd6; text-decoration:none;">Lupa Password?</a>
+                </p>
             </div>
         </div>
     </div>

@@ -11,6 +11,10 @@ router.get('/login', authController.showLoginPage);
 router.post('/login', authController.processLogin);
 router.get('/logout', authController.logout);
 
+// ====== LUPA PASSWORD (kirim password default ke email) ======
+router.get('/forgot-password', authController.showForgotPasswordPage);
+router.post('/forgot-password', authController.processForgotPassword);
+
 // Redirect otomatis ke dashboard sesuai role setelah login
 router.get('/dashboard', isAuthenticated, (req, res) => {
     const role = req.session.user.role;
