@@ -14,4 +14,28 @@ const checkRole = (...allowedRoles) => {
     };
 };
 
-module.exports = { isAuthenticated, checkRole };
+const DASHBOARD_BY_ROLE = {
+    super_admin: '/superadmin/dashboard',
+    admin: '/admin/dashboard',
+    kepsek: '/kepsek/dashboard'
+};
+
+// Kalau akun sedang wajib ganti password (habis reset lewat "Lupa Password" atau direset admin),
+// paksa dia tetap di halaman dashboard (biar overlay ganti password muncul) dan blokir akses ke halaman lain.
+const wajibGantiPasswordGuard = (req, res, next) => {
+    if (req.session.user && req.session.user.wajibGantiPassword) {
+        res.locals.wajibGantiPassword = true;
+
+        const dashboardRolePath = DASHBOARD_BY_ROLE[req.session.user.role] || '/login';
+        const allowedPaths = ['/dashboard', dashboardRolePath, '/ganti-password-wajib', '/logout'];
+
+        if (!allowedPaths.includes(req.path)) {
+            return res.redirect('/dashboard');
+        }
+    } else {
+        res.locals.wajibGantiPassword = false;
+    }
+    next();
+};
+
+module.exports = { isAuthenticated, checkRole, wajibGantiPasswordGuard };

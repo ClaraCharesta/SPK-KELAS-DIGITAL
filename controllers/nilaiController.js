@@ -149,16 +149,24 @@ const nilaiController = {
             fs.unlinkSync(req.file.path);
 
             const dataToSave = [];
+            const nisnKosong = [];
             const nisnTidakDitemukan = [];
             const nilaiTidakValid = [];
 
-            for (const row of jsonData) {
+            // Baris Excel = index array + 2 (baris 1 = header, data mulai baris 2)
+            for (let idx = 0; idx < jsonData.length; idx++) {
+                const row = jsonData[idx];
+                const baris = idx + 2;
                 const nisn = String(row['NISN'] || '').trim();
-                if (!nisn) continue;
+
+                if (!nisn) {
+                    nisnKosong.push(`Baris ${baris}`);
+                    continue;
+                }
 
                 const siswa = await nilaiModel.getSiswaByNisn(nisn, periode.id_periode);
                 if (!siswa) {
-                    nisnTidakDitemukan.push(nisn);
+                    nisnTidakDitemukan.push(`Baris ${baris} (NISN ${nisn})`);
                     continue;
                 }
 
@@ -186,7 +194,7 @@ const nilaiController = {
                     }
 
                     if (alasanGagal) {
-                        nilaiTidakValid.push(`NISN ${nisn} - ${namaKriteria}: ${alasanGagal} (nilai diinput: "${rawVal}")`);
+                        nilaiTidakValid.push(`Baris ${baris} (NISN ${nisn}) - kolom "${namaKriteria}": ${alasanGagal} (nilai diinput: "${rawVal}")`);
                         return; // baris kriteria ini dilewati, tidak disimpan
                     }
 
@@ -199,11 +207,23 @@ const nilaiController = {
                 });
             }
 
+            const formatDetail = (list, batas) => {
+                const dipotong = list.slice(0, batas);
+                const sisa = list.length - dipotong.length;
+                const teks = dipotong.join(' || ');
+                return sisa > 0 ? `${teks} || dan ${sisa} lainnya` : teks;
+            };
+
             if (dataToSave.length === 0) {
                 let pesanGagalTotal = 'Tidak ada data nilai valid yang bisa disimpan.';
+                if (nisnKosong.length > 0) {
+                    pesanGagalTotal += ` Kolom NISN kosong pada: ${formatDetail(nisnKosong, 10)}.`;
+                }
+                if (nisnTidakDitemukan.length > 0) {
+                    pesanGagalTotal += ` NISN tidak ditemukan di sistem pada: ${formatDetail(nisnTidakDitemukan, 10)}.`;
+                }
                 if (nilaiTidakValid.length > 0) {
-                    pesanGagalTotal += ' Detail kegagalan: ' + nilaiTidakValid.slice(0, 5).join('; ');
-                    if (nilaiTidakValid.length > 5) pesanGagalTotal += ` (dan ${nilaiTidakValid.length - 5} lainnya)`;
+                    pesanGagalTotal += ` Detail kegagalan nilai: ${formatDetail(nilaiTidakValid, 10)}.`;
                 }
                 return res.redirect('/admin/nilai?error=' + encodeURIComponent(pesanGagalTotal));
             }
@@ -213,11 +233,14 @@ const nilaiController = {
             await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
             let pesan = `Import nilai selesai: ${hasil.berhasil} data berhasil disimpan.`;
+            if (nisnKosong.length > 0) {
+                pesan += ` ${nisnKosong.length} baris dilewati karena kolom NISN kosong (${formatDetail(nisnKosong, 10)}).`;
+            }
             if (nisnTidakDitemukan.length > 0) {
-                pesan += ` ${nisnTidakDitemukan.length} NISN tidak ditemukan di sistem (dilewati).`;
+                pesan += ` ${nisnTidakDitemukan.length} NISN tidak ditemukan di sistem (${formatDetail(nisnTidakDitemukan, 10)}).`;
             }
             if (nilaiTidakValid.length > 0) {
-                pesan += ` ${nilaiTidakValid.length} nilai gagal disimpan karena tidak valid (skala/format salah).`;
+                pesan += ` ${nilaiTidakValid.length} nilai gagal disimpan (${formatDetail(nilaiTidakValid, 10)}).`;
             }
 
             res.redirect(`/admin/nilai?success=${encodeURIComponent(pesan)}`);

@@ -2,9 +2,10 @@ const db = require('../config/database');
 const bcrypt = require('bcrypt');
 
 const userManagementModel = {
+    // Hanya tampilkan akun yang masih aktif (status_aktif = TRUE)
     async getAllUsers() {
         const [rows] = await db.query(
-            "SELECT id_user, nama, username, email, role, status_aktif, created_at FROM users WHERE role IN ('admin','kepsek') ORDER BY created_at DESC"
+            "SELECT id_user, nama, username, email, role, status_aktif, created_at FROM users WHERE role IN ('admin','kepsek') AND status_aktif = TRUE ORDER BY created_at DESC"
         );
         return rows;
     },
@@ -14,14 +15,18 @@ const userManagementModel = {
         return rows[0];
     },
 
+    // Hanya cek username yang MASIH AKTIF. Username milik akun nonaktif dianggap "bebas dipakai lagi".
     async checkUsernameExists(username) {
-        const [rows] = await db.query('SELECT id_user FROM users WHERE username = ?', [username]);
+        const [rows] = await db.query(
+            'SELECT id_user FROM users WHERE username = ? AND status_aktif = TRUE',
+            [username]
+        );
         return rows.length > 0;
     },
 
-    // BARU: cek duplikasi email (dipakai supaya tidak ada 2 akun dengan email sama)
+    // Hanya cek email yang MASIH AKTIF. Email milik akun nonaktif dianggap "bebas dipakai lagi".
     async checkEmailExists(email, excludeId = null) {
-        let query = 'SELECT id_user FROM users WHERE email = ?';
+        let query = 'SELECT id_user FROM users WHERE email = ? AND status_aktif = TRUE';
         const params = [email];
 
         if (excludeId) {
@@ -33,6 +38,17 @@ const userManagementModel = {
         return rows.length > 0;
     },
 
+    // BARU: cari akun NONAKTIF yang punya username ATAU email sama.
+    // Dipakai supaya akun lama yang sudah "dihapus" bisa dipakai ulang (diaktifkan kembali)
+    // daripada bikin row baru -> mengurangi duplikasi data.
+    async findInactiveByUsernameOrEmail(username, email) {
+        const [rows] = await db.query(
+            'SELECT * FROM users WHERE (username = ? OR email = ?) AND status_aktif = FALSE LIMIT 1',
+            [username, email]
+        );
+        return rows[0];
+    },
+
     async createUser(nama, username, email, password, role) {
         const hashedPassword = await bcrypt.hash(password, 10);
         const [result] = await db.query(
@@ -40,6 +56,16 @@ const userManagementModel = {
             [nama, username, email, hashedPassword, role]
         );
         return result.insertId;
+    },
+
+    // BARU: reaktivasi akun lama yang nonaktif -> ditimpa dengan data baru + status_aktif jadi TRUE.
+    // Row lama TETAP dipakai (id_user sama), jadi log_aktivitas lama akun ini tetap nyambung.
+    async reactivateUser(id_user, nama, username, email, password, role) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await db.query(
+            'UPDATE users SET nama = ?, username = ?, email = ?, password = ?, role = ?, status_aktif = TRUE WHERE id_user = ?',
+            [nama, username, email, hashedPassword, role, id_user]
+        );
     },
 
     async updateUser(id_user, nama, username, email, role) {
@@ -58,8 +84,14 @@ const userManagementModel = {
         await db.query('UPDATE users SET status_aktif = NOT status_aktif WHERE id_user = ?', [id_user]);
     },
 
+    // Soft delete: akun tidak dihapus dari database, hanya ditandai nonaktif.
+    // Log aktivitas tetap aman karena row users tidak pernah dihapus.
     async deleteUser(id_user) {
-        await db.query('DELETE FROM users WHERE id_user = ?', [id_user]);
+        const [result] = await db.query(
+            'UPDATE users SET status_aktif = FALSE WHERE id_user = ?',
+            [id_user]
+        );
+        return result;
     }
 };
 

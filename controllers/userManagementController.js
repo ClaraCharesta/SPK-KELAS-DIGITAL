@@ -1,7 +1,7 @@
 const userManagementModel = require('../models/userManagementModel');
 const userModel = require('../models/userModel');
 
-const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const REGEX_EMAIL = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
 
 const userManagementController = {
     async index(req, res) {
@@ -30,19 +30,41 @@ const userManagementController = {
             }
 
             if (!REGEX_EMAIL.test(email.trim())) {
-                return res.redirect('/superadmin/akun-admin?error=Format email tidak valid.');
+                return res.redirect('/superadmin/akun-admin?error=Email harus menggunakan domain @gmail.com.');
             }
 
+            // Cek duplikasi hanya terhadap akun yang MASIH AKTIF
             const usernameExists = await userManagementModel.checkUsernameExists(username);
             if (usernameExists) {
-                return res.redirect('/superadmin/akun-admin?error=Username sudah digunakan.');
+                return res.redirect('/superadmin/akun-admin?error=Username sudah digunakan oleh akun aktif lain.');
             }
 
             const emailExists = await userManagementModel.checkEmailExists(email.trim());
             if (emailExists) {
-                return res.redirect('/superadmin/akun-admin?error=Email sudah digunakan oleh akun lain.');
+                return res.redirect('/superadmin/akun-admin?error=Email sudah digunakan oleh akun aktif lain.');
             }
 
+            // Cek apakah username/email ini dulu pernah dipakai akun yang SUDAH DIHAPUS (nonaktif)
+            // Kalau ada, aktifkan kembali akun lama itu (update data) daripada bikin row baru
+            const inactiveUser = await userManagementModel.findInactiveByUsernameOrEmail(username, email.trim());
+
+            if (inactiveUser) {
+                await userManagementModel.reactivateUser(
+                    inactiveUser.id_user,
+                    nama,
+                    username,
+                    email.trim(),
+                    password,
+                    role
+                );
+                await userModel.logActivity(
+                    req.session.user.id_user,
+                    `Super Admin mengaktifkan kembali akun lama: ${nama} (${role})`
+                );
+                return res.redirect('/superadmin/akun-admin?success=Akun lama ditemukan dan berhasil diaktifkan kembali dengan data baru.');
+            }
+
+            // Kalau tidak ada akun lama yang cocok, baru buat akun benar-benar baru
             await userManagementModel.createUser(nama, username, email.trim(), password, role);
             await userModel.logActivity(req.session.user.id_user, `Super Admin menambahkan akun baru: ${nama} (${role})`);
 
@@ -62,7 +84,7 @@ const userManagementController = {
             }
 
             if (!REGEX_EMAIL.test(email.trim())) {
-                return res.redirect('/superadmin/akun-admin?error=Format email tidak valid.');
+                return res.redirect('/superadmin/akun-admin?error=Email harus menggunakan domain @gmail.com.');
             }
 
             const emailExists = await userManagementModel.checkEmailExists(email.trim(), id_user);
@@ -83,6 +105,8 @@ const userManagementController = {
         try {
             const { id_user, newPassword } = req.body;
             await userManagementModel.updatePassword(id_user, newPassword);
+            // Password ini juga password "sementara" yang Super Admin tahu — jadi user tetap wajib ganti sendiri saat login berikutnya
+            await userModel.setWajibGantiPassword(id_user, true);
             const targetUser = await userManagementModel.getUserById(id_user);
             await userModel.logActivity(req.session.user.id_user, `Super Admin mereset password akun: ${targetUser.nama}`);
             res.redirect('/superadmin/akun-admin?success=Password berhasil direset.');
