@@ -298,7 +298,7 @@
                                         name="nilai_perbandingan_<%= i %>"
                                         value="<%= s %>"
                                         required
-                                        class="skala-pill-input-edit">
+                                        class="skala-pill-input skala-pill-input-edit">
                                     <span class="skala-pill"><%= s %></span>
                                 </label>
                             <% } %>
@@ -527,12 +527,23 @@
         perbaruiOpsiUrutanSelectEdit();
         perbaruiLabelPerbandinganEdit();
 
-        // Prefill nilai skala pills
+        // Reset dulu semua radio skala edit sebelum di-prefill ulang
+        // (jaga-jaga kalau modal Edit dibuka lebih dari sekali dalam 1 sesi halaman)
+        document.querySelectorAll('.skala-pill-input-edit').forEach(function(input) {
+            input.checked = false;
+        });
+
+        // Prefill nilai skala pills — value dibersihkan ke integer string dulu
+        // supaya tetap cocok walau data dari database berbentuk "3.00" dsb
         dataEditFucom.nilai.forEach(function(nilai, i) {
+            const nilaiBersih = String(parseInt(nilai, 10));
             const radio = document.querySelector(
-                `.skala-pills-edit[data-pair-index="${i}"] input[value="${nilai}"]`
+                `.skala-pills-edit[data-pair-index="${i}"] input[value="${nilaiBersih}"]`
             );
-            if (radio) radio.checked = true;
+            if (radio) {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         });
 
         modal.style.display = 'flex';

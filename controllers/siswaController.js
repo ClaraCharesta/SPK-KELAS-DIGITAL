@@ -23,6 +23,44 @@ function validasiDataSiswa(data) {
     return null;
 }
 
+// Mengecek satu baris hasil import Excel dan mengembalikan daftar alasan gagal per kolom.
+// Return null jika baris valid.
+function getAlasanGagalBarisSiswa(row) {
+    const alasan = [];
+
+    if (!row.nisn) {
+        alasan.push('kolom NISN kosong');
+    } else if (!REGEX_ANGKA_SAJA.test(row.nisn)) {
+        alasan.push(`kolom NISN "${row.nisn}" harus berupa angka`);
+    }
+
+    if (!row.nama) {
+        alasan.push('kolom NAMA SISWA kosong');
+    } else if (!REGEX_HURUF_SAJA.test(row.nama)) {
+        alasan.push(`kolom NAMA SISWA "${row.nama}" harus berupa huruf`);
+    }
+
+    if (!row.sekolah_asal) {
+        alasan.push('kolom ASAL SEKOLAH kosong');
+    } else if (!REGEX_SEKOLAH.test(row.sekolah_asal)) {
+        alasan.push(`kolom ASAL SEKOLAH "${row.sekolah_asal}" formatnya tidak valid`);
+    }
+
+    if (!row.pekerjaan_ayah) {
+        alasan.push('kolom PEKERJAAAN AYAH kosong');
+    } else if (!REGEX_HURUF_SAJA.test(row.pekerjaan_ayah)) {
+        alasan.push(`kolom PEKERJAAAN AYAH "${row.pekerjaan_ayah}" harus berupa huruf`);
+    }
+
+    if (!row.pekerjaan_ibu) {
+        alasan.push('kolom PEKERJAAN IBU kosong');
+    } else if (!REGEX_HURUF_SAJA.test(row.pekerjaan_ibu)) {
+        alasan.push(`kolom PEKERJAAN IBU "${row.pekerjaan_ibu}" harus berupa huruf`);
+    }
+
+    return alasan.length > 0 ? alasan : null;
+}
+
 const siswaController = {
     async index(req, res) {
         try {
@@ -231,7 +269,9 @@ async delete(req, res) {
 
             // Mapping kolom Excel ke format yang dibutuhkan sistem
             // Sesuaikan nama kolom di sini dengan header asli file Excel PPDB kamu
-            const dataSiswaRaw = jsonData.map(row => ({
+            // Baris Excel = index array + 2 (baris 1 = header, data mulai baris 2)
+            const dataSiswaRaw = jsonData.map((row, idx) => ({
+                baris: idx + 2,
                 nisn: String(row['NISN'] || row['nisn'] || '').trim(),
                 nama: String(row['NAMA SISWA'] || row['nama'] || '').trim(),
                 jenis_kelamin: (row['JENIS KELAMIN SISWA'] || row['jenis_kelamin'] || '').toString().toUpperCase().startsWith('L') ? 'L' : 'P',
@@ -241,25 +281,39 @@ async delete(req, res) {
                 status_pip_pkh: String(row['APAKAH ANANDA PENERIMA PIP / PKH'] || '').toUpperCase() === 'YA'
             }));
 
-            const dataSiswa = dataSiswaRaw.filter(row =>
-                row.nisn && REGEX_ANGKA_SAJA.test(row.nisn) &&
-                row.nama && REGEX_HURUF_SAJA.test(row.nama) &&
-                row.sekolah_asal && REGEX_SEKOLAH.test(row.sekolah_asal) &&
-                row.pekerjaan_ayah && REGEX_HURUF_SAJA.test(row.pekerjaan_ayah) &&
-                row.pekerjaan_ibu && REGEX_HURUF_SAJA.test(row.pekerjaan_ibu)
-            );
-            const dataTidakLengkap = dataSiswaRaw.filter(row =>
-                !(row.nisn && REGEX_ANGKA_SAJA.test(row.nisn) &&
-                  row.nama && REGEX_HURUF_SAJA.test(row.nama) &&
-                  row.sekolah_asal && REGEX_SEKOLAH.test(row.sekolah_asal) &&
-                  row.pekerjaan_ayah && REGEX_HURUF_SAJA.test(row.pekerjaan_ayah) &&
-                  row.pekerjaan_ibu && REGEX_HURUF_SAJA.test(row.pekerjaan_ibu))
-            );
+            const dataSiswa = [];
+            const dataTidakLengkap = [];
+
+            dataSiswaRaw.forEach(row => {
+                const alasan = getAlasanGagalBarisSiswa(row);
+                if (alasan) {
+                    dataTidakLengkap.push({
+                        baris: row.baris,
+                        nisn: row.nisn || '(kosong)',
+                        alasan
+                    });
+                } else {
+                    dataSiswa.push(row);
+                }
+            });
 
             fs.unlinkSync(req.file.path); // hapus file sementara setelah dibaca
 
+            const formatDetailFormat = (list, batas) => {
+                const dipotong = list.slice(0, batas);
+                const teks = dipotong
+                    .map(d => `Baris ${d.baris} (NISN ${d.nisn}): ${d.alasan.join('; ')}`)
+                    .join(' || ');
+                const sisa = list.length - dipotong.length;
+                return sisa > 0 ? `${teks} || dan ${sisa} baris lainnya` : teks;
+            };
+
             if (dataSiswa.length === 0) {
-                return res.redirect('/admin/siswa?error=Tidak ada data valid ditemukan di file Excel. Periksa kembali format kolom, dan pastikan semua kolom terisi dengan format yang benar (NISN angka, nama/pekerjaan huruf, sekolah huruf/angka).');
+                let pesanGagalTotal = 'Tidak ada data valid ditemukan di file Excel.';
+                if (dataTidakLengkap.length > 0) {
+                    pesanGagalTotal += ' Rincian: ' + formatDetailFormat(dataTidakLengkap, 10);
+                }
+                return res.redirect('/admin/siswa?error=' + encodeURIComponent(pesanGagalTotal));
             }
 
             const hasil = await siswaModel.bulkInsert(dataSiswa, periode.id_periode);
@@ -267,9 +321,19 @@ async delete(req, res) {
             await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
             let pesan = `Import selesai: ${hasil.berhasil} berhasil, ${hasil.gagal} gagal.`;
+
             if (dataTidakLengkap.length > 0) {
-                pesan += ` ${dataTidakLengkap.length} baris dilewati karena ada kolom yang kosong atau format tidak sesuai (NISN harus angka, nama/pekerjaan harus huruf, sekolah harus huruf/angka).`;
+                pesan += ` ${dataTidakLengkap.length} baris dilewati karena format tidak sesuai: ${formatDetailFormat(dataTidakLengkap, 10)}`;
             }
+
+            if (hasil.pesanGagal && hasil.pesanGagal.length > 0) {
+                const batas = 10;
+                const dipotong = hasil.pesanGagal.slice(0, batas);
+                const sisa = hasil.pesanGagal.length - dipotong.length;
+                pesan += ` Gagal disimpan ke database: ${dipotong.join(' || ')}`;
+                if (sisa > 0) pesan += ` || dan ${sisa} baris lainnya`;
+            }
+
             res.redirect(`/admin/siswa?success=${encodeURIComponent(pesan)}`);
         } catch (error) {
             console.error(error);

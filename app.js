@@ -37,14 +37,26 @@ const superadminRoutes = require('./routes/superadminRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const kepsekRoutes = require('./routes/kepsekRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const { isAuthenticated, wajibGantiPasswordGuard } = require('./middlewares/authMiddleware');
+const authController = require('./controllers/authController');
 
 
+// Route publik (login, logout, lupa password) — TIDAK butuh login, jadi dipasang duluan,
+// sebelum guard isAuthenticated/wajibGantiPasswordGuard.
 app.use('/', authRoutes);
+
+// Mulai dari sini ke bawah, SEMUA route WAJIB login (isAuthenticated),
+// dan sekaligus kena cek wajib-ganti-password (wajibGantiPasswordGuard).
+// Guard ini yang bikin res.locals.wajibGantiPassword ke-set SEBELUM controller manapun
+// di bawah ini sempat render halaman — jadi overlay bisa muncul di semua halaman admin/superadmin/kepsek/profile.
+app.use(isAuthenticated, wajibGantiPasswordGuard);
+
 app.use('/superadmin', superadminRoutes);
 app.use('/admin', adminRoutes);
 app.use('/kepsek', kepsekRoutes);
 app.use('/', profileRoutes);
 
+app.post('/ganti-password-wajib', authController.processGantiPasswordWajib);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

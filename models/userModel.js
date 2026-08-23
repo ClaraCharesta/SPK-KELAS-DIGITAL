@@ -44,6 +44,12 @@ const userModel = {
             [email]
         );
         return rows[0];
+    },
+
+    // Tandai/hapus tanda "wajib ganti password" — dipakai saat reset password (lupa password / reset manual admin)
+    // dan saat user selesai mengganti passwordnya sendiri.
+    async setWajibGantiPassword(id_user, value) {
+        await db.query('UPDATE users SET wajib_ganti_password = ? WHERE id_user = ?', [value, id_user]);
     }
 };
 
