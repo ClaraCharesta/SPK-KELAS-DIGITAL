@@ -45,7 +45,7 @@
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon icon-orange"><i class="bi bi-balance-scale"></i></div>
+                        <div class="stat-icon icon-orange"><i class="bi bi-diagram-3-fill"></i></div>
                         <div>
                             <h3>Status FUCOM</h3>
                             <p class="stat-number stat-status <%= stats.statusFucom === 'Sudah' ? 'status-ok' : 'status-pending' %>"><%= stats.statusFucom %></p>
@@ -128,11 +128,6 @@
                         label: 'Lulus',
                         data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalLulus)) %>,
                         backgroundColor: '#27ae60'
-                    },
-                    {
-                        label: 'Cadangan',
-                        data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalCadangan)) %>,
-                        backgroundColor: '#e67e22'
                     },
                     {
                         label: 'Mengundurkan Diri',

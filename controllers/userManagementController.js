@@ -23,13 +23,23 @@ const userManagementController = {
 
     async create(req, res) {
         try {
-            const { nama, username, email, password, role } = req.body;
+            const { nama, username, email, password, confirmPassword, role } = req.body;
 
-            if (!nama || !username || !email || !password || !role) {
-                return res.redirect('/superadmin/akun-admin?error=Semua field wajib diisi, termasuk email.');
+            if (!nama || !username || !email || !password || !confirmPassword || !role) {
+                return res.redirect('/superadmin/akun-admin?error=Semua field wajib diisi, termasuk email dan konfirmasi password.');
             }
 
-            if (!REGEX_EMAIL.test(email.trim())) {
+            if (password.length < 6) {
+                return res.redirect('/superadmin/akun-admin?error=Password minimal 6 karakter.');
+            }
+
+            if (password !== confirmPassword) {
+                return res.redirect('/superadmin/akun-admin?error=Konfirmasi password tidak cocok dengan password.');
+            }
+
+            const emailTrimmed = email.trim();
+
+            if (!REGEX_EMAIL.test(emailTrimmed)) {
                 return res.redirect('/superadmin/akun-admin?error=Email harus menggunakan domain @gmail.com.');
             }
 
@@ -39,24 +49,38 @@ const userManagementController = {
                 return res.redirect('/superadmin/akun-admin?error=Username sudah digunakan oleh akun aktif lain.');
             }
 
-            const emailExists = await userManagementModel.checkEmailExists(email.trim());
+            const emailExists = await userManagementModel.checkEmailExists(emailTrimmed);
             if (emailExists) {
                 return res.redirect('/superadmin/akun-admin?error=Email sudah digunakan oleh akun aktif lain.');
             }
 
-            // Cek apakah username/email ini dulu pernah dipakai akun yang SUDAH DIHAPUS (nonaktif)
-            // Kalau ada, aktifkan kembali akun lama itu (update data) daripada bikin row baru
-            const inactiveUser = await userManagementModel.findInactiveByUsernameOrEmail(username, email.trim());
+            // Cek apakah username dan email ini dulu pernah dipakai akun yang SUDAH DIHAPUS (nonaktif).
+            // Dicek TERPISAH (bukan digabung OR) supaya ketahuan kalau username cocok ke akun lama A
+            // sementara email cocok ke akun lama B yang berbeda — dua akun lama tidak boleh digabung paksa.
+            const inactiveByUsername = await userManagementModel.findInactiveByUsername(username);
+            const inactiveByEmail = await userManagementModel.findInactiveByEmail(emailTrimmed);
+
+            if (inactiveByUsername && inactiveByEmail && inactiveByUsername.id_user !== inactiveByEmail.id_user) {
+                return res.redirect('/superadmin/akun-admin?error=' + encodeURIComponent(
+                    `Tidak bisa disimpan: username "${username}" pernah dipakai akun lama "${inactiveByUsername.nama}", sedangkan email "${emailTrimmed}" pernah dipakai akun lama lain "${inactiveByEmail.nama}". Keduanya adalah akun berbeda dan tidak bisa digabung otomatis. Gunakan kombinasi username & email dari akun lama yang sama, atau ganti salah satunya dengan yang benar-benar baru.`
+                ));
+            }
+
+            const inactiveUser = inactiveByUsername || inactiveByEmail;
 
             if (inactiveUser) {
-                await userManagementModel.reactivateUser(
-                    inactiveUser.id_user,
-                    nama,
-                    username,
-                    email.trim(),
-                    password,
-                    role
-                );
+                try {
+                    await userManagementModel.reactivateUser(
+                        inactiveUser.id_user,
+                        nama,
+                        username,
+                        emailTrimmed,
+                        password,
+                        role
+                    );
+                } catch (dupErr) {
+                    return res.redirect('/superadmin/akun-admin?error=' + encodeURIComponent(dupErr.message));
+                }
                 await userModel.logActivity(
                     req.session.user.id_user,
                     `Super Admin mengaktifkan kembali akun lama: ${nama} (${role})`
@@ -65,7 +89,7 @@ const userManagementController = {
             }
 
             // Kalau tidak ada akun lama yang cocok, baru buat akun benar-benar baru
-            await userManagementModel.createUser(nama, username, email.trim(), password, role);
+            await userManagementModel.createUser(nama, username, emailTrimmed, password, role);
             await userModel.logActivity(req.session.user.id_user, `Super Admin menambahkan akun baru: ${nama} (${role})`);
 
             res.redirect('/superadmin/akun-admin?success=Akun berhasil ditambahkan.');
@@ -77,7 +101,7 @@ const userManagementController = {
 
     async update(req, res) {
         try {
-            const { id_user, nama, username, email, role } = req.body;
+            const { id_user, nama, username, email, password, confirmPassword, role } = req.body;
 
             if (!nama || !username || !email || !role) {
                 return res.redirect('/superadmin/akun-admin?error=Semua field wajib diisi, termasuk email.');
@@ -87,13 +111,34 @@ const userManagementController = {
                 return res.redirect('/superadmin/akun-admin?error=Email harus menggunakan domain @gmail.com.');
             }
 
+            // Password di form edit sifatnya OPSIONAL: kosong berarti password tidak diubah.
+            const inginGantiPassword = (password && password.trim() !== '') || (confirmPassword && confirmPassword.trim() !== '');
+            if (inginGantiPassword) {
+                if (!password || password.length < 6) {
+                    return res.redirect('/superadmin/akun-admin?error=Password baru minimal 6 karakter.');
+                }
+                if (password !== confirmPassword) {
+                    return res.redirect('/superadmin/akun-admin?error=Konfirmasi password baru tidak cocok.');
+                }
+            }
+
             const emailExists = await userManagementModel.checkEmailExists(email.trim(), id_user);
             if (emailExists) {
                 return res.redirect('/superadmin/akun-admin?error=Email sudah digunakan oleh akun lain.');
             }
 
             await userManagementModel.updateUser(id_user, nama, username, email.trim(), role);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin memperbarui akun: ${nama}`);
+
+            if (inginGantiPassword) {
+                await userManagementModel.updatePassword(id_user, password);
+                // Password baru ini diketahui Super Admin, jadi user tetap wajib ganti sendiri saat login berikutnya
+                await userModel.setWajibGantiPassword(id_user, true);
+            }
+
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `Super Admin memperbarui akun: ${nama}${inginGantiPassword ? ' (termasuk mengubah password)' : ''}`
+            );
             res.redirect('/superadmin/akun-admin?success=Akun berhasil diperbarui.');
         } catch (error) {
             console.error(error);

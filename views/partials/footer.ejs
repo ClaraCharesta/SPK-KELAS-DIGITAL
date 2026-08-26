@@ -1,6 +1,6 @@
 <style>
-    /* Sticky footer: kalau konten pendek, footer nempel rapi di bawah viewport.
-       Kalau konten panjang, halaman scroll normal dan footer ikut di bawah konten (tidak fixed/menutupi). */
+    /* Sticky footer: kalau konten pendek, footer tetap di bawah viewport.
+       Kalau konten panjang, halaman scroll normal dan footer ikut di bawah konten. */
     .content-wrapper {
         display: flex;
         flex-direction: column;
@@ -9,14 +9,20 @@
     .footer {
         margin-top: auto;
         width: 100%;
-        background: #fff;
+        background: transparent;
         text-align: center;
-        padding: 15px;
-        font-size: 12px;
-        color: #666;
+        padding: 18px 15px 14px;
+        border-top: 1px solid #edf1f7;
     }
     .footer p {
         margin: 2px 0;
+        font-size: 11px;
+        color: #9aa3b2;
+        letter-spacing: 0.2px;
+    }
+    .footer p:first-child {
+        color: #7a8494;
+        font-weight: 500;
     }
 </style>
 
@@ -238,7 +244,6 @@
         const hintConfirmEl = document.getElementById('wgp_hint_confirm');
         const submitBtn = document.getElementById('wgp_submitBtn');
 
-        // Toggle show/hide password
         document.querySelectorAll('#wajibGantiPasswordOverlay .wgp-toggle-eye').forEach(function(eyeEl) {
             eyeEl.addEventListener('click', function() {
                 const targetInput = document.getElementById(this.getAttribute('data-target'));
@@ -259,7 +264,6 @@
             const newPass = newPassEl.value;
             const confirmPass = confirmPassEl.value;
 
-            // Validasi panjang password baru
             if (newPass.length === 0) {
                 newPassEl.classList.remove('wgp-valid', 'wgp-invalid');
                 hintNewEl.textContent = 'Minimal 6 karakter.';
@@ -276,7 +280,6 @@
                 hintNewEl.className = 'wgp-hint ok';
             }
 
-            // Validasi kecocokan konfirmasi
             if (confirmPass.length === 0) {
                 confirmPassEl.classList.remove('wgp-valid', 'wgp-invalid');
                 hintConfirmEl.textContent = 'Ulangi password baru di atas.';
@@ -293,7 +296,6 @@
                 hintConfirmEl.className = 'wgp-hint ok';
             }
 
-            // Aktifkan tombol submit hanya kalau semua valid
             const semuaValid = newPass.length >= 6 && confirmPass.length >= 6 && newPass === confirmPass;
             submitBtn.disabled = !semuaValid;
         }
@@ -312,7 +314,7 @@
             errEl.innerText = pesan;
             errEl.style.display = 'block';
             boxEl.classList.remove('wgp-shake');
-            void boxEl.offsetWidth; // reset animasi biar bisa diulang
+            void boxEl.offsetWidth;
             boxEl.classList.add('wgp-shake');
         }
 
