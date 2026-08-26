@@ -11,15 +11,16 @@ const waspasController = {
             const periode = await periodeModel.getActivePeriode();
             if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.render('admin/waspas', {
-        user: req.session.user,
-        activePage: 'waspas',
-        pageTitle: 'Perhitungan WASPAS',
-        hasilRanking: [],
-        cekData: null,
-        kuota: 0,
-        error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
-        success: null,
-        terkunci: false
+                    user: req.session.user,
+                    activePage: 'waspas',
+                    pageTitle: 'Perhitungan WASPAS',
+                    hasilRanking: [],
+                    cekData: null,
+                    kuota: 0,
+                    detailPerhitungan: null,
+                    error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
+                    success: null,
+                    terkunci: false
                 });
             }
 
@@ -27,16 +28,43 @@ const waspasController = {
             const hasilRanking = await waspasModel.getHasilRanking(periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
 
+            // ================================================================
+            // Bangun detailPerhitungan (tahapan WASPAS: matrix keputusan,
+            // matrix normalisasi, kontribusi WSM/WPM, dst) HANYA jika sudah
+            // ada hasil ranking tersimpan, supaya panel detail & kolom
+            // WSM/WPM di tabel ranking pada waspas.ejs bisa tampil.
+            // Dihitung ulang dari data siswa/kriteria/bobot saat ini karena
+            // detail perhitungan (matrix, normalisasi, dsb) tidak disimpan
+            // ke database, hanya hasil akhirnya (ranking & nilai Q) yang
+            // disimpan lewat waspasModel.saveHasil().
+            // ================================================================
+            let detailPerhitungan = null;
+            if (hasilRanking.length > 0 && cekData.totalBobot > 0) {
+                try {
+                    const siswaData = await waspasModel.getSiswaWithNilai(periode.id_periode);
+                    const kriteriaList = await waspasModel.getKriteria(periode.id_periode);
+                    const bobotList = await waspasModel.getBobot(periode.id_periode);
+
+                    if (siswaData.length > 0 && kriteriaList.length > 0 && bobotList.length > 0) {
+                        detailPerhitungan = hitungWASPAS(siswaData, kriteriaList, bobotList);
+                    }
+                } catch (detailError) {
+                    console.error('Gagal membangun detail perhitungan WASPAS:', detailError);
+                    detailPerhitungan = null;
+                }
+            }
+
             res.render('admin/waspas', {
-    user: req.session.user,
-    activePage: 'waspas',
-    pageTitle: 'Perhitungan WASPAS',
-    hasilRanking,
-    cekData,
-    kuota: periode.kuota_kelas_digital,
-    success: req.query.success || null,
-    error: req.query.error || null,
-    terkunci
+                user: req.session.user,
+                activePage: 'waspas',
+                pageTitle: 'Perhitungan WASPAS',
+                hasilRanking,
+                cekData,
+                kuota: periode.kuota_kelas_digital,
+                detailPerhitungan,
+                success: req.query.success || null,
+                error: req.query.error || null,
+                terkunci
             });
         } catch (error) {
             console.error(error);
@@ -48,12 +76,6 @@ const waspasController = {
         try {
             const periode = await periodeModel.getActivePeriode();
 
-
-            if (await cekTerkunci(periode.id_periode)) {
-                 return res.redirect('/admin/waspas?error=Perhitungan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
-            }
-
-                        
             if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
             }
@@ -69,8 +91,8 @@ const waspasController = {
                 return res.redirect('/admin/waspas?error=Bobot kriteria belum dihitung. Lakukan perhitungan FUCOM terlebih dahulu.');
             }
             if (!cekData.bisaHitung) {
-                            return res.redirect('/admin/waspas?error=Perhitungan tidak dapat dijalankan. Pastikan bobot kriteria tersedia dan seluruh siswa memiliki nilai lengkap.');
-                        }
+                return res.redirect('/admin/waspas?error=Perhitungan tidak dapat dijalankan. Pastikan bobot kriteria tersedia dan seluruh siswa memiliki nilai lengkap.');
+            }
             if (cekData.totalSiswa === 0) {
                 return res.redirect('/admin/waspas?error=Belum ada data siswa.');
             }
@@ -79,7 +101,8 @@ const waspasController = {
             const kriteriaList = await waspasModel.getKriteria(periode.id_periode);
             const bobotList = await waspasModel.getBobot(periode.id_periode);
 
-            const hasil = hitungWASPAS(siswaData, kriteriaList, bobotList);
+            const detailPerhitungan = hitungWASPAS(siswaData, kriteriaList, bobotList);
+            const hasil = detailPerhitungan.hasil;
 
             await waspasModel.saveHasil(periode.id_periode, hasil);
             await waspasModel.updateStatusPenerimaan(periode.id_periode, periode.kuota_kelas_digital);
@@ -164,6 +187,10 @@ const waspasController = {
             const { id_siswa, status_baru } = req.body;
             const periode = await periodeModel.getActivePeriode();
 
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
+            }
+
             if (status_baru === 'lulus') {
                 const jumlahLulus = await waspasModel.hitungJumlahLulus(periode.id_periode);
                 if (jumlahLulus >= periode.kuota_kelas_digital) {
@@ -182,7 +209,6 @@ const waspasController = {
         }
     },
 
-    
 };
 
 module.exports = waspasController;

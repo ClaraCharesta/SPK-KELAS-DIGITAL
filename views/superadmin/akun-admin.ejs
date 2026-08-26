@@ -18,6 +18,42 @@
             word-break: break-all;
             max-width: 220px;
         }
+        .pwd-input-wrap {
+            position: relative;
+        }
+        .pwd-input-wrap input {
+            padding-right: 38px;
+        }
+        .pwd-toggle-eye {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #999;
+            font-size: 15px;
+            user-select: none;
+        }
+        .pwd-toggle-eye:hover {
+            color: #555;
+        }
+        .pwd-hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .pwd-hint.ok {
+            color: #2ecc71;
+        }
+        .pwd-hint.bad {
+            color: #e74c3c;
+        }
+        input.pwd-valid {
+            border-color: #2ecc71;
+        }
+        input.pwd-invalid {
+            border-color: #e74c3c;
+        }
     </style>
 </head>
 <body>
@@ -25,7 +61,6 @@
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
-
             <div class="content-wrapper">
                 <% if (success) { %>
                     <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
@@ -33,7 +68,6 @@
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
@@ -44,7 +78,6 @@
                             <i class="bi bi-plus-lg"></i> Tambah Akun
                         </button>
                     </div>
-
                     <div style="overflow-x:auto;">
                     <table class="data-table">
                         <thead>
@@ -98,12 +131,10 @@
                     </table>
                     </div>
                 </div>
-
                 <%- include('../partials/footer') %>
             </div>
         </div>
     </div>
-
     <!-- Modal Tambah Akun -->
     <div class="modal-overlay" id="modalTambah">
         <div class="modal-box">
@@ -111,13 +142,11 @@
                 <h3><i class="bi bi-person-plus-fill"></i> Tambah Akun Baru</h3>
                 <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/akun-admin/create" method="POST">
+            <form action="/superadmin/akun-admin/create" method="POST" id="formTambah" onsubmit="return validasiPasswordForm(this, false)">
                 <label>Nama Lengkap</label>
                 <input type="text" name="nama" required placeholder="Contoh: Desi Wahyuni, S.Pd">
-
                 <label>Username</label>
                 <input type="text" name="username" required placeholder="Contoh: admin_desi">
-
                 <label>Email</label>
                 <input type="email" name="email" required
                     placeholder="Contoh: admindesi@gmail.com"
@@ -125,7 +154,17 @@
                     title="Email harus menggunakan domain @gmail.com">
 
                 <label>Password</label>
-                <input type="password" name="password" required placeholder="Minimal 6 karakter" minlength="6">
+                <div class="pwd-input-wrap">
+                    <input type="password" name="password" id="tambah_password" required placeholder="Minimal 6 karakter" minlength="6">
+                    <span class="pwd-toggle-eye" data-target="tambah_password"><i class="bi bi-eye-fill"></i></span>
+                </div>
+
+                <label>Konfirmasi Password</label>
+                <div class="pwd-input-wrap">
+                    <input type="password" name="confirmPassword" id="tambah_confirmPassword" required placeholder="Ulangi password di atas" minlength="6">
+                    <span class="pwd-toggle-eye" data-target="tambah_confirmPassword"><i class="bi bi-eye-fill"></i></span>
+                </div>
+                <p class="pwd-hint" id="tambah_pwd_hint"></p>
 
                 <label>Role</label>
                 <select name="role" required>
@@ -133,7 +172,6 @@
                     <option value="admin">Admin</option>
                     <option value="kepsek">Kepala Sekolah</option>
                 </select>
-
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan</button>
@@ -141,7 +179,6 @@
             </form>
         </div>
     </div>
-
     <!-- Modal Edit Akun -->
     <div class="modal-overlay" id="modalEdit">
         <div class="modal-box">
@@ -149,27 +186,37 @@
                 <h3><i class="bi bi-pencil-square"></i> Edit Akun</h3>
                 <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/akun-admin/update" method="POST">
+            <form action="/superadmin/akun-admin/update" method="POST" id="formEdit" onsubmit="return validasiPasswordForm(this, true)">
                 <input type="hidden" name="id_user" id="edit_id_user">
-
                 <label>Nama Lengkap</label>
                 <input type="text" name="nama" id="edit_nama" required>
-
                 <label>Username</label>
                 <input type="text" name="username" id="edit_username" required>
-
                 <label>Email</label>
                 <input type="email" name="email" id="edit_email" required
                     placeholder="Contoh: admindesi@gmail.com"
                     pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$"
                     title="Email harus menggunakan domain @gmail.com">
 
+                <label>Password Baru</label>
+                <div class="pwd-input-wrap">
+                    <input type="password" name="password" id="edit_password" placeholder="Kosongkan jika tidak ingin mengubah password" minlength="6">
+                    <span class="pwd-toggle-eye" data-target="edit_password"><i class="bi bi-eye-fill"></i></span>
+                </div>
+                <p class="pwd-hint">Kosongkan kedua kolom ini kalau tidak ingin mengubah password.</p>
+
+                <label>Konfirmasi Password Baru</label>
+                <div class="pwd-input-wrap">
+                    <input type="password" name="confirmPassword" id="edit_confirmPassword" placeholder="Ulangi password baru di atas" minlength="6">
+                    <span class="pwd-toggle-eye" data-target="edit_confirmPassword"><i class="bi bi-eye-fill"></i></span>
+                </div>
+                <p class="pwd-hint" id="edit_pwd_hint"></p>
+
                 <label>Role</label>
                 <select name="role" id="edit_role" required>
                     <option value="admin">Admin</option>
                     <option value="kepsek">Kepala Sekolah</option>
                 </select>
-
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -177,7 +224,6 @@
             </form>
         </div>
     </div>
-
     <!-- Modal Reset Password -->
     <div class="modal-overlay" id="modalReset">
         <div class="modal-box">
@@ -188,10 +234,11 @@
             <form action="/superadmin/akun-admin/reset-password" method="POST">
                 <input type="hidden" name="id_user" id="reset_id_user">
                 <p style="margin-bottom:15px; color:#666; font-size:14px;">Reset password untuk: <strong id="reset_nama"></strong></p>
-
                 <label>Password Baru</label>
-                <input type="password" name="newPassword" required placeholder="Minimal 6 karakter" minlength="6">
-
+                <div class="pwd-input-wrap">
+                    <input type="password" name="newPassword" id="reset_newPassword" required placeholder="Minimal 6 karakter" minlength="6">
+                    <span class="pwd-toggle-eye" data-target="reset_newPassword"><i class="bi bi-eye-fill"></i></span>
+                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalReset').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Reset Password</button>
@@ -199,7 +246,6 @@
             </form>
         </div>
     </div>
-
     <script>
         function bukaModalEdit(u) {
             document.getElementById('edit_id_user').value = u.id_user;
@@ -207,14 +253,94 @@
             document.getElementById('edit_username').value = u.username;
             document.getElementById('edit_email').value = u.email;
             document.getElementById('edit_role').value = u.role;
+            document.getElementById('edit_password').value = '';
+            document.getElementById('edit_confirmPassword').value = '';
+            document.getElementById('edit_pwd_hint').textContent = '';
+            document.getElementById('edit_pwd_hint').className = 'pwd-hint';
             document.getElementById('modalEdit').style.display = 'flex';
         }
-
         function bukaModalReset(id, nama) {
             document.getElementById('reset_id_user').value = id;
             document.getElementById('reset_nama').innerText = nama;
             document.getElementById('modalReset').style.display = 'flex';
         }
+
+        // Toggle show/hide untuk semua field password yang punya ikon mata
+        document.querySelectorAll('.pwd-toggle-eye').forEach(function(eyeEl) {
+            eyeEl.addEventListener('click', function() {
+                const targetInput = document.getElementById(this.getAttribute('data-target'));
+                const icon = this.querySelector('i');
+                if (targetInput.type === 'password') {
+                    targetInput.type = 'text';
+                    icon.classList.remove('bi-eye-fill');
+                    icon.classList.add('bi-eye-slash-fill');
+                } else {
+                    targetInput.type = 'password';
+                    icon.classList.remove('bi-eye-slash-fill');
+                    icon.classList.add('bi-eye-fill');
+                }
+            });
+        });
+
+        // Validasi kecocokan password + konfirmasi sebelum form dikirim.
+        // isEdit = true berarti password boleh dikosongkan (artinya tidak diubah).
+        function validasiPasswordForm(form, isEdit) {
+            const password = form.password.value;
+            const confirmPassword = form.confirmPassword.value;
+            const hintEl = isEdit ? document.getElementById('edit_pwd_hint') : document.getElementById('tambah_pwd_hint');
+
+            if (isEdit && password === '' && confirmPassword === '') {
+                // Edit: kedua kolom kosong -> password tidak diubah, form boleh dikirim
+                return true;
+            }
+
+            if (password.length < 6) {
+                hintEl.textContent = 'Password minimal 6 karakter.';
+                hintEl.className = 'pwd-hint bad';
+                form.password.focus();
+                return false;
+            }
+            if (password !== confirmPassword) {
+                hintEl.textContent = 'Konfirmasi password tidak cocok dengan password di atas.';
+                hintEl.className = 'pwd-hint bad';
+                form.confirmPassword.focus();
+                return false;
+            }
+            hintEl.textContent = '';
+            return true;
+        }
+
+        // Validasi real-time (opsional, biar user langsung tau sebelum submit)
+        function pasangValidasiRealtime(passwordId, confirmId, hintId) {
+            const passwordEl = document.getElementById(passwordId);
+            const confirmEl = document.getElementById(confirmId);
+            const hintEl = document.getElementById(hintId);
+
+            function cek() {
+                const pass = passwordEl.value;
+                const confirm = confirmEl.value;
+                if (confirm === '') {
+                    confirmEl.classList.remove('pwd-valid', 'pwd-invalid');
+                    hintEl.textContent = '';
+                    return;
+                }
+                if (pass !== confirm) {
+                    confirmEl.classList.remove('pwd-valid');
+                    confirmEl.classList.add('pwd-invalid');
+                    hintEl.textContent = 'Belum cocok dengan password di atas.';
+                    hintEl.className = 'pwd-hint bad';
+                } else {
+                    confirmEl.classList.remove('pwd-invalid');
+                    confirmEl.classList.add('pwd-valid');
+                    hintEl.textContent = 'Password cocok.';
+                    hintEl.className = 'pwd-hint ok';
+                }
+            }
+            passwordEl.addEventListener('input', cek);
+            confirmEl.addEventListener('input', cek);
+        }
+        pasangValidasiRealtime('tambah_password', 'tambah_confirmPassword', 'tambah_pwd_hint');
+        pasangValidasiRealtime('edit_password', 'edit_confirmPassword', 'edit_pwd_hint');
     </script>
 </body>
 </html>

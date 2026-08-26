@@ -35,9 +35,10 @@
                         <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." 
                                style="width:100%; max-width:350px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;"
                                onkeyup="filterTabelSiswa()">
+                        <div class="table-scroll">
                         <table class="data-table">
                             <thead>
-                                <tr><th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th><th>Detail</th></tr>
+                                <tr><th>Rank</th><th>NISN</th><th>Nama</th><th>WSM</th><th>WPM</th><th>Nilai Q</th><th>Status</th><th>Detail</th></tr>
                             </thead>
                             <tbody id="tabelBodyRanking">
                                 <% hasilRanking.forEach(function(h) { %>
@@ -45,7 +46,9 @@
                                         <td><strong>#<%= h.ranking %></strong></td>
                                         <td><%= h.nisn %></td>
                                         <td><%= h.nama %></td>
-                                        <td><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></td>
+                                        <td><%= (typeof h.wsm !== 'undefined' && h.wsm !== null) ? parseFloat(h.wsm).toFixed(4) : '-' %></td>
+                                        <td><%= (typeof h.wpm !== 'undefined' && h.wpm !== null) ? parseFloat(h.wpm).toFixed(4) : '-' %></td>
+                                        <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
                                         <td>
                                             <span class="badge badge-<%= h.status_penerimaan %>">
                                                 <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' 
@@ -64,6 +67,7 @@
                                 <% }); %>
                             </tbody>
                         </table>
+                        </div>
                     <% } %>
                 </div>
                 <% } %>
@@ -104,7 +108,6 @@
             }
             document.getElementById('modalDetailSiswa').style.display = 'flex';
         }
-
         function filterTabelSiswa() {
             const keyword = document.getElementById('searchSiswa').value.toLowerCase();
             document.querySelectorAll('.baris-siswa').forEach(row => {

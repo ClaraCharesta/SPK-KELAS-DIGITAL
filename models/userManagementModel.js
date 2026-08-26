@@ -38,13 +38,21 @@ const userManagementModel = {
         return rows.length > 0;
     },
 
-    // BARU: cari akun NONAKTIF yang punya username ATAU email sama.
-    // Dipakai supaya akun lama yang sudah "dihapus" bisa dipakai ulang (diaktifkan kembali)
-    // daripada bikin row baru -> mengurangi duplikasi data.
-    async findInactiveByUsernameOrEmail(username, email) {
+    // Cari akun NONAKTIF berdasarkan username saja (dipisah dari email supaya bisa dideteksi
+    // kalau username dan email ternyata cocok ke DUA akun lama yang berbeda).
+    async findInactiveByUsername(username) {
         const [rows] = await db.query(
-            'SELECT * FROM users WHERE (username = ? OR email = ?) AND status_aktif = FALSE LIMIT 1',
-            [username, email]
+            'SELECT * FROM users WHERE username = ? AND status_aktif = FALSE LIMIT 1',
+            [username]
+        );
+        return rows[0];
+    },
+
+    // Cari akun NONAKTIF berdasarkan email saja.
+    async findInactiveByEmail(email) {
+        const [rows] = await db.query(
+            'SELECT * FROM users WHERE email = ? AND status_aktif = FALSE LIMIT 1',
+            [email]
         );
         return rows[0];
     },
@@ -62,10 +70,17 @@ const userManagementModel = {
     // Row lama TETAP dipakai (id_user sama), jadi log_aktivitas lama akun ini tetap nyambung.
     async reactivateUser(id_user, nama, username, email, password, role) {
         const hashedPassword = await bcrypt.hash(password, 10);
-        await db.query(
-            'UPDATE users SET nama = ?, username = ?, email = ?, password = ?, role = ?, status_aktif = TRUE WHERE id_user = ?',
-            [nama, username, email, hashedPassword, role, id_user]
-        );
+        try {
+            await db.query(
+                'UPDATE users SET nama = ?, username = ?, email = ?, password = ?, role = ?, status_aktif = TRUE WHERE id_user = ?',
+                [nama, username, email, hashedPassword, role, id_user]
+            );
+        } catch (err) {
+            if (err.code === 'ER_DUP_ENTRY') {
+                throw new Error(`Username atau email sudah dipakai akun lain (mungkin diinput bersamaan oleh pengguna lain). Detail: ${err.sqlMessage}`);
+            }
+            throw err;
+        }
     },
 
     async updateUser(id_user, nama, username, email, role) {

@@ -54,15 +54,18 @@
                                 <span><span class="dot-legend badge-mengundurkan_diri"></span> Mengundurkan Diri</span>
                                 <span><span class="dot-legend badge-tidak_lulus"></span> Tidak Lulus</span>
                             </div>
+                        <div class="table-scroll">
                         <table class="data-table">
-                            <thead><tr><th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th></tr></thead>
+                            <thead><tr><th>Rank</th><th>NISN</th><th>Nama</th><th>WSM</th><th>WPM</th><th>Nilai Q</th><th>Status</th></tr></thead>
                             <tbody>
                                 <% hasilRanking.forEach(function(h) { %>
                                     <tr>
                                         <td>#<%= h.ranking %></td>
                                         <td><%= h.nisn %></td>
                                         <td><%= h.nama %></td>
-                                        <td><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></td>
+                                        <td><%= (typeof h.wsm !== 'undefined' && h.wsm !== null) ? parseFloat(h.wsm).toFixed(4) : '-' %></td>
+                                        <td><%= (typeof h.wpm !== 'undefined' && h.wpm !== null) ? parseFloat(h.wpm).toFixed(4) : '-' %></td>
+                                        <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
                                         <td>
                                             <span class="badge badge-<%= h.status_penerimaan %>">
                                                 <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' 
@@ -76,6 +79,7 @@
                                 <% }); %>
                             </tbody>
                         </table>
+                        </div>
                     </div>
 
                 <% } else { %>
