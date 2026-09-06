@@ -3,6 +3,43 @@
 <head>
     <title>Perhitungan WASPAS</title>
     <%- include('../partials/head') %>
+    <style>
+        /* Perbaikan scroll tabel: dipasang di sini (bukan cuma mengandalkan layout.css)
+           supaya tabel Matrix Keputusan, Normalisasi, dsb bisa di-scroll dengan jelas
+           saat isinya banyak baris, dan tidak cuma menampilkan 1 baris teratas. */
+        .table-scroll {
+            max-height: 420px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+        }
+        .table-scroll .data-table {
+            margin: 0;
+        }
+        .table-scroll thead th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 2;
+            box-shadow: 0 1px 0 #e5e5e5;
+        }
+        /* Scrollbar custom biar jelas kelihatan (khusus browser berbasis WebKit/Chromium) */
+        .table-scroll::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: #b8c2d1;
+            border-radius: 6px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb:hover {
+            background: #97a4b8;
+        }
+        .table-scroll::-webkit-scrollbar-track {
+            background: #f4f6f9;
+        }
+    </style>
 </head>
 <body>
     <div class="app-layout">
@@ -119,6 +156,13 @@
                 <!-- PANEL BARU: Detail Tahapan Perhitungan WASPAS                -->
                 <!-- Muncul hanya jika controller mengirim variabel               -->
                 <!-- `detailPerhitungan` (hasil lengkap dari hitungWASPAS())      -->
+                <!-- CATATAN: panel ini TERBUKA OTOMATIS (class "show" langsung   -->
+                <!-- ditambahkan di server-side) supaya Matrix Keputusan &        -->
+                <!-- Matrix Normalisasi langsung terlihat tanpa perlu diklik dulu.-->
+                <!-- Tetap bisa ditutup manual dengan mengklik header panel ini.  -->
+                <!-- Tiap tabel di dalam sini dibungkus .table-scroll yang sudah  -->
+                <!-- diberi max-height + overflow-y:auto di <style> atas, jadi   -->
+                <!-- bisa discroll kalau baris siswanya banyak.                  -->
                 <!-- ============================================================ -->
                 <% if (adaDetailWaspas) { %>
                 <div class="panel" style="background:#fdf8f4;">
@@ -127,12 +171,12 @@
                             <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-diagram-3-fill"></i></div>
                             <h3>Detail Tahapan Perhitungan WASPAS</h3>
                         </div>
-                        <i class="bi bi-chevron-down"></i>
+                        <i class="bi bi-chevron-up"></i>
                     </div>
-                    <div id="detailWaspas" class="tutorial-content">
+                    <div id="detailWaspas" class="tutorial-content show">
 
                         <h4 style="margin-top:0;">1. Bobot &amp; Jenis Kriteria</h4>
-                        <div class="table-scroll">
+                        <div class="table-scroll" style="max-height:260px;">
                             <table class="data-table">
                                 <thead><tr><th>Kriteria</th><th>Jenis</th><th>Bobot</th></tr></thead>
                                 <tbody>
@@ -148,7 +192,7 @@
                         </div>
 
                         <h4>2. Matrix Keputusan (X) &mdash; Nilai Mentah</h4>
-                        <p style="font-size:12px;color:#777;">Nilai kosong otomatis diisi nilai tengah (rata-rata nilai maksimum &amp; minimum kriteria tersebut).</p>
+                        <p style="font-size:12px;color:#777;">Nilai kosong otomatis diisi nilai tengah (rata-rata nilai maksimum &amp; minimum kriteria tersebut). Total baris: <strong><%= detailPerhitungan.matrixKeputusan.length %> siswa</strong> — scroll ke bawah/samping untuk melihat semua.</p>
                         <div class="table-scroll">
                             <table class="data-table">
                                 <thead>
@@ -220,7 +264,7 @@
                         </div>
 
                         <h4>5. Rekap Total WSM, WPM, dan Nilai Akhir Q</h4>
-                        <p style="font-size:12px;color:#777;">Q = (&lambda; &times; Total WSM) + ((1 &minus; &lambda;) &times; Total WPM), dengan &lambda; = <%= detailPerhitungan.lambda %></p>
+                        <p style="font-size:12px;color:#777;">Q = (&lambda; &times; Total WSM) + ((1 &minus; &lambda;) &times; Total WPM), dengan &lambda; = <%= detailPerhitungan.lambda %>. Total baris: <strong><%= detailPerhitungan.hasil.length %> siswa</strong>.</p>
                         <div class="table-scroll">
                             <table class="data-table">
                                 <thead><tr><th>Rank</th><th>Siswa</th><th>Total WSM</th><th>Total WPM</th><th>Nilai Q</th></tr></thead>
@@ -269,7 +313,7 @@
                         <% } %>
 
                         <form action="/admin/waspas/tetapkan-lulus" method="POST" id="formTetapkanLulus" onsubmit="return confirmDelete(this, 'Apakah Anda yakin? Setelah ini ditetapkan, Anda TIDAK akan bisa lagi mengubah data siswa, nilai siswa, kriteria, maupun bobot FUCOM sampai periode baru dibuka.');">
-                            <div class="table-scroll">
+                            <div class="table-scroll" style="max-height:560px;">
                                 <table class="data-table">
                                     <thead>
                                         <tr>
