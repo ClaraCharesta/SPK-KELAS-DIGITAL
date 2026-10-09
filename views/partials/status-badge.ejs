@@ -1,0 +1,8 @@
+<%
+  const LABEL_STATUS = {
+    diterima: 'Masuk Kelas Digital',
+    tidak_diterima: 'Tidak Masuk Kelas Digital',
+    belum_diproses: 'Belum Diproses'
+  };
+%>
+<span class="badge badge-<%= status %>"><%= LABEL_STATUS[status] || status %></span>

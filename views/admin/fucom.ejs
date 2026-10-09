@@ -4,6 +4,16 @@
     <title>Perhitungan FUCOM</title>
     <%- include('../partials/head') %>
     <link rel="stylesheet" href="/css/fucom.css">
+    <style>
+        .input-skala {
+            width:140px; padding:9px 12px; border:1px solid #ddd; border-radius:8px;
+            font-size:14px; text-align:center; letter-spacing:1px;
+        }
+        .input-skala:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+        .input-skala.tidak-valid { border:2px solid #e74c3c; }
+        .skala-hint { font-size:11px; color:#888; margin-top:4px; }
+        .skala-error { font-size:12px; color:#e74c3c; margin-top:4px; display:none; }
+    </style>
 </head>
 <body>
     <div class="app-layout">
@@ -37,30 +47,30 @@
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
                             <li>Klik <strong>"Input Data Responden"</strong> dan isi nama pengambil keputusan resmi (misalnya Waka Kurikulum) yang menginput hasil kuesioner.</li>
                             <li>Urutkan 6 kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>. Urutan dan nilai yang diinput merupakan hasil kesepakatan/musyawarah bersama guru-guru terkait, bukan opini pribadi satu orang saja.</li>
-                            <li>Isi nilai perbandingan antar kriteria yang bersebelahan dengan memilih skala 1-9 pada tombol yang tersedia (bukan mengetik angka manual). Panduan skala:</li>
+                            <li>Isi nilai perbandingan antar kriteria yang bersebelahan dengan <strong>mengetik angka</strong> pada kolom yang tersedia. Aturan pengisian:</li>
                         </ol>
 
                         <table class="data-table" style="margin: 10px 0 15px 20px; max-width: 620px;">
                             <thead>
-                                <tr><th style="width:70px;">Skala</th><th>Makna</th></tr>
+                                <tr><th style="width:190px;">Contoh Nilai</th><th>Keterangan</th></tr>
                             </thead>
                             <tbody>
                                 <tr><td><strong>1</strong></td><td>Kedua kriteria sama penting</td></tr>
-                                <tr><td><strong>2 - 3</strong></td><td>Kriteria sebelumnya sedikit lebih penting</td></tr>
-                                <tr><td><strong>4 - 5</strong></td><td>Kriteria sebelumnya cukup/jelas lebih penting</td></tr>
-                                <tr><td><strong>6 - 7</strong></td><td>Kriteria sebelumnya jauh lebih penting</td></tr>
-                                <tr><td><strong>8 - 9</strong></td><td>Kriteria sebelumnya mutlak/sangat jauh lebih penting</td></tr>
+                                <tr><td><strong>1,5 &nbsp;/&nbsp; 2,25</strong></td><td>Desimal diperbolehkan, maksimal 2 angka di belakang koma</td></tr>
+                                <tr><td><strong>2 - 4</strong></td><td>Kriteria sebelumnya lebih penting (disarankan untuk sebagian besar perbandingan)</td></tr>
+                                <tr><td><strong>9</strong></td><td>Batas maksimum</td></tr>
+                                <tr><td><strong style="color:#b3261e;">0, 0,0, 0,00, 10, huruf, minus</strong></td><td>Tidak diperbolehkan. Nilai harus lebih dari 0 dan paling besar 9</td></tr>
                             </tbody>
                         </table>
 
                         <ol start="4" style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
-                            <li>Gunakan skala <strong>1-4</strong> untuk sebagian besar perbandingan. Skala besar (7-9) hanya dipakai jika benar-benar yakin ada kesenjangan kepentingan yang sangat besar antar dua kriteria — semakin sering skala besar dipakai, semakin besar risiko hasil pembobotan menjadi tidak konsisten.</li>
-                            <li>Data hanya diinput <strong>satu kali</strong> (1 responden resmi mewakili hasil musyawarah). Selama bobot belum dihitung, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
+                            <li>Gunakan nilai yang <strong>moderat</strong> (misalnya 1 sampai 4, boleh desimal). Semakin besar lompatan nilai antar kriteria, semakin besar risiko hasil pembobotan menjadi tidak konsisten.</li>
+                            <li>Data hanya diinput <strong>satu kali</strong> (1 responden). Selama bobot belum dihitung, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
                             <li>
                                 Setelah dihitung, sistem akan menampilkan nilai <strong>DFC (Deviation from Full Consistency)</strong> — semacam skor yang menunjukkan seberapa konsisten urutan dan nilai yang diinput tadi secara matematis.
                                 <ul style="margin-top:6px;">
                                     <li><strong>DFC di bawah 0,1</strong> → hasil dianggap <strong>konsisten</strong>. Bobot otomatis menjadi final dan terkunci, Admin dapat melanjutkan ke pengelolaan data siswa.</li>
-                                    <li><strong>DFC di atas atau sama dengan 0,1</strong> → hasil dianggap <strong>belum konsisten</strong>. Ini bukan berarti sistem error — artinya urutan atau nilai perbandingan yang diinput tadi kurang logis secara matematis (misalnya lompatan skala terlalu ekstrem). Bobot <strong>tidak</strong> dikunci, dan Admin perlu mengedit atau menghapus data responden lalu menginput ulang dengan urutan/nilai yang lebih moderat.</li>
+                                    <li><strong>DFC di atas atau sama dengan 0,1</strong> → hasil dianggap <strong>belum konsisten</strong>. Ini bukan berarti sistem error — artinya urutan atau nilai perbandingan yang diinput tadi kurang logis secara matematis (misalnya lompatan nilai terlalu ekstrem). Bobot <strong>tidak</strong> dikunci, dan Admin perlu mengedit atau menghapus data responden lalu menginput ulang dengan urutan/nilai yang lebih moderat.</li>
                                 </ul>
                             </li>
                         </ol>
@@ -72,7 +82,7 @@
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clipboard-data"></i></div>
-                            <h3>Data Perbandingan Kriteria (1 Responden - Hasil Musyawarah)</h3>
+                            <h3>Data Perbandingan Kriteria (1 Responden)</h3>
                         </div>
                         <% if (!terkunci && respondenList.length === 0) { %>
                             <button
@@ -115,7 +125,7 @@
                                         <% dataResponden[nama].forEach(function(p) { %>
                                             <tr>
                                                 <td><%= p.nama_kriteria_asal %> vs <%= p.nama_kriteria_pembanding %></td>
-                                                <td><strong><%= p.nilai_perbandingan %></strong></td>
+                                                <td><strong><%= String(parseFloat(p.nilai_perbandingan)).replace('.', ',') %></strong></td>
                                             </tr>
                                         <% }); %>
                                     </tbody>
@@ -209,7 +219,7 @@
                 <p id="peringatan_nama_responden" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
 
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
-                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong> berdasarkan hasil musyawarah.
+                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting.
                 </p>
                 <% kriteriaList.forEach(function(k, idx) { %>
                     <label>Kriteria <%= idx + 1 %></label>
@@ -222,28 +232,21 @@
                 <% }); %>
 
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
-                    Nilai perbandingan antar peringkat berurutan. Pilih salah satu skala 1-9 (lihat panduan skala pada bagian tutorial di atas). <strong>Gunakan skala 1-4</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
+                    Nilai perbandingan antar peringkat berurutan. Ketik angka <strong>lebih dari 0 sampai 9</strong>, boleh desimal maksimal 2 angka di belakang koma (lihat panduan pada bagian tutorial di atas). <strong>Disarankan nilai moderat</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
                 </p>
                 <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>
                     <div class="skala-group" style="margin-bottom:20px;">
                         <label id="label_pair_<%= i %>">Kriteria <%= i + 1 %> dibanding Kriteria <%= i + 2 %></label>
-                        <div class="skala-pills" data-pair-index="<%= i %>" style="display:flex; flex-wrap:wrap; gap:8px;">
-                            <% for (let s = 1; s <= 9; s++) { %>
-                                <label class="skala-pill-label">
-                                    <input
-                                        type="radio"
-                                        name="nilai_perbandingan_<%= i %>"
-                                        value="<%= s %>"
-                                        required
-                                        class="skala-pill-input">
-                                    <span class="skala-pill"><%= s %></span>
-                                </label>
-                            <% } %>
-                        </div>
-                        <div class="skala-caption">
-                            <span>Sama penting</span>
-                            <span>Mutlak lebih penting</span>
-                        </div>
+                        <input type="text"
+                               name="nilai_perbandingan_<%= i %>"
+                               class="input-skala"
+                               inputmode="decimal"
+                               maxlength="4"
+                               placeholder="Contoh: 1,5"
+                               autocomplete="off"
+                               required>
+                        <div class="skala-hint">Lebih dari 0 sampai 9, maksimal 2 angka desimal</div>
+                        <div class="skala-error"></div>
                     </div>
                 <% } %>
 
@@ -272,7 +275,7 @@
                 <p id="peringatan_nama_responden_edit" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
 
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
-                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong> berdasarkan hasil musyawarah.
+                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting.
                 </p>
                 <% kriteriaList.forEach(function(k, idx) { %>
                     <label>Kriteria <%= idx + 1 %></label>
@@ -285,28 +288,22 @@
                 <% }); %>
 
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
-                    Nilai perbandingan antar peringkat berurutan. Pilih salah satu skala 1-9 (lihat panduan skala pada bagian tutorial di atas). <strong>Gunakan skala 1-4</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
+                    Nilai perbandingan antar peringkat berurutan. Ketik angka <strong>lebih dari 0 sampai 9</strong>, boleh desimal maksimal 2 angka di belakang koma (lihat panduan pada bagian tutorial di atas). <strong>Disarankan nilai moderat</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
                 </p>
                 <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>
                     <div class="skala-group" style="margin-bottom:20px;">
                         <label id="label_pair_edit_<%= i %>">Kriteria <%= i + 1 %> dibanding Kriteria <%= i + 2 %></label>
-                        <div class="skala-pills-edit" data-pair-index="<%= i %>" style="display:flex; flex-wrap:wrap; gap:8px;">
-                            <% for (let s = 1; s <= 9; s++) { %>
-                                <label class="skala-pill-label">
-                                    <input
-                                        type="radio"
-                                        name="nilai_perbandingan_<%= i %>"
-                                        value="<%= s %>"
-                                        required
-                                        class="skala-pill-input skala-pill-input-edit">
-                                    <span class="skala-pill"><%= s %></span>
-                                </label>
-                            <% } %>
-                        </div>
-                        <div class="skala-caption">
-                            <span>Sama penting</span>
-                            <span>Mutlak lebih penting</span>
-                        </div>
+                        <input type="text"
+                               name="nilai_perbandingan_<%= i %>"
+                               class="input-skala input-skala-edit"
+                               data-pair-index="<%= i %>"
+                               inputmode="decimal"
+                               maxlength="4"
+                               placeholder="Contoh: 1,5"
+                               autocomplete="off"
+                               required>
+                        <div class="skala-hint">Lebih dari 0 sampai 9, maksimal 2 angka desimal</div>
+                        <div class="skala-error"></div>
                     </div>
                 <% } %>
 
@@ -339,7 +336,7 @@
                 return urutan;
             })()
         ) %>,
-        nilai: <%- JSON.stringify(dataResponden[respondenList[0]].map(r => String(r.nilai_perbandingan))) %>
+        nilai: <%- JSON.stringify(dataResponden[respondenList[0]].map(r => String(parseFloat(r.nilai_perbandingan)).replace('.', ','))) %>
     };
     <% } else { %>
     const dataEditFucom = null;
@@ -351,6 +348,68 @@
     // ==== VALIDASI NAMA RESPONDEN (MODAL INPUT): HANYA HURUF, TIDAK DUPLIKAT, TIDAK BOLEH KOSONG/SPASI SAJA ====
     const daftarResponden = <%- JSON.stringify(respondenList.map(n => n.trim().toLowerCase())) %>;
     const REGEX_HURUF_SAJA_FUCOM = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+
+    // ==== VALIDASI SKALA PERBANDINGAN: LEBIH DARI 0 SAMPAI 9, MAKSIMAL 2 DESIMAL ====
+    // Valid: 1, 1,5, 2,25, 0,5, 9. Tidak valid: 0, 0,0, 0,00, 10, 9,5, minus, huruf.
+    const REGEX_SKALA_FUCOM = /^[0-9](,[0-9]{1,2})?$/;
+
+    function nilaiSkalaValid(teks) {
+        if (!REGEX_SKALA_FUCOM.test(teks)) return false;
+        const angka = Number(teks.replace(',', '.'));
+        return Number.isFinite(angka) && angka > 0 && angka <= 9;
+    }
+
+    // Bersihkan ketikan: hanya angka dan satu koma, 1 digit di depan koma, maksimal 2 digit di belakang koma.
+    function bersihkanInputSkala(input) {
+        let v = input.value.replace(/[^0-9.,]/g, '').replace(/\./g, ',');
+
+        const idx = v.indexOf(',');
+        if (idx === -1) {
+            v = v.slice(0, 1);
+        } else {
+            let depan = v.slice(0, idx).slice(0, 1);
+            let belakang = v.slice(idx + 1).replace(/,/g, '').slice(0, 2);
+            if (depan === '') depan = '0';
+            v = depan + ',' + belakang;
+        }
+
+        input.value = v;
+        input.classList.remove('tidak-valid');
+
+        const err = input.parentElement.querySelector('.skala-error');
+        if (err) err.style.display = 'none';
+    }
+
+    document.querySelectorAll('.input-skala').forEach(function(input) {
+        input.addEventListener('input', function() { bersihkanInputSkala(this); });
+    });
+
+    // Cek semua kolom skala dalam satu form. Return true jika semuanya valid.
+    function validasiSemuaSkala(form) {
+        let semuaValid = true;
+        let pertamaSalah = null;
+
+        form.querySelectorAll('.input-skala').forEach(function(input) {
+            const teks = input.value.trim();
+            const err = input.parentElement.querySelector('.skala-error');
+
+            if (nilaiSkalaValid(teks)) {
+                input.classList.remove('tidak-valid');
+                if (err) err.style.display = 'none';
+            } else {
+                semuaValid = false;
+                input.classList.add('tidak-valid');
+                if (err) {
+                    err.innerText = 'Isi angka lebih dari 0 sampai 9 (maksimal 2 desimal). Nilai 0, 0,0, 0,00, dan angka 10 ke atas tidak diperbolehkan.';
+                    err.style.display = 'block';
+                }
+                if (!pertamaSalah) pertamaSalah = input;
+            }
+        });
+
+        if (pertamaSalah) pertamaSalah.focus();
+        return semuaValid;
+    }
 
     const inputNamaResponden = document.getElementById('nama_responden_input');
     if (inputNamaResponden) {
@@ -380,6 +439,8 @@
             return false;
         }
 
+        if (!validasiSemuaSkala(form)) return false;
+
         form.nama_responden.value = namaTrim;
         return true;
     }
@@ -406,6 +467,8 @@
             form.nama_responden.focus();
             return false;
         }
+
+        if (!validasiSemuaSkala(form)) return false;
 
         form.nama_responden.value = namaTrim;
         return true;
@@ -477,9 +540,12 @@
     document.querySelector('button[onclick*="modalInput"]')?.addEventListener('click', function() {
         perbaruiOpsiUrutanSelect();
         perbaruiLabelPerbandingan();
-        // ==== RESET VISUAL SKALA PILL SAAT MODAL DIBUKA ULANG ====
-        document.querySelectorAll('.skala-pill-input').forEach(function(input) {
-            input.checked = false;
+        // ==== KOSONGKAN KOLOM SKALA SAAT MODAL DIBUKA ULANG ====
+        document.querySelectorAll('#modalInput .input-skala').forEach(function(input) {
+            input.value = '';
+            input.classList.remove('tidak-valid');
+            const err = input.parentElement.querySelector('.skala-error');
+            if (err) err.style.display = 'none';
         });
     });
 
@@ -527,23 +593,13 @@
         perbaruiOpsiUrutanSelectEdit();
         perbaruiLabelPerbandinganEdit();
 
-        // Reset dulu semua radio skala edit sebelum di-prefill ulang
-        // (jaga-jaga kalau modal Edit dibuka lebih dari sekali dalam 1 sesi halaman)
-        document.querySelectorAll('.skala-pill-input-edit').forEach(function(input) {
-            input.checked = false;
-        });
-
-        // Prefill nilai skala pills — value dibersihkan ke integer string dulu
-        // supaya tetap cocok walau data dari database berbentuk "3.00" dsb
-        dataEditFucom.nilai.forEach(function(nilai, i) {
-            const nilaiBersih = String(parseInt(nilai, 10));
-            const radio = document.querySelector(
-                `.skala-pills-edit[data-pair-index="${i}"] input[value="${nilaiBersih}"]`
-            );
-            if (radio) {
-                radio.checked = true;
-                radio.dispatchEvent(new Event('change', { bubbles: true }));
-            }
+        // Prefill kolom skala (nilai dari database sudah diformat: titik jadi koma, tanpa nol berlebih)
+        document.querySelectorAll('.input-skala-edit').forEach(function(input) {
+            const i = Number(input.dataset.pairIndex);
+            input.value = dataEditFucom.nilai[i] !== undefined ? dataEditFucom.nilai[i] : '';
+            input.classList.remove('tidak-valid');
+            const err = input.parentElement.querySelector('.skala-error');
+            if (err) err.style.display = 'none';
         });
 
         modal.style.display = 'flex';

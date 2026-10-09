@@ -5,7 +5,7 @@ const userManagementModel = {
     // Hanya tampilkan akun yang masih aktif (status_aktif = TRUE)
     async getAllUsers() {
         const [rows] = await db.query(
-            "SELECT id_user, nama, username, email, role, status_aktif, created_at FROM users WHERE role IN ('admin','kepsek') AND status_aktif = TRUE ORDER BY created_at DESC"
+            "SELECT id_user, nama, username, email, role, status_aktif, created_at FROM users WHERE role IN ('operator','kepsek') AND status_aktif = TRUE ORDER BY created_at DESC"
         );
         return rows;
     },

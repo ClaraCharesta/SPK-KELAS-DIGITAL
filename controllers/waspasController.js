@@ -5,10 +5,15 @@ const { hitungWASPAS } = require('../utils/waspasCalculator');
 const { cekTerkunci } = require('../utils/lockHelper');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
 
+const redirectError = (res, pesan) =>
+    res.redirect('/admin/waspas?error=' + encodeURIComponent(pesan));
+
 const waspasController = {
+    // GET /admin/waspas
     async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
+
             if (!periode || !isPeriodeSudahMulai(periode)) {
                 return res.render('admin/waspas', {
                     user: req.session.user,
@@ -28,17 +33,9 @@ const waspasController = {
             const hasilRanking = await waspasModel.getHasilRanking(periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
 
-            // ================================================================
-            // Bangun detailPerhitungan (tahapan WASPAS: matrix keputusan,
-            // matrix normalisasi, kontribusi WSM/WPM, dst) HANYA jika sudah
-            // ada hasil ranking tersimpan, supaya panel detail & kolom
-            // WSM/WPM di tabel ranking pada waspas.ejs bisa tampil.
-            // Dihitung ulang dari data siswa/kriteria/bobot saat ini karena
-            // detail perhitungan (matrix, normalisasi, dsb) tidak disimpan
-            // ke database, hanya hasil akhirnya (ranking & nilai Q) yang
-            // disimpan lewat waspasModel.saveHasil().
-            // ================================================================
+            // Detail tahapan dihitung ulang dari data saat ini (tidak disimpan di database).
             let detailPerhitungan = null;
+
             if (hasilRanking.length > 0 && cekData.totalBobot > 0) {
                 try {
                     const siswaData = await waspasModel.getSiswaWithNilai(periode.id_periode);
@@ -54,7 +51,7 @@ const waspasController = {
                 }
             }
 
-            res.render('admin/waspas', {
+            return res.render('admin/waspas', {
                 user: req.session.user,
                 activePage: 'waspas',
                 pageTitle: 'Perhitungan WASPAS',
@@ -68,147 +65,134 @@ const waspasController = {
             });
         } catch (error) {
             console.error(error);
-            res.status(500).send('Terjadi kesalahan mengambil data WASPAS.');
+            return res.status(500).send('Terjadi kesalahan mengambil data WASPAS.');
         }
     },
 
+    // POST /admin/waspas/hitung
     async hitung(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
+                return redirectError(res, !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode));
             }
 
-            // Blokir hitung ulang kalau sudah terkunci
             if (await cekTerkunci(periode.id_periode)) {
-                return res.redirect('/admin/waspas?error=Perhitungan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
+                return redirectError(res, 'Perhitungan terkunci karena hasil seleksi sudah difinalisasi.');
             }
 
             const cekData = await waspasModel.checkDataLengkap(periode.id_periode);
 
             if (cekData.totalBobot === 0) {
-                return res.redirect('/admin/waspas?error=Bobot kriteria belum dihitung. Lakukan perhitungan FUCOM terlebih dahulu.');
+                return redirectError(res, 'Bobot kriteria belum dihitung. Lakukan perhitungan FUCOM terlebih dahulu.');
             }
-            if (!cekData.bisaHitung) {
-                return res.redirect('/admin/waspas?error=Perhitungan tidak dapat dijalankan. Pastikan bobot kriteria tersedia dan seluruh siswa memiliki nilai lengkap.');
-            }
+
             if (cekData.totalSiswa === 0) {
-                return res.redirect('/admin/waspas?error=Belum ada data siswa.');
+                return redirectError(res, 'Belum ada siswa yang berminat mengikuti seleksi.');
+            }
+
+            if (cekData.totalSiswa <= periode.kuota_kelas_digital) {
+                return redirectError(
+                    res,
+                    `Jumlah siswa berminat (${cekData.totalSiswa}) harus lebih banyak dari kuota (${periode.kuota_kelas_digital}).`
+                );
+            }
+
+            if (!cekData.bisaHitung) {
+                return redirectError(
+                    res,
+                    'Perhitungan tidak dapat dijalankan. Pastikan bobot kriteria tersedia dan seluruh siswa berminat memiliki nilai lengkap.'
+                );
             }
 
             const siswaData = await waspasModel.getSiswaWithNilai(periode.id_periode);
             const kriteriaList = await waspasModel.getKriteria(periode.id_periode);
             const bobotList = await waspasModel.getBobot(periode.id_periode);
 
-            const detailPerhitungan = hitungWASPAS(siswaData, kriteriaList, bobotList);
-            const hasil = detailPerhitungan.hasil;
+            const detail = hitungWASPAS(siswaData, kriteriaList, bobotList);
+            const hasil = detail.hasil;
 
-            await waspasModel.saveHasil(periode.id_periode, hasil);
-            await waspasModel.updateStatusPenerimaan(periode.id_periode, periode.kuota_kelas_digital);
+            await waspasModel.saveHasil(periode.id_periode, hasil, periode.kuota_kelas_digital);
 
-            await userModel.logActivity(req.session.user.id_user, `Menghitung perangkingan WASPAS untuk ${hasil.length} siswa`);
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `Menghitung perangkingan WASPAS untuk ${hasil.length} siswa`
+            );
 
-            let pesan = 'Perangkingan WASPAS berhasil dihitung.';
-            if (cekData.siswaBelumLengkap > 0) {
-                pesan += ` Perhatian: ${cekData.siswaBelumLengkap} siswa belum memiliki nilai lengkap untuk semua kriteria, hasil bersifat sementara.`;
+            return res.redirect('/admin/waspas?success=' + encodeURIComponent('Perangkingan WASPAS berhasil dihitung.'));
+        } catch (error) {
+            if (error.message === 'PERIODE_FINAL') {
+                return redirectError(res, 'Hasil seleksi sudah difinalisasi dan tidak dapat dihitung ulang.');
             }
 
-            res.redirect(`/admin/waspas?success=${encodeURIComponent(pesan)}`);
-        } catch (error) {
             console.error(error);
-            res.redirect('/admin/waspas?error=Terjadi kesalahan sistem: ' + error.message);
+            return redirectError(res, 'Terjadi kesalahan sistem: ' + error.message);
         }
     },
 
+    // POST /admin/waspas/hapus
     async hapusHasil(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
+                return redirectError(res, !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode));
             }
 
-            // Blokir hapus hasil kalau sudah terkunci
             if (await cekTerkunci(periode.id_periode)) {
-                return res.redirect('/admin/waspas?error=Tidak dapat menghapus karena sudah ada siswa yang ditetapkan Lulus.');
+                return redirectError(res, 'Tidak dapat menghapus hasil karena sudah difinalisasi.');
             }
 
             await waspasModel.hapusHasil(periode.id_periode);
             await userModel.logActivity(req.session.user.id_user, 'Menghapus hasil perankingan WASPAS');
 
-            res.redirect('/admin/waspas?success=Hasil perankingan berhasil dihapus. Pembobotan kriteria kini dapat diubah kembali.');
+            return res.redirect(
+                '/admin/waspas?success=' +
+                encodeURIComponent('Hasil perankingan berhasil dihapus. Pembobotan kriteria kini dapat diubah kembali.')
+            );
         } catch (error) {
             console.error(error);
-            res.redirect('/admin/waspas?error=Terjadi kesalahan sistem.');
+            return redirectError(res, 'Terjadi kesalahan sistem.');
         }
     },
 
-    async tetapkanLulus(req, res) {
+    // POST /admin/waspas/finalisasi
+    async finalisasi(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
+                return redirectError(res, !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode));
             }
 
-            let { id_siswa_lulus } = req.body;
+            const hasil = await waspasModel.finalisasi(periode.id_periode);
 
-            if (!id_siswa_lulus) {
-                return res.redirect('/admin/waspas?error=Pilih minimal 1 siswa untuk ditetapkan lulus.');
+            if (!hasil.ok) {
+                const PESAN = {
+                    PERIODE_TIDAK_DITEMUKAN: 'Periode seleksi tidak ditemukan.',
+                    SUDAH_FINAL: 'Hasil seleksi sudah difinalisasi sebelumnya.',
+                    TIDAK_ADA_HASIL: 'Belum ada hasil perankingan. Jalankan perhitungan WASPAS terlebih dahulu.',
+                    HASIL_USANG: 'Hasil perankingan tidak sesuai dengan data siswa terbaru. Hitung ulang WASPAS sebelum finalisasi.'
+                };
+
+                return redirectError(res, PESAN[hasil.alasan] || 'Finalisasi gagal.');
             }
 
-            const idArray = Array.isArray(id_siswa_lulus) ? id_siswa_lulus : [id_siswa_lulus];
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `Memfinalisasi hasil seleksi (${hasil.jumlah} siswa diperingkat)`
+            );
 
-            const jumlahLulusSekarang = await waspasModel.hitungJumlahLulus(periode.id_periode);
-            const sisaKuota = periode.kuota_kelas_digital - jumlahLulusSekarang;
-
-            if (idArray.length > sisaKuota) {
-                return res.redirect(`/admin/waspas?error=Jumlah yang dipilih (${idArray.length}) melebihi sisa kuota (${sisaKuota}). Kurangi pilihan Anda.`);
-            }
-
-            await waspasModel.tetapkanLulus(periode.id_periode, idArray);
-            const sudahPenuh = await waspasModel.kunciJikaKuotaPenuh(periode.id_periode, periode.kuota_kelas_digital);
-
-            await userModel.logActivity(req.session.user.id_user, `Menetapkan ${idArray.length} siswa sebagai Lulus`);
-
-            let pesan = `${idArray.length} siswa berhasil ditetapkan Lulus.`;
-            if (sudahPenuh) pesan += ' Kuota telah terpenuhi, hasil penempatan kini bersifat final.';
-
-            res.redirect(`/admin/waspas?success=${encodeURIComponent(pesan)}`);
+            return res.redirect(
+                '/admin/waspas?success=' +
+                encodeURIComponent('Hasil seleksi berhasil difinalisasi. Seluruh data kini terkunci dan siswa dapat melihat pengumuman.')
+            );
         } catch (error) {
             console.error(error);
-            res.redirect('/admin/waspas?error=Terjadi kesalahan sistem.');
+            return redirectError(res, 'Terjadi kesalahan sistem saat finalisasi.');
         }
-    },
-
-    async updateStatusManual(req, res) {
-        try {
-            const { id_siswa, status_baru } = req.body;
-            const periode = await periodeModel.getActivePeriode();
-
-            if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.redirect('/admin/waspas?error=' + encodeURIComponent(!periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)));
-            }
-
-            if (status_baru === 'lulus') {
-                const jumlahLulus = await waspasModel.hitungJumlahLulus(periode.id_periode);
-                if (jumlahLulus >= periode.kuota_kelas_digital) {
-                    return res.redirect('/admin/waspas?error=Kuota sudah terpenuhi, tidak dapat menambah siswa Lulus lagi.');
-                }
-            }
-
-            await waspasModel.updateStatusManual(id_siswa, status_baru);
-            await waspasModel.kunciJikaKuotaPenuh(periode.id_periode, periode.kuota_kelas_digital);
-
-            await userModel.logActivity(req.session.user.id_user, `Mengubah status siswa ID ${id_siswa} menjadi ${status_baru}`);
-            res.redirect('/admin/waspas?success=Status siswa berhasil diperbarui.');
-        } catch (error) {
-            console.error(error);
-            res.redirect('/admin/waspas?error=Terjadi kesalahan sistem.');
-        }
-    },
-
+    }
 };
 
 module.exports = waspasController;

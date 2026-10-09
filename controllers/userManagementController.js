@@ -11,7 +11,7 @@ const userManagementController = {
                 user: req.session.user,
                 users,
                 activePage: 'akun-admin',
-                pageTitle: 'Kelola Akun Admin',
+                pageTitle: 'Kelola Akun Operator',
                 success: req.query.success || null,
                 error: req.query.error || null
             });
@@ -83,14 +83,14 @@ const userManagementController = {
                 }
                 await userModel.logActivity(
                     req.session.user.id_user,
-                    `Super Admin mengaktifkan kembali akun lama: ${nama} (${role})`
+                    `Admin mengaktifkan kembali akun lama: ${nama} (${role})`
                 );
                 return res.redirect('/superadmin/akun-admin?success=Akun lama ditemukan dan berhasil diaktifkan kembali dengan data baru.');
             }
 
             // Kalau tidak ada akun lama yang cocok, baru buat akun benar-benar baru
             await userManagementModel.createUser(nama, username, emailTrimmed, password, role);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin menambahkan akun baru: ${nama} (${role})`);
+            await userModel.logActivity(req.session.user.id_user, `Admin menambahkan akun baru: ${nama} (${role})`);
 
             res.redirect('/superadmin/akun-admin?success=Akun berhasil ditambahkan.');
         } catch (error) {
@@ -131,13 +131,13 @@ const userManagementController = {
 
             if (inginGantiPassword) {
                 await userManagementModel.updatePassword(id_user, password);
-                // Password baru ini diketahui Super Admin, jadi user tetap wajib ganti sendiri saat login berikutnya
+                // Password baru ini diketahui Admin, jadi user tetap wajib ganti sendiri saat login berikutnya
                 await userModel.setWajibGantiPassword(id_user, true);
             }
 
             await userModel.logActivity(
                 req.session.user.id_user,
-                `Super Admin memperbarui akun: ${nama}${inginGantiPassword ? ' (termasuk mengubah password)' : ''}`
+                `Admin memperbarui akun: ${nama}${inginGantiPassword ? ' (termasuk mengubah password)' : ''}`
             );
             res.redirect('/superadmin/akun-admin?success=Akun berhasil diperbarui.');
         } catch (error) {
@@ -150,10 +150,10 @@ const userManagementController = {
         try {
             const { id_user, newPassword } = req.body;
             await userManagementModel.updatePassword(id_user, newPassword);
-            // Password ini juga password "sementara" yang Super Admin tahu — jadi user tetap wajib ganti sendiri saat login berikutnya
+            // Password ini juga password "sementara" yang Admin tahu — jadi user tetap wajib ganti sendiri saat login berikutnya
             await userModel.setWajibGantiPassword(id_user, true);
             const targetUser = await userManagementModel.getUserById(id_user);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin mereset password akun: ${targetUser.nama}`);
+            await userModel.logActivity(req.session.user.id_user, `Admin mereset password akun: ${targetUser.nama}`);
             res.redirect('/superadmin/akun-admin?success=Password berhasil direset.');
         } catch (error) {
             console.error(error);
@@ -166,7 +166,7 @@ const userManagementController = {
             const { id_user } = req.params;
             const targetUser = await userManagementModel.getUserById(id_user);
             await userManagementModel.toggleStatus(id_user);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin mengubah status akun: ${targetUser.nama}`);
+            await userModel.logActivity(req.session.user.id_user, `Admin mengubah status akun: ${targetUser.nama}`);
             res.redirect('/superadmin/akun-admin?success=Status akun berhasil diubah.');
         } catch (error) {
             console.error(error);
@@ -179,7 +179,7 @@ const userManagementController = {
             const { id_user } = req.params;
             const targetUser = await userManagementModel.getUserById(id_user);
             await userManagementModel.deleteUser(id_user);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin menghapus akun: ${targetUser.nama}`);
+            await userModel.logActivity(req.session.user.id_user, `Admin menghapus akun: ${targetUser.nama}`);
             res.redirect('/superadmin/akun-admin?success=Akun berhasil dihapus.');
         } catch (error) {
             console.error(error);

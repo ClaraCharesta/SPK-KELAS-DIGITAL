@@ -1,19 +1,61 @@
 const bcrypt = require('bcrypt');
 const userModel = require('../models/userModel');
+const akunSiswaModel = require('../models/akunSiswaModel');
 const { sendDefaultPasswordEmail } = require('../utils/mailer');
 
 // Password default per role saat reset lewat "Lupa Password"
 const DEFAULT_PASSWORD_BY_ROLE = {
-    super_admin: 'SuperAdmin123',
     admin: 'Admin123',
+    operator: 'Panitia123',
     kepsek: 'Kepsek123'
 };
+
+// ====== LOGIN SISWA (dipanggil kalau username tidak ada di tabel users) ======
+async function prosesLoginSiswa(req, res, usernameInput, password) {
+    const nisn = String(usernameInput || '').trim();
+    const akun = await akunSiswaModel.findForLogin(nisn);
+
+    if (!akun) {
+        // pesan sama seperti login staf yang sudah ada
+        return res.render('login', { error: 'Username tidak ditemukan.' });
+    }
+
+    const passwordCocok = await bcrypt.compare(password, akun.password);
+
+    // status 401 dipakai oleh pembatas percobaan login (loginLimiter)
+    if (!passwordCocok) {
+        return res.status(401).render('login', { error: 'Password salah.' });
+    }
+
+    if (akun.status_akun !== 'aktif') {
+        return res.status(401).render('login', {
+            error: 'Akun Anda sudah dinonaktifkan. Silakan hubungi operator sekolah.'
+        });
+    }
+
+    // siswa dan staf memakai session key yang berbeda
+    delete req.session.user;
+    req.session.siswa = {
+        id_akun_siswa: akun.id_akun_siswa,
+        id_siswa: akun.id_siswa,
+        id_periode: akun.id_periode,
+        nama: akun.nama,
+        nisn: akun.nisn
+    };
+
+    await akunSiswaModel.updateLastLogin(akun.id_akun_siswa);
+
+    res.redirect('/siswa');
+}
 
 const authController = {
     showLoginPage(req, res) {
         // kalau sudah login, langsung lempar ke dashboard, gak perlu login lagi
         if (req.session.user) {
             return res.redirect('/dashboard');
+        }
+        if (req.session.siswa) {
+            return res.redirect('/siswa');
         }
         res.render('login', { error: null });
     },
@@ -24,7 +66,8 @@ const authController = {
             const user = await userModel.findByUsername(username);
 
             if (!user) {
-                return res.render('login', { error: 'Username tidak ditemukan.' });
+                // bukan staf -> coba sebagai siswa (username = NISN)
+                return await prosesLoginSiswa(req, res, username, password);
             }
 
             const passwordCocok = await bcrypt.compare(password, user.password);
@@ -35,6 +78,7 @@ const authController = {
 
             const isFirstLogin = user.last_login === null;
 
+            delete req.session.siswa;
             req.session.user = {
                 id_user: user.id_user,
                 nama: user.nama,

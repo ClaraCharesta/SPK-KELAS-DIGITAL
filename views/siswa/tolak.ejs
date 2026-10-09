@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Konfirmasi - Kelas Digital SMAN 12 Padang</title>
+    <%- include('partials/siswa-head') %>
+</head>
+<body class="siswa-body">
+    <%- include('partials/siswa-topbar', { siswa: siswa, aktif: 'beranda', minimal: false }) %>
+
+    <main class="siswa-shell">
+
+        <section class="s-card s-center s-narrow">
+
+            <% if (langkah === 1) { %>
+
+                <div class="s-icon s-icon-orange"><i class="bi bi-question-circle-fill"></i></div>
+                <h2>Konfirmasi 1 dari 2</h2>
+                <p>Anda memilih <strong>tidak tertarik</strong> mengikuti Kelas Digital. Apakah Anda yakin?</p>
+
+                <div class="s-actions s-actions-center">
+                    <a href="/siswa" class="s-btn s-btn-outline">Batal</a>
+                    <form action="/siswa/tolak/langkah-1" method="POST">
+                        <button type="submit" class="s-btn s-btn-primary">Ya, lanjutkan</button>
+                    </form>
+                </div>
+
+            <% } else { %>
+
+                <div class="s-icon s-icon-red"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                <h2>Konfirmasi 2 dari 2</h2>
+                <p>
+                    Setelah ini akun Anda akan <strong>dinonaktifkan</strong> dan Anda tidak mengikuti seleksi.
+                    Hanya operator sekolah yang dapat membuka kembali akun Anda.
+                </p>
+
+                <div class="s-actions s-actions-center">
+                    <a href="/siswa" class="s-btn s-btn-outline">Batal</a>
+                    <form action="/siswa/tolak/konfirmasi" method="POST">
+                        <button type="submit" class="s-btn s-btn-danger">Ya, nonaktifkan akun saya</button>
+                    </form>
+                </div>
+
+            <% } %>
+
+        </section>
+
+    </main>
+
+    <footer class="siswa-footer">&copy; SMAN 12 Padang &middot; Sistem Penempatan Siswa Kelas Digital</footer>
+</body>
+</html>

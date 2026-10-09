@@ -8,6 +8,23 @@ const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper
 
 const DFC_THRESHOLD = 0.1;
 
+// Skala perbandingan: angka lebih dari 0 sampai 9, maksimal 2 desimal.
+// Contoh valid: 1, 1,5, 2.25, 0,5, 9. Tidak valid: 0, 0,0, 0,00, 10, 9,5, -1, huruf.
+const REGEX_SKALA = /^[0-9]([.,][0-9]{1,2})?$/;
+const SKALA_MAKS = 9;
+
+function normalisasiSkala(raw) {
+    const teks = String(raw === undefined || raw === null ? '' : raw).trim();
+
+    if (!REGEX_SKALA.test(teks)) return null;
+
+    const angka = Number(teks.replace(',', '.'));
+
+    if (!Number.isFinite(angka) || angka <= 0 || angka > SKALA_MAKS) return null;
+
+    return String(angka);
+}
+
 // Helper: cek apakah bobot yang tersimpan sudah final (dihitung DAN konsisten)
 async function bobotSudahFinal(id_periode) {
     const bobot = await fucomModel.getBobotFinal(id_periode);
@@ -38,9 +55,11 @@ function parseDanValidasiPayload(body) {
     const jumlahPasangan = urutanKriteria.length - 1;
     const nilaiPerbandingan = [];
     for (let i = 0; i < jumlahPasangan; i++) {
-        const nilai = body[`nilai_perbandingan_${i}`];
-        if (!nilai || !/^[1-9]$/.test(String(nilai).trim())) {
-            return { errorMsg: 'Nilai perbandingan harus dipilih (skala 1-9) untuk setiap pasangan kriteria berurutan.' };
+        const nilai = normalisasiSkala(body[`nilai_perbandingan_${i}`]);
+        if (nilai === null) {
+            return {
+                errorMsg: 'Nilai perbandingan harus berupa angka lebih dari 0 sampai 9 dengan maksimal 2 angka desimal (contoh: 1 atau 1,5). Nilai 0, 0,0, 0,00, huruf, minus, dan angka 10 ke atas tidak diperbolehkan.'
+            };
         }
         nilaiPerbandingan.push(nilai);
     }

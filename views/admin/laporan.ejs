@@ -3,8 +3,17 @@
 <head>
     <title>Laporan</title>
     <%- include('../partials/head') %>
+    <style>
+        .table-scroll { max-height:560px; overflow:auto; border:1px solid #e5e5e5; border-radius:8px; }
+        .table-scroll .data-table { margin:0; }
+        .table-scroll thead th { position:sticky; top:0; background:#fff; z-index:2; box-shadow:0 1px 0 #e5e5e5; }
+    </style>
 </head>
 <body>
+    <%
+        // Operator memakai route /admin, role lain mengikuti nilai role-nya.
+        const prefix = (user.role === 'operator') ? 'admin' : user.role;
+    %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
@@ -25,7 +34,7 @@
                                 <p class="stat-desc">Tahun Ajaran <%= periode.tahun_ajaran %> — <%= hasilRanking.length %> siswa</p>
                             </div>
                         </div>
-                        <a href="/<%= user.role %>/laporan/unduh" class="btn-primary"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
+                        <a href="/<%= prefix %>/laporan/unduh" class="btn-primary"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
                     </div>
 
                     <div class="panel">
@@ -48,35 +57,28 @@
                             <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
                             <h3>Hasil Perangkingan Siswa</h3>
                         </div>
-                            <div class="status-legend">
-                                <span><span class="dot-legend badge-diusulkan"></span> Diusulkan</span>
-                                <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
-                                <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
-                                <span><span class="dot-legend badge-mengundurkan_diri"></span> Mengundurkan Diri</span>
-                                <span><span class="dot-legend badge-tidak_lulus"></span> Tidak Lulus</span>
-                            </div>
+                        <div class="status-legend">
+                            <span><span class="dot-legend badge-diterima"></span> Masuk Kelas Digital</span>
+                            <span><span class="dot-legend badge-tidak_diterima"></span> Tidak Masuk Kelas Digital</span>
+                        </div>
+                        <div class="table-scroll">
                         <table class="data-table">
-                            <thead><tr><th>Rank</th><th>NISN</th><th>Nama</th><th>Nilai Q</th><th>Status</th></tr></thead>
+                            <thead><tr><th>Rank</th><th>NISN</th><th>Nama</th><th>WSM</th><th>WPM</th><th>Nilai Q</th><th>Status</th></tr></thead>
                             <tbody>
                                 <% hasilRanking.forEach(function(h) { %>
                                     <tr>
                                         <td>#<%= h.ranking %></td>
                                         <td><%= h.nisn %></td>
                                         <td><%= h.nama %></td>
-                                        <td><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></td>
-                                        <td>
-                                            <span class="badge badge-<%= h.status_penerimaan %>">
-                                                <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' 
-                                                    : (h.status_penerimaan === 'lulus' ? 'Lulus' 
-                                                    : (h.status_penerimaan === 'mengundurkan_diri' ? 'Mengundurkan Diri' 
-                                                    : (h.status_penerimaan === 'tidak_lulus' ? 'Tidak Lulus' 
-                                                    : 'Cadangan'))) %>
-                                            </span>
-                                        </td>
+                                        <td><%= (h.nilai_wsm !== undefined && h.nilai_wsm !== null) ? parseFloat(h.nilai_wsm).toFixed(4) : '-' %></td>
+                                        <td><%= (h.nilai_wpm !== undefined && h.nilai_wpm !== null) ? parseFloat(h.nilai_wpm).toFixed(4) : '-' %></td>
+                                        <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
+                                        <td><%- include('../partials/status-badge', { status: h.status_penerimaan }) %></td>
                                     </tr>
                                 <% }); %>
                             </tbody>
                         </table>
+                        </div>
                     </div>
 
                 <% } else { %>
@@ -89,7 +91,7 @@
                         <p style="color:#888; margin:10px 0 20px;">
                             Laporan akan tersedia setelah proses perhitungan WASPAS dijalankan untuk periode ini.
                         </p>
-                        <a href="/<%= user.role %>/waspas" class="btn-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                        <a href="/<%= prefix %>/waspas" class="btn-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                             <i class="bi bi-calculator-fill"></i> Lakukan Perhitungan WASPAS
                         </a>
                     </div>

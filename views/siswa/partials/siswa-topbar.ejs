@@ -1,0 +1,27 @@
+<header class="siswa-topbar">
+    <a class="siswa-brand" href="/siswa">
+        <img src="/img/logo-sman12.png" alt="Logo SMAN 12 Padang">
+        <div>
+            <strong>Kelas Digital</strong>
+            <span>SMAN 12 Padang</span>
+        </div>
+    </a>
+
+    <% if (!minimal) { %>
+        <nav class="siswa-nav">
+            <a href="/siswa" class="<%= aktif === 'beranda' ? 'active' : '' %>">
+                <i class="bi bi-house-fill"></i> Beranda
+            </a>
+            <a href="/siswa/profil" class="<%= aktif === 'profil' ? 'active' : '' %>">
+                <i class="bi bi-person-fill"></i> Profil
+            </a>
+            <a href="/logout">
+                <i class="bi bi-box-arrow-right"></i> Keluar
+            </a>
+        </nav>
+    <% } else { %>
+        <nav class="siswa-nav">
+            <a href="/logout"><i class="bi bi-box-arrow-right"></i> Keluar</a>
+        </nav>
+    <% } %>
+</header>

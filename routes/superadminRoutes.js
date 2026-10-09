@@ -10,7 +10,7 @@ const riwayatController = require('../controllers/riwayatController');
 const cekLock = require('../middlewares/lockMiddleware');
 
 
-router.use(isAuthenticated, checkRole('super_admin'));
+router.use(isAuthenticated, checkRole('admin'));
 
 router.get('/dashboard', dashboardController.showSuperAdminDashboard);
 
