@@ -1,56 +1,87 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <title>Dashboard Super Admin</title>
+    <title>Dashboard Admin</title>
     <%- include('../partials/head') %>
 </head>
 <body>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
             <div class="welcome-banner">
-    <div class="welcome-icon"><i class="bi bi-shield-lock-fill"></i></div>
-    <div>
-        <h2><%= user.isFirstLogin ? 'Selamat datang' : 'Halo lagi' %>, <%= user.nama %>! 👋</h2>
-        <p>Kelola akun, periode seleksi, dan kriteria penilaian sistem dari sini. Pantau seluruh aktivitas pengguna di menu <strong>Log Aktivitas</strong>.</p>
-    </div>
-</div>
+                <div class="welcome-icon">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+
+                <div>
+                    <h2>
+                        <%= user.isFirstLogin ? 'Selamat datang' : 'Halo lagi' %>,
+                        <%= user.nama %>! 👋
+                    </h2>
+
+                    <p>
+                        Kelola akun operator, periode seleksi, dan kriteria penilaian
+                        sistem dari sini. Pantau seluruh aktivitas pengguna di menu
+                        <strong>Log Aktivitas</strong>.
+                    </p>
+                </div>
+            </div>
 
             <div class="card-grid">
+
                 <div class="stat-card">
-                    <div class="stat-icon icon-blue"><i class="bi bi-person-badge-fill"></i></div>
+                    <div class="stat-icon icon-blue">
+                        <i class="bi bi-person-badge-fill"></i>
+                    </div>
+
                     <div>
-                        <h3>Total Admin</h3>
+                        <h3>Total Operator</h3>
                         <p class="stat-number"><%= stats.totalAdmin %></p>
-                        <p class="stat-desc">Akun admin aktif</p>
+                        <p class="stat-desc">Akun operator aktif</p>
                     </div>
                 </div>
+
                 <div class="stat-card">
-                    <div class="stat-icon icon-green"><i class="bi bi-calendar-range"></i></div>
+                    <div class="stat-icon icon-green">
+                        <i class="bi bi-calendar-range"></i>
+                    </div>
+
                     <div>
                         <h3>Periode Aktif</h3>
-                        <p class="stat-number" style="font-size:20px;"><%= stats.periodeAktif %></p>
+                        <p class="stat-number" style="font-size:20px;">
+                            <%= stats.periodeAktif %>
+                        </p>
                         <p class="stat-desc">Tahun ajaran berjalan</p>
                     </div>
                 </div>
+
                 <div class="stat-card">
-                    <div class="stat-icon icon-orange"><i class="bi bi-list-check"></i></div>
+                    <div class="stat-icon icon-orange">
+                        <i class="bi bi-list-check"></i>
+                    </div>
+
                     <div>
                         <h3>Total Kriteria</h3>
                         <p class="stat-number"><%= stats.totalKriteria %></p>
                         <p class="stat-desc">Kriteria terdaftar di sistem</p>
                     </div>
                 </div>
+
                 <div class="stat-card">
-                    <div class="stat-icon icon-purple"><i class="bi bi-clock-history"></i></div>
+                    <div class="stat-icon icon-purple">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+
                     <div>
                         <h3>Log Aktivitas Hari Ini</h3>
                         <p class="stat-number"><%= stats.logHariIni %></p>
                         <p class="stat-desc">Aktivitas tercatat hari ini</p>
                     </div>
                 </div>
+
             </div>
 
             <%- include('../partials/footer') %>
@@ -58,8 +89,10 @@
     </div>
 
     <script>
-    setTimeout(() => { window.location.reload(); }, 60000); // refresh otomatis tiap 60 detik
+        setTimeout(() => {
+            window.location.reload();
+        }, 60000); // refresh otomatis tiap 60 detik
     </script>
-    
+
 </body>
 </html>

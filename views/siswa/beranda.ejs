@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Beranda - Kelas Digital SMAN 12 Padang</title>
+    <%- include('partials/siswa-head') %>
+</head>
+<body class="siswa-body">
+    <%- include('partials/siswa-topbar', { siswa: siswa, aktif: 'beranda', minimal: false }) %>
+
+    <main class="siswa-shell">
+
+        <% if (success) { %>
+            <div class="s-alert s-alert-ok"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+        <% } %>
+        <% if (error) { %>
+            <div class="s-alert s-alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+        <% } %>
+
+        <section class="s-card s-hero">
+            <div>
+                <h1>Halo, <%= siswa.nama %></h1>
+                <p>Seleksi Kelas Digital SMAN 12 Padang &middot; Tahun Ajaran <%= siswa.tahun_ajaran %></p>
+            </div>
+            <span class="s-chip">NISN: <%= siswa.nisn %></span>
+        </section>
+
+        <%
+            const petaLangkah = {
+                minat: 1, periode_tutup: 1,
+                menunggu: 2,
+                diterima: 3, belum_lolos: 3, tidak_ikut: 3
+            };
+            const langkahSekarang = petaLangkah[tahap] || 1;
+            const namaLangkah = ['Respons Minat', 'Menunggu Pengumuman', 'Hasil Seleksi'];
+        %>
+        <ol class="s-steps">
+            <% namaLangkah.forEach(function (nama, i) {
+                const nomor = i + 1;
+                const kelas = nomor < langkahSekarang ? 'done' : (nomor === langkahSekarang ? 'active' : '');
+            %>
+                <li class="<%= kelas %>">
+                    <span><%= nomor < langkahSekarang ? '✓' : nomor %></span>
+                    <em><%= nama %></em>
+                </li>
+            <% }) %>
+        </ol>
+
+        <% if (tahap === 'minat') { %>
+
+            <section class="s-card s-center">
+                <div class="s-icon s-icon-blue"><i class="bi bi-laptop"></i></div>
+                <h2>Apakah Anda tertarik mengikuti Kelas Digital?</h2>
+                <p class="s-muted">
+                    Jawaban Anda dipakai dalam proses seleksi penempatan siswa ke Kelas Digital.
+                    Jika tertarik, Anda akan diminta mengisi tiga pertanyaan singkat.
+                </p>
+                <div class="s-actions s-actions-center">
+                    <a href="/siswa/tolak" class="s-btn s-btn-outline">Tidak tertarik</a>
+                    <a href="/siswa/form" class="s-btn s-btn-primary">Ya, saya tertarik</a>
+                </div>
+            </section>
+
+        <% } else if (tahap === 'menunggu') { %>
+
+            <section class="s-card">
+                <h2><i class="bi bi-hourglass-split"></i> Menunggu Pengumuman</h2>
+                <p class="s-muted">
+                    Data Anda sudah kami terima dan Anda terdaftar sebagai peserta seleksi.
+                    Hasil seleksi akan tampil di halaman ini setelah proses selesai.
+                </p>
+
+                <table class="s-table">
+                    <thead>
+                        <tr><th>Pertanyaan</th><th>Jawaban Anda</th></tr>
+                    </thead>
+                    <tbody>
+                        <% pertanyaan.forEach(function (p) {
+                            const nilai = jawaban[p.nama_kriteria];
+                            const teks = (nilai && p.opsi[nilai - 1]) ? p.opsi[nilai - 1] : '-';
+                        %>
+                            <tr>
+                                <td><%= p.judul %></td>
+                                <td><strong><%= nilai || '-' %></strong> &mdash; <%= teks %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+
+                <% if (bisaUbahJawaban) { %>
+                    <div class="s-actions">
+                        <a href="/siswa/form" class="s-btn s-btn-outline"><i class="bi bi-pencil-fill"></i> Ubah Jawaban</a>
+                    </div>
+                    <p class="s-muted s-small">Jawaban masih dapat diubah sampai hasil seleksi diumumkan.</p>
+                <% } %>
+            </section>
+
+        <% } else if (tahap === 'diterima') { %>
+
+            <section class="s-card s-result s-result-ok">
+                <div class="s-icon s-icon-green"><i class="bi bi-trophy-fill"></i></div>
+                <h2>Selamat! Anda diterima di Kelas Digital</h2>
+                <p class="s-muted">
+                    Hasil seleksi sudah final. Silakan hubungi operator sekolah untuk informasi tindak lanjut.
+                </p>
+            </section>
+
+        <% } else if (tahap === 'belum_lolos') { %>
+
+            <section class="s-card s-result s-result-warn">
+                <div class="s-icon s-icon-orange"><i class="bi bi-info-circle-fill"></i></div>
+                <h2>Anda belum lolos seleksi Kelas Digital</h2>
+                <p class="s-muted">Terima kasih telah berpartisipasi. Tetap semangat belajar!</p>
+            </section>
+
+        <% } else if (tahap === 'tidak_ikut') { %>
+
+            <section class="s-card s-result s-result-info">
+                <div class="s-icon s-icon-blue"><i class="bi bi-info-circle-fill"></i></div>
+                <h2>Anda tidak mengikuti seleksi pada periode ini</h2>
+                <p class="s-muted">Silakan hubungi operator sekolah jika ada pertanyaan.</p>
+            </section>
+
+        <% } else if (tahap === 'periode_tutup') { %>
+
+            <section class="s-card s-result s-result-warn">
+                <div class="s-icon s-icon-orange"><i class="bi bi-calendar-x-fill"></i></div>
+                <h2>Periode seleksi sudah ditutup</h2>
+                <p>Anda belum memberikan respons sampai periode ditutup. Silakan hubungi operator sekolah.</p>
+            </section>
+
+        <% } %>
+
+    </main>
+
+    <footer class="siswa-footer">&copy; SMAN 12 Padang &middot; Sistem Penempatan Siswa Kelas Digital</footer>
+</body>
+</html>

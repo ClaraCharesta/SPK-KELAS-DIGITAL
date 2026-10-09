@@ -3,6 +3,11 @@
 <head>
     <title>Hasil Ranking Siswa</title>
     <%- include('../partials/head') %>
+    <style>
+        .table-scroll { max-height:560px; overflow:auto; border:1px solid #e5e5e5; border-radius:8px; }
+        .table-scroll .data-table { margin:0; }
+        .table-scroll thead th { position:sticky; top:0; background:#fff; z-index:2; box-shadow:0 1px 0 #e5e5e5; }
+    </style>
 </head>
 <body>
     <div class="app-layout">
@@ -25,12 +30,15 @@
                     <% if (hasilRanking.length === 0) { %>
                         <p class="empty-state">Belum ada hasil perangkingan. Admin belum menjalankan perhitungan WASPAS.</p>
                     <% } else { %>
+                        <% if (periode.status_penyelesaian === 'selesai') { %>
+                            <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> Hasil final.</div>
+                        <% } else { %>
+                            <div class="alert" style="background:#fdf1de; color:#b35c00;"><i class="bi bi-hourglass-split"></i> Hasil sementara. Admin belum memfinalisasi hasil seleksi.</div>
+                        <% } %>
+
                         <div class="status-legend">
-                            <span><span class="dot-legend badge-diusulkan"></span> Diusulkan</span>
-                            <span><span class="dot-legend badge-cadangan"></span> Cadangan</span>
-                            <span><span class="dot-legend badge-lulus"></span> Lulus (Final)</span>
-                            <span><span class="dot-legend badge-mengundurkan_diri"></span> Mengundurkan Diri</span>
-                            <span><span class="dot-legend badge-tidak_lulus"></span> Tidak Lulus</span>
+                            <span><span class="dot-legend badge-diterima"></span> Masuk Kelas Digital</span>
+                            <span><span class="dot-legend badge-tidak_diterima"></span> Tidak Masuk Kelas Digital</span>
                         </div>
                         <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." 
                                style="width:100%; max-width:350px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;"
@@ -46,20 +54,14 @@
                                         <td><strong>#<%= h.ranking %></strong></td>
                                         <td><%= h.nisn %></td>
                                         <td><%= h.nama %></td>
-                                        <td><%= (typeof h.wsm !== 'undefined' && h.wsm !== null) ? parseFloat(h.wsm).toFixed(4) : '-' %></td>
-                                        <td><%= (typeof h.wpm !== 'undefined' && h.wpm !== null) ? parseFloat(h.wpm).toFixed(4) : '-' %></td>
+                                        <td><%= (h.nilai_wsm !== undefined && h.nilai_wsm !== null) ? parseFloat(h.nilai_wsm).toFixed(4) : '-' %></td>
+                                        <td><%= (h.nilai_wpm !== undefined && h.nilai_wpm !== null) ? parseFloat(h.nilai_wpm).toFixed(4) : '-' %></td>
                                         <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
+                                        <td><%- include('../partials/status-badge', { status: h.status_penerimaan }) %></td>
                                         <td>
-                                            <span class="badge badge-<%= h.status_penerimaan %>">
-                                                <%= h.status_penerimaan === 'diusulkan' ? 'Diusulkan' 
-                                                    : (h.status_penerimaan === 'lulus' ? 'Lulus' 
-                                                    : (h.status_penerimaan === 'mengundurkan_diri' ? 'Mengundurkan Diri' 
-                                                    : (h.status_penerimaan === 'tidak_lulus' ? 'Tidak Lulus' 
-                                                    : 'Cadangan'))) %>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <button class="btn-icon" title="Lihat Detail Nilai" onclick="lihatDetailSiswa(<%= h.id_siswa %>, '<%= h.nama %>')">
+                                            <button class="btn-icon" title="Lihat Detail Nilai"
+                                                    data-nama="<%= h.nama %>"
+                                                    onclick="lihatDetailSiswa(<%= h.id_siswa %>, this.dataset.nama)">
                                                 <i class="bi bi-eye-fill"></i>
                                             </button>
                                         </td>
@@ -93,18 +95,30 @@
     </div>
     <script>
         async function lihatDetailSiswa(id_siswa, nama) {
-            document.getElementById('detailNamaSiswa').innerText = nama;
-            const res = await fetch('/kepsek/ranking/detail/' + id_siswa);
-            const data = await res.json();
+            document.getElementById('detailNamaSiswa').textContent = nama;
             const tbody = document.getElementById('isiDetailSiswa');
             tbody.innerHTML = '';
-            if (data.success) {
-                data.detail.forEach(function(d) {
-                    const tr = document.createElement('tr');
-                    const nilaiTampil = d.nilai_mentah !== null ? d.nilai_mentah : '<span style="color:#e74c3c;">Belum diisi</span>';
-                    tr.innerHTML = `<td>${d.nama_kriteria}</td><td>${nilaiTampil}</td>`;
-                    tbody.appendChild(tr);
-                });
+            try {
+                const res = await fetch('/kepsek/ranking/detail/' + id_siswa);
+                const data = await res.json();
+                if (data.success) {
+                    data.detail.forEach(function(d) {
+                        const tr = document.createElement('tr');
+                        const tdKriteria = document.createElement('td');
+                        tdKriteria.textContent = d.nama_kriteria;
+                        const tdNilai = document.createElement('td');
+                        if (d.nilai_mentah !== null && d.nilai_mentah !== undefined) {
+                            tdNilai.textContent = d.nilai_mentah;
+                        } else {
+                            tdNilai.innerHTML = '<span style="color:#e74c3c;">Belum diisi</span>';
+                        }
+                        tr.appendChild(tdKriteria);
+                        tr.appendChild(tdNilai);
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="2" style="color:#e74c3c;">Gagal memuat detail.</td></tr>';
             }
             document.getElementById('modalDetailSiswa').style.display = 'flex';
         }

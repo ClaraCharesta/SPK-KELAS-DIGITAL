@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Profil Saya - Kelas Digital SMAN 12 Padang</title>
+    <%- include('partials/siswa-head') %>
+</head>
+<body class="siswa-body">
+    <%- include('partials/siswa-topbar', { siswa: siswa, aktif: 'profil', minimal: false }) %>
+
+    <main class="siswa-shell">
+
+        <a href="/siswa" class="s-back"><i class="bi bi-arrow-left"></i> Kembali ke Beranda</a>
+
+        <% if (success) { %>
+            <div class="s-alert s-alert-ok"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+        <% } %>
+        <% if (error) { %>
+            <div class="s-alert s-alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+        <% } %>
+
+        <div class="s-profile-cover">
+            <div class="s-profile-avatar"><i class="bi bi-person-fill"></i></div>
+            <div class="s-profile-text">
+                <h2><%= siswa.nama %></h2>
+                <span class="s-badge">Siswa</span>
+            </div>
+        </div>
+
+        <div class="s-profile-grid">
+
+            <section class="s-card">
+                <div class="s-panel-header">
+                    <div class="s-icon-sm s-icon-blue"><i class="bi bi-person-fill"></i></div>
+                    <h3>Informasi Akun</h3>
+                </div>
+
+                <label>Username (NISN)</label>
+                <input type="text" value="<%= siswa.username %>" disabled>
+
+                <label>Nama Lengkap</label>
+                <input type="text" value="<%= siswa.nama %>" disabled>
+
+                <label>Sekolah Asal</label>
+                <input type="text" value="<%= siswa.sekolah_asal || '-' %>" disabled>
+
+                <label>Tahun Ajaran Seleksi</label>
+                <input type="text" value="<%= siswa.tahun_ajaran %>" disabled>
+
+                <label>Status Seleksi</label>
+                <input type="text" value="<%= tahapLabel %>" disabled>
+
+                <p class="s-muted s-small">Data diri berasal dari data pendaftaran sekolah. Jika ada yang salah, hubungi operator.</p>
+            </section>
+
+            <section class="s-card">
+                <div class="s-panel-header">
+                    <div class="s-icon-sm s-icon-orange"><i class="bi bi-shield-lock-fill"></i></div>
+                    <h3>Ubah Password</h3>
+                </div>
+
+                <form action="/siswa/ganti-password" method="POST">
+                    <label>Password Lama</label>
+                    <input type="password" name="password_lama" required>
+
+                    <label>Password Baru</label>
+                    <input type="password" name="password_baru" required minlength="8">
+
+                    <label>Konfirmasi Password Baru</label>
+                    <input type="password" name="konfirmasi_password" required minlength="8">
+
+                    <p class="s-muted s-small">Minimal 8 karakter dan tidak boleh sama dengan NISN.</p>
+
+                    <div class="s-actions">
+                        <button type="submit" class="s-btn s-btn-primary"><i class="bi bi-key-fill"></i> Ubah Password</button>
+                    </div>
+                </form>
+            </section>
+
+        </div>
+
+    </main>
+
+    <footer class="siswa-footer">&copy; SMAN 12 Padang &middot; Sistem Penempatan Siswa Kelas Digital</footer>
+</body>
+</html>

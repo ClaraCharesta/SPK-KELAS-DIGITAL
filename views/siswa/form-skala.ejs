@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Form Minat - Kelas Digital SMAN 12 Padang</title>
+    <%- include('partials/siswa-head') %>
+</head>
+<body class="siswa-body">
+    <%- include('partials/siswa-topbar', { siswa: siswa, aktif: 'beranda', minimal: false }) %>
+
+    <main class="siswa-shell">
+
+        <a href="/siswa" class="s-back"><i class="bi bi-arrow-left"></i> Kembali</a>
+
+        <section class="s-card">
+            <h1>Form Minat Kelas Digital</h1>
+            <p class="s-muted">
+                Jawablah dengan jujur. Pilih satu angka (1 sampai 5) untuk setiap pertanyaan.
+                Jawaban dapat diubah selama periode seleksi masih berlangsung.
+            </p>
+        </section>
+
+        <% if (error) { %>
+            <div class="s-alert s-alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+        <% } %>
+
+        <form action="/siswa/form" method="POST">
+
+            <% pertanyaan.forEach(function (p, idx) {
+                const nilaiLama = Number(jawaban[p.nama_kriteria]);
+            %>
+                <section class="s-card s-q">
+                    <h3><span class="s-q-no"><%= idx + 1 %></span> <%= p.judul %></h3>
+                    <p><%= p.pertanyaan %></p>
+
+                    <div class="s-scale">
+                        <% p.opsi.forEach(function (teks, i) {
+                            const nilai = i + 1;
+                        %>
+                            <label class="s-scale-item">
+                                <input type="radio" name="<%= p.key %>" value="<%= nilai %>"
+                                    <%= nilaiLama === nilai ? 'checked' : '' %>
+                                    <%= i === 0 ? 'required' : '' %>>
+                                <span class="s-scale-no"><%= nilai %></span>
+                                <span class="s-scale-text"><%= teks %></span>
+                            </label>
+                        <% }) %>
+                    </div>
+                </section>
+            <% }) %>
+
+            <div class="s-actions">
+                <a href="/siswa" class="s-btn s-btn-outline">Batal</a>
+                <button type="submit" class="s-btn s-btn-primary"><i class="bi bi-save-fill"></i> Simpan Jawaban</button>
+            </div>
+        </form>
+
+    </main>
+
+    <footer class="siswa-footer">&copy; SMAN 12 Padang &middot; Sistem Penempatan Siswa Kelas Digital</footer>
+</body>
+</html>

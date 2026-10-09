@@ -101,7 +101,11 @@
                                     <td><%= u.nama %></td>
                                     <td><%= u.username %></td>
                                     <td class="email-cell"><%= u.email %></td>
-                                    <td><span class="badge badge-<%= u.role === 'admin' ? 'blue' : 'purple' %>"><%= u.role === 'admin' ? 'Admin' : 'Kepala Sekolah' %></span></td>
+                                        <td>
+                                            <span class="badge badge-<%= u.role === 'admin' ? 'blue' : (u.role === 'operator' ? 'green' : 'purple') %>">
+                                                <%= u.role === 'admin' ? 'Admin' : (u.role === 'operator' ? 'Operator' : 'Kepala Sekolah') %>
+                                            </span>
+                                        </td>
                                     <td>
                                         <span class="badge badge-<%= u.status_aktif ? 'green' : 'red' %>">
                                             <%= u.status_aktif ? 'Aktif' : 'Nonaktif' %>

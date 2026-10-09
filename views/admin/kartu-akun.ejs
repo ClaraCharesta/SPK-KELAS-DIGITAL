@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= judul %></title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; background:#f1f4f8; margin:0; padding:20px; color:#1f2937; }
+        .bar { max-width:900px; margin:0 auto 16px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+        .bar h1 { font-size:18px; margin:0; }
+        .bar a, .bar button { font-size:13px; padding:8px 14px; border-radius:6px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; text-decoration:none; color:#1f2937; }
+        .bar button.utama { background:#2563eb; border-color:#2563eb; color:#fff; }
+        .catatan { max-width:900px; margin:0 auto 16px; background:#fff8e6; border:1px solid #f0c36d; color:#8a5a00; padding:10px 14px; border-radius:8px; font-size:13px; }
+        .grid { max-width:900px; margin:0 auto; display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; }
+        .kartu { background:#fff; border:1.5px dashed #94a3b8; border-radius:10px; padding:16px 18px; page-break-inside:avoid; break-inside:avoid; }
+        .kartu h2 { font-size:14px; margin:0 0 2px; color:#1d4ed8; }
+        .kartu .sub { font-size:11px; color:#64748b; margin-bottom:10px; }
+        .baris { display:flex; font-size:13px; margin:4px 0; }
+        .baris .k { width:92px; color:#64748b; flex-shrink:0; }
+        .baris .v { font-weight:600; word-break:break-all; }
+        .pw { font-family:Consolas, monospace; font-size:15px; letter-spacing:1px; background:#f1f5f9; padding:2px 8px; border-radius:4px; }
+        .sudah { font-size:12px; color:#b35c00; background:#fdf1de; padding:6px 8px; border-radius:6px; margin-top:6px; }
+        .hilang { font-size:12px; color:#b3261e; background:#fde8e8; padding:6px 8px; border-radius:6px; margin-top:6px; }
+        .foot { font-size:11px; color:#64748b; margin-top:10px; border-top:1px solid #e2e8f0; padding-top:8px; }
+        @media print {
+            body { background:#fff; padding:0; }
+            .bar, .catatan { display:none; }
+            .grid { max-width:none; gap:10px; }
+        }
+        @media (max-width:640px) { .grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+    <div class="bar">
+        <h1><%= judul %> (<%= kartuList.length %> kartu)</h1>
+        <div>
+            <a href="/admin/siswa">Kembali</a>
+            <button class="utama" onclick="window.print()">Cetak</button>
+        </div>
+    </div>
+
+    <div class="catatan">
+        Password awal hanya tampil selama siswa belum menggantinya. Setelah siswa mengganti password,
+        kartu tidak lagi menampilkan password. Bagikan kartu melalui saluran yang aman.
+    </div>
+
+    <div class="grid">
+        <% kartuList.forEach(function(k) {
+            const belumGanti = Number(k.wajib_ganti_password) === 1;
+        %>
+            <div class="kartu">
+                <h2>Kelas Digital SMAN 12 Padang</h2>
+                <div class="sub">Akun Siswa &middot; Tahun Ajaran <%= periode.tahun_ajaran %></div>
+
+                <div class="baris"><span class="k">Nama</span><span class="v"><%= k.nama %></span></div>
+                <div class="baris"><span class="k">Sekolah</span><span class="v"><%= k.sekolah_asal || '-' %></span></div>
+                <div class="baris"><span class="k">Username</span><span class="v"><%= k.username %></span></div>
+
+                <% if (k.password_awal) { %>
+                    <div class="baris"><span class="k">Password</span><span class="v"><span class="pw"><%= k.password_awal %></span></span></div>
+                <% } else if (belumGanti) { %>
+                    <div class="hilang">Siswa belum mengganti password awal, tetapi password awal tidak tersimpan atau tidak terbaca. Gunakan Reset untuk membuat password baru.</div>
+                <% } else { %>
+                    <div class="sudah">Password sudah diganti siswa. Gunakan Reset jika siswa lupa.</div>
+                <% } %>
+
+                <div class="foot">Login di: <%= urlLogin %> &middot; Anda wajib mengganti password saat pertama login.</div>
+            </div>
+        <% }); %>
+    </div>
+</body>
+</html>

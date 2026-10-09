@@ -16,7 +16,14 @@
             <% } else { %>
                 <i class="bi bi-person-circle"></i>
             <% } %>
-            <span><%= user.role === 'super_admin' ? 'Super Admin' : (user.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %></span>
+
+            <span>
+                <%= user.role === 'admin'
+                    ? 'Admin'
+                    : (user.role === 'operator'
+                        ? 'Operator'
+                        : 'Kepala Sekolah') %>
+            </span>
         </a>
     </div>
 </div>
@@ -25,6 +32,7 @@
     // Toggle sidebar (collapse/expand)
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const sidebarEl = document.querySelector('.sidebar');
+
     if (hamburgerBtn && sidebarEl) {
         hamburgerBtn.addEventListener('click', function() {
             sidebarEl.classList.toggle('collapsed');

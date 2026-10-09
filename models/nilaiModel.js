@@ -68,23 +68,33 @@ const nilaiModel = {
         return { berhasil, gagal, pesanGagal };
     },
     
-    async upsertNilai(id_siswa, id_kriteria, nilai_mentah) {
-        const [existing] = await db.query(
-            'SELECT id_nilai FROM nilai_siswa WHERE id_siswa = ? AND id_kriteria = ?',
-            [id_siswa, id_kriteria]
-        );
 
-        if (existing.length > 0) {
-            await db.query(
-                'UPDATE nilai_siswa SET nilai_mentah = ? WHERE id_siswa = ? AND id_kriteria = ?',
-                [nilai_mentah, id_siswa, id_kriteria]
-            );
-        } else {
-            await db.query(
-                'INSERT INTO nilai_siswa (id_siswa, id_kriteria, nilai_mentah) VALUES (?, ?, ?)',
-                [id_siswa, id_kriteria, nilai_mentah]
-            );
-        }
+async upsertNilai(id_siswa, id_kriteria, nilai_mentah, conn = null) {
+    const executor = conn || db;
+
+    const [existing] = await executor.query(
+        `SELECT id_nilai
+         FROM nilai_siswa
+         WHERE id_siswa = ? AND id_kriteria = ?
+         FOR UPDATE`,
+        [id_siswa, id_kriteria]
+    );
+
+    if (existing.length > 0) {
+        await executor.query(
+            `UPDATE nilai_siswa
+             SET nilai_mentah = ?
+             WHERE id_siswa = ? AND id_kriteria = ?`,
+            [nilai_mentah, id_siswa, id_kriteria]
+        );
+    } else {
+        await executor.query(
+            `INSERT INTO nilai_siswa
+                (id_siswa, id_kriteria, nilai_mentah)
+             VALUES (?, ?, ?)`,
+            [id_siswa, id_kriteria, nilai_mentah]
+        );
     }
+}
 };
 module.exports = nilaiModel;
