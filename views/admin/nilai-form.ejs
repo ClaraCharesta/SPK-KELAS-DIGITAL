@@ -20,15 +20,11 @@
                     <div class="alert alert-danger">
                         <i class="bi bi-x-circle-fill"></i> Siswa ini menyatakan tidak berminat mengikuti Kelas Digital. Nilai tidak dapat diisi.
                     </div>
-                <% } else if (!punyaAkun) { %>
-                    <div class="alert" style="background:#eef3ff; color:#2448a5;">
-                        <i class="bi bi-info-circle-fill"></i>
-                        Siswa ini belum punya akun. Nilai tetap bisa diisi, dan siswa <strong>otomatis berstatus berminat</strong> setelah akunnya dibuat.
-                    </div>
-                <% } else if (statusMinat === 'belum_respon') { %>
-                    <div class="alert" style="background:#eef3ff; color:#2448a5;">
-                        <i class="bi bi-info-circle-fill"></i>
-                        Dengan menyimpan nilai, siswa <strong>otomatis ditandai berminat</strong> tanpa menunggu respons siswa.
+                <% } else if (jumlahBelumRespon > 0) { %>
+                    <div class="alert" style="background:#fdf1de; color:#b35c00;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Input nilai dinonaktifkan karena masih ada <strong><%= jumlahBelumRespon %> siswa</strong> yang belum merespons.
+                        Selesaikan di menu <a href="/admin/siswa" style="font-weight:600;">Data Siswa</a>.
                     </div>
                 <% } %>
 

@@ -9,14 +9,22 @@
         .badge-st.belum_respon { background:#fdf1de; color:#b35c00; }
         .badge-st.tidak_berminat { background:#fde8e8; color:#b3261e; }
         .badge-st.tanpa_akun { background:#eceff3; color:#5b6573; }
+        .btn-nonaktif { opacity:.45; cursor:not-allowed !important; pointer-events:none; }
     </style>
 </head>
 <body>
 <%
+    const belumRespon = Number(typeof jumlahBelumRespon !== 'undefined' ? jumlahBelumRespon : 0);
+    const terblokir = !terkunci && belumRespon > 0;
+
     const labelMinat = { berminat:'Berminat', belum_respon:'Belum merespons', tidak_berminat:'Tidak berminat', tanpa_akun:'Belum ada akun' };
     const kunciMinat = function(s) { return !s.punya_akun ? 'tanpa_akun' : (s.status_minat || 'belum_respon'); };
-    // Akun tidak wajib; hanya siswa tidak berminat yang tidak bisa dinilai.
-    const bisaIsi = function(s) { return !terkunci && s.status_minat !== 'tidak_berminat'; };
+
+    // Aksi aktif hanya jika belum final, siswa tidak menolak, dan tidak ada siswa yang belum merespons.
+    const bisaIsi = function(s) {
+        return !terkunci && !terblokir && s.status_minat !== 'tidak_berminat';
+    };
+
     const belumLengkap = siswaList.filter(function(s) {
         return s.status_minat !== 'tidak_berminat' && s.jumlah_terisi < s.total_kriteria;
     });
@@ -37,9 +45,9 @@
                     </div>
                     <div id="tutorialNilai" class="tutorial-content">
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
+                            <li>Pastikan <strong>tidak ada siswa yang Belum merespons</strong>. Selesaikan di menu Data Siswa (operator dapat mengubah statusnya menjadi Berminat atau Tidak berminat).</li>
                             <li>Klik <strong>Unduh Template</strong>, isi nilai sesuai NISN, lalu <strong>Import Nilai (Excel)</strong>. Atau klik ikon pensil untuk mengisi satu per satu.</li>
-                            <li><strong>Siswa yang nilainya sudah terisi otomatis berstatus berminat</strong>, tanpa menunggu respons siswa. Jika siswa belum punya akun, status berminat dipasang otomatis saat akunnya dibuat.</li>
-                            <li>Siswa yang sudah menyatakan <strong>tidak berminat</strong> tidak bisa dinilai.</li>
+                            <li>Siswa yang berstatus <strong>tidak berminat</strong> tidak bisa dinilai dan tidak ikut perankingan.</li>
                             <li>Nilai masih bisa diubah sampai hasil seleksi difinalisasi. Setiap perubahan mengosongkan hasil ranking, jadi perlu dihitung ulang.</li>
                         </ol>
                     </div>
@@ -48,6 +56,13 @@
                 <% if (terkunci) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
                         <i class="bi bi-lock-fill"></i> Hasil seleksi sudah difinalisasi. Seluruh nilai terkunci.
+                    </div>
+                <% } else if (terblokir) { %>
+                    <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Import nilai dan input nilai dinonaktifkan karena masih ada
+                        <strong><%= belumRespon %> siswa</strong> yang belum merespons.
+                        Selesaikan di menu <a href="/admin/siswa" style="font-weight:600;">Data Siswa</a>.
                     </div>
                 <% } %>
 
@@ -79,6 +94,8 @@
                                         <td>
                                             <% if (bisaIsi(s)) { %>
                                                 <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Lengkapi"><i class="bi bi-pencil-square"></i></a>
+                                            <% } else if (terblokir) { %>
+                                                <span class="btn-icon btn-nonaktif" title="Nonaktif: masih ada siswa yang belum merespons"><i class="bi bi-pencil-square"></i></span>
                                             <% } else { %>
                                                 <span style="color:#999; font-size:12px;">Terkunci</span>
                                             <% } %>
@@ -102,9 +119,17 @@
                                 <i class="bi bi-download"></i> Unduh Template
                             </a>
                             <% if (!terkunci) { %>
-                                <button class="btn-primary" onclick="document.getElementById('modalImportNilai').style.display='flex'">
-                                    <i class="bi bi-file-earmark-excel-fill"></i> Import Nilai (Excel)
-                                </button>
+                                <% if (terblokir) { %>
+                                    <button type="button" class="btn-primary" disabled
+                                            style="opacity:.5; cursor:not-allowed;"
+                                            title="Nonaktif: masih ada <%= belumRespon %> siswa yang belum merespons">
+                                        <i class="bi bi-file-earmark-excel-fill"></i> Import Nilai (Excel)
+                                    </button>
+                                <% } else { %>
+                                    <button type="button" class="btn-primary" onclick="document.getElementById('modalImportNilai').style.display='flex'">
+                                        <i class="bi bi-file-earmark-excel-fill"></i> Import Nilai (Excel)
+                                    </button>
+                                <% } %>
                             <% } %>
                         </div>
                     </div>
@@ -137,12 +162,16 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <% if (bisaIsi(s)) { %>
-                                            <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai"><i class="bi bi-pencil-square"></i></a>
-                                        <% } else if (terkunci) { %>
+                                        <% if (terkunci) { %>
                                             <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Lihat"><i class="bi bi-eye-fill"></i></a>
-                                        <% } else { %>
+                                        <% } else if (s.status_minat === 'tidak_berminat') { %>
                                             <span style="color:#999; font-size:12px;">Tidak ikut</span>
+                                        <% } else if (terblokir) { %>
+                                            <span class="btn-icon btn-nonaktif" title="Nonaktif: masih ada siswa yang belum merespons">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </span>
+                                        <% } else { %>
+                                            <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai"><i class="bi bi-pencil-square"></i></a>
                                         <% } %>
                                     </td>
                                 </tr>
@@ -156,17 +185,17 @@
         </div>
     </div>
 
-    <% if (!terkunci) { %>
+    <% if (!terkunci && !terblokir) { %>
     <div class="modal-overlay" id="modalImportNilai">
         <div class="modal-box">
             <div class="modal-header">
                 <h3><i class="bi bi-file-earmark-excel-fill"></i> Import Nilai dari Excel</h3>
-                <button class="modal-close" onclick="document.getElementById('modalImportNilai').style.display='none'">&times;</button>
+                <button type="button" class="modal-close" onclick="document.getElementById('modalImportNilai').style.display='none'">&times;</button>
             </div>
             <form action="/admin/nilai/import" method="POST" enctype="multipart/form-data">
                 <p style="font-size:13px; color:#777; margin-bottom:15px;">
-                    Nilai dicocokkan berdasarkan kolom <strong>NISN</strong>. Siswa yang nilainya masuk otomatis ditandai berminat.
-                    Siswa yang menyatakan tidak berminat dilewati.
+                    Nilai dicocokkan berdasarkan kolom <strong>NISN</strong>.
+                    Siswa yang tidak berminat dilewati.
                 </p>
                 <label>Pilih File Excel (.xlsx / .xls)</label>
                 <input type="file" name="fileExcel" accept=".xlsx,.xls" required>

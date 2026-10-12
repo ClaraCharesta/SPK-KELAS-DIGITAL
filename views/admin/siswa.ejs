@@ -45,6 +45,13 @@
         .btn-kartu { background:#f3f0ff; border-color:#d9d0ff; color:#5b3fc4; }
         .btn-kartu:hover { background:#e8e2ff; }
 
+        .minat-aksi { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+        .minat-aksi form { margin:0; }
+        .btn-minat-ya { background:#e2f8ea; border-color:#b7e6c9; color:#1e8449; }
+        .btn-minat-ya:hover { background:#d0f1de; }
+        .btn-minat-tidak { background:#fde8e8; border-color:#f5c2c0; color:#b3261e; }
+        .btn-minat-tidak:hover { background:#fbd5d3; }
+
         .info-alur { font-size:13px; color:#444; line-height:1.7; }
         .info-alur li { margin-bottom:2px; }
 
@@ -93,13 +100,17 @@
                         <li>Unduh template, isi data siswa, lalu <strong>Import Excel</strong> atau gunakan <strong>Tambah Siswa</strong>.</li>
                         <li>Klik <strong>Buat Akun Siswa</strong> satu kali, akun dibuat untuk semua siswa yang belum punya akun.</li>
                         <li>Cetak kartu (semua atau per siswa) lalu bagikan kepada siswa melalui saluran yang aman.</li>
-                        <li>Siswa login, mengganti password awal, lalu mengisi minat dan 3 pertanyaan sendiri.</li>
+                        <li>Siswa login, mengganti password awal, lalu menjawab minat dan 3 pertanyaan sendiri.</li>
                         <li>
-                            Operator juga dapat langsung mengisi nilai lewat tombol <strong>Input/Edit Nilai</strong>.
-                            Siswa yang nilainya sudah diisi operator <strong>otomatis berstatus berminat</strong>
-                            dan tidak perlu lagi menjawab setuju atau tidak.
+                            Siswa yang masih <strong>Belum merespons</strong> dapat diubah statusnya oleh operator
+                            menjadi <strong>Berminat</strong> atau <strong>Tidak berminat</strong> lewat tombol di kolom Status Minat.
+                            Status yang sudah Berminat atau Tidak berminat tidak dapat diubah lagi.
                         </li>
-                        <li>Nilai dapat diubah (oleh operator maupun siswa) selama hasil belum difinalisasi. Setiap perubahan mengosongkan hasil ranking dan perlu dihitung ulang.</li>
+                        <li>
+                            Pengisian nilai oleh operator (Input/Edit Nilai dan Import Nilai) baru aktif setelah
+                            <strong>tidak ada lagi siswa yang Belum merespons</strong>.
+                        </li>
+                        <li>Nilai dapat diubah selama hasil belum difinalisasi. Setiap perubahan mengosongkan hasil ranking dan perlu dihitung ulang.</li>
                         <li>Setelah finalisasi, seluruh data terkunci dan siswa hanya melihat pengumuman hasil seleksi.</li>
                     </ol>
                 </div>
@@ -278,6 +289,7 @@
                                 const labelMinat = { berminat: 'Berminat', belum_respon: 'Belum merespons', tidak_berminat: 'Tidak berminat' }[minat] || 'Belum merespons';
                                 const kelasMinat = { berminat: 'berminat', belum_respon: 'belum_aktif', tidak_berminat: 'tidak_berminat' }[minat] || 'tanpa_akun';
                                 const bisaNilai = minat !== 'tidak_berminat';
+                                const bisaUbahMinat = punyaAkun && minat === 'belum_respon' && !sudahTerkunci;
                             %>
                                 <tr class="baris-siswa <%= minat === 'belum_respon' ? 'perlu-dihubungi' : '' %> <%= minat === 'tidak_berminat' ? 'tidak-ikut' : '' %>"
                                     data-nama="<%= (s.nama || '').toLowerCase() %>"
@@ -308,6 +320,30 @@
 
                                     <td>
                                         <span class="badge-akun <%= kelasMinat %>"><%= labelMinat %></span>
+
+                                        <% if (bisaUbahMinat) { %>
+                                            <div class="minat-aksi">
+                                                <form action="/admin/siswa/minat" method="POST"
+                                                      onsubmit="return confirmDelete(this, 'Ubah status minat siswa ini menjadi Berminat? Siswa akan ikut perankingan dan status ini tidak dapat diubah lagi.')">
+                                                    <input type="hidden" name="id_siswa" value="<%= s.id_siswa %>">
+                                                    <input type="hidden" name="status_minat" value="berminat">
+                                                    <button type="submit" class="btn-kecil btn-minat-ya" title="Tandai siswa berminat">
+                                                        <i class="bi bi-check-lg"></i> Berminat
+                                                    </button>
+                                                </form>
+
+                                                <form action="/admin/siswa/minat" method="POST"
+                                                      onsubmit="return confirmDelete(this, 'Ubah status minat siswa ini menjadi Tidak berminat? Akun siswa akan dinonaktifkan dan status ini tidak dapat diubah lagi.')">
+                                                    <input type="hidden" name="id_siswa" value="<%= s.id_siswa %>">
+                                                    <input type="hidden" name="status_minat" value="tidak_berminat">
+                                                    <button type="submit" class="btn-kecil btn-minat-tidak" title="Tandai siswa tidak berminat">
+                                                        <i class="bi bi-x-lg"></i> Tidak
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        <% } else if (!punyaAkun && !sudahTerkunci) { %>
+                                            <span class="sub-info">Buat akun dulu untuk mengubah status</span>
+                                        <% } %>
                                     </td>
 
                                     <td>
@@ -330,7 +366,7 @@
 
                                         <% if (punyaAkun && st === 'aktif' && !sudahTerkunci) { %>
                                             <form action="/akun-siswa/<%= s.id_siswa %>/reset-password" method="POST"
-                                                  onsubmit="return confirm('Reset password akun siswa ini? Password lama tidak akan berlaku lagi.')">
+                                                  onsubmit="return confirmDelete(this, 'Reset password akun siswa ini? Password lama tidak akan berlaku lagi.')">
                                                 <button type="submit" class="btn-kecil"><i class="bi bi-key-fill"></i> Reset</button>
                                             </form>
                                         <% } %>

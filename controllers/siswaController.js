@@ -77,6 +77,14 @@ function getAlasanGagalBarisSiswa(row) {
     return alasan.length > 0 ? alasan : null;
 }
 
+const PESAN_UBAH_MINAT = {
+    STATUS_TIDAK_VALID: 'Status minat tidak valid.',
+    PERIODE_FINAL: 'Hasil seleksi sudah difinalisasi. Status minat tidak dapat diubah.',
+    SISWA_TIDAK_DITEMUKAN: 'Siswa tidak ditemukan pada periode aktif.',
+    TANPA_AKUN: 'Siswa ini belum punya akun. Buat akun siswa terlebih dahulu.',
+    SUDAH_MERESPONS: 'Status minat hanya dapat diubah jika siswa masih "Belum merespons".'
+};
+
 const siswaController = {
 
     // GET /admin/siswa
@@ -260,6 +268,63 @@ const siswaController = {
             return redirectSuccess(res, 'Data siswa berhasil diperbarui.');
         } catch (error) {
             console.error('ERROR UPDATE SISWA:', error);
+            return redirectError(res, 'Terjadi kesalahan sistem.');
+        }
+    },
+
+    // POST /admin/siswa/minat
+    // Operator mengubah status minat. Hanya untuk siswa yang masih "Belum merespons".
+    async ubahMinat(req, res) {
+        try {
+            const { id_siswa, status_minat } = req.body;
+
+            if (!id_siswa || !['berminat', 'tidak_berminat'].includes(status_minat)) {
+                return redirectError(res, 'Data perubahan status minat tidak valid.');
+            }
+
+            const periode = await periodeModel.getActivePeriode();
+
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return redirectError(res, !periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode));
+            }
+
+            if (await cekTerkunci(periode.id_periode)) {
+                return redirectError(res, PESAN_UBAH_MINAT.PERIODE_FINAL);
+            }
+
+            const siswa = await siswaModel.getSiswaById(id_siswa);
+
+            if (!siswa || Number(siswa.id_periode) !== Number(periode.id_periode)) {
+                return redirectError(res, PESAN_UBAH_MINAT.SISWA_TIDAK_DITEMUKAN);
+            }
+
+            const hasil = await siswaModel.setMinatOlehOperator(
+                id_siswa,
+                periode.id_periode,
+                status_minat
+            );
+
+            if (!hasil.ok) {
+                return redirectError(res, PESAN_UBAH_MINAT[hasil.alasan] || 'Status minat gagal diubah.');
+            }
+
+            const labelStatus = status_minat === 'berminat' ? 'Berminat' : 'Tidak berminat';
+
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `Operator mengubah status minat siswa ${siswa.nama} menjadi ${labelStatus}`
+            );
+
+            // Mengubah peserta seleksi mempengaruhi ranking.
+            await waspasModel.invalidateHasilJikaAda(periode.id_periode);
+
+            return redirectSuccess(
+                res,
+                `Status minat ${siswa.nama} diubah menjadi "${labelStatus}".` +
+                (status_minat === 'tidak_berminat' ? ' Akun siswa dinonaktifkan.' : '')
+            );
+        } catch (error) {
+            console.error('ERROR UBAH MINAT SISWA:', error);
             return redirectError(res, 'Terjadi kesalahan sistem.');
         }
     },

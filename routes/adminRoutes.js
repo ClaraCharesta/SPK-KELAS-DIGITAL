@@ -24,6 +24,7 @@ router.get('/siswa/template', siswaController.downloadTemplate);
 router.get('/siswa', siswaController.index);
 router.post('/siswa/create', cekLock, siswaController.create);
 router.post('/siswa/update', cekLock, siswaController.update);
+router.post('/siswa/minat', cekLock, siswaController.ubahMinat);
 router.post('/siswa/delete/:id_siswa', cekLock, siswaController.delete);
 router.post('/siswa/import', cekLock, upload.single('fileExcel'), siswaController.importExcel);
 
