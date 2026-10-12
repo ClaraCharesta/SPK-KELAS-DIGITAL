@@ -23,6 +23,17 @@ function skalaKriteria(nama) {
     return { isSkor100, minVal: isSkor100 ? 10 : 1, maxVal: isSkor100 ? 100 : 5 };
 }
 
+// Jumlah siswa yang masih "Belum merespons" (termasuk yang belum punya akun).
+async function hitungBelumRespon(id_periode) {
+    const ringkasan = await akunSiswaModel.ringkasan(id_periode);
+    return Number(ringkasan.belumKonfirmasi || 0);
+}
+
+function pesanBelumRespon(jumlah) {
+    return `Input nilai belum dapat dilakukan karena masih ada ${jumlah} siswa yang belum merespons. ` +
+           'Ubah status minat mereka di menu Data Siswa atau tunggu siswa menjawab.';
+}
+
 const nilaiController = {
     // =========================================================
     // GET /admin/nilai
@@ -36,6 +47,7 @@ const nilaiController = {
                     user: req.session.user,
                     siswaList: [],
                     terkunci: false,
+                    jumlahBelumRespon: 0,
                     activePage: 'nilai',
                     pageTitle: 'Input Nilai Siswa',
                     error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
@@ -65,11 +77,13 @@ const nilaiController = {
             });
 
             const terkunci = await cekTerkunci(periode.id_periode);
+            const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
 
             return res.render('admin/nilai', {
                 user: req.session.user,
                 siswaList,
                 terkunci,
+                jumlahBelumRespon,
                 activePage: 'nilai',
                 pageTitle: 'Input Nilai Siswa',
                 success: req.query.success || null,
@@ -105,25 +119,29 @@ const nilaiController = {
 
             const kriteriaList = await nilaiModel.getKriteriaWithNilai(id_siswa, periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
+            const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
 
             const [akunRows] = await db.query(
                 'SELECT status_minat FROM akun_siswa WHERE id_siswa = ? LIMIT 1',
                 [id_siswa]
             );
             const akun = akunRows[0] || null;
-            const punyaAkun = !!akun;
             const statusMinat = akun ? akun.status_minat : null;
 
-            // Akun tidak wajib untuk mengisi nilai. Hanya siswa tidak berminat yang ditolak.
-            const bolehIsi = !terkunci && statusMinat !== 'tidak_berminat';
+            // Nilai hanya bisa diisi jika belum final, siswa tidak menolak,
+            // dan tidak ada lagi siswa yang belum merespons.
+            const bolehIsi =
+                !terkunci &&
+                statusMinat !== 'tidak_berminat' &&
+                jumlahBelumRespon === 0;
 
             return res.render('admin/nilai-form', {
                 user: req.session.user,
                 siswa,
                 kriteriaList,
                 terkunci,
-                punyaAkun,
                 statusMinat,
+                jumlahBelumRespon,
                 bolehIsi,
                 activePage: 'nilai',
                 pageTitle: 'Input Nilai: ' + siswa.nama,
@@ -138,9 +156,7 @@ const nilaiController = {
 
     // =========================================================
     // POST /admin/nilai/:id_siswa/save
-    // Nilai terisi => siswa otomatis berminat (tanpa menunggu respons).
-    // Jika siswa belum punya akun, nilai tetap disimpan dan status
-    // berminat dipasang otomatis saat akun dibuat.
+    // Hanya bisa jika tidak ada siswa yang masih "Belum merespons".
     // =========================================================
     async saveNilai(req, res) {
         let conn;
@@ -164,6 +180,12 @@ const nilaiController = {
 
             if (await cekTerkunci(periode.id_periode)) {
                 return redirectError('Nilai tidak dapat diubah karena hasil seleksi telah difinalisasi.');
+            }
+
+            const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
+
+            if (jumlahBelumRespon > 0) {
+                return redirectError(pesanBelumRespon(jumlahBelumRespon));
             }
 
             if (!(await waspasModel.checkBobotTersedia(periode.id_periode))) {
@@ -233,9 +255,8 @@ const nilaiController = {
                 return redirectError('Nilai tidak dapat diubah karena hasil seleksi telah difinalisasi.');
             }
 
-            // LEFT JOIN: akun tidak wajib ada.
             const [siswaRows] = await conn.query(
-                `SELECT s.id_siswa, s.nama, a.id_akun_siswa, a.status_minat
+                `SELECT s.id_siswa, s.nama, a.status_minat
                  FROM siswa s
                  LEFT JOIN akun_siswa a ON a.id_siswa = s.id_siswa
                  WHERE s.id_siswa = ? AND s.id_periode = ?
@@ -250,12 +271,18 @@ const nilaiController = {
                 return redirectError('Siswa tidak ditemukan pada periode seleksi aktif.');
             }
 
-            const punyaAkun = siswa.id_akun_siswa !== null && siswa.id_akun_siswa !== undefined;
-
-            if (punyaAkun && siswa.status_minat === 'tidak_berminat') {
+            if (siswa.status_minat === 'tidak_berminat') {
                 await conn.rollback();
                 return redirectError(
                     'Siswa ini menyatakan tidak berminat mengikuti Kelas Digital. Nilai tidak dapat diisi.'
+                );
+            }
+
+            // Pengaman tambahan jika status berubah saat permintaan diproses.
+            if (siswa.status_minat !== 'berminat') {
+                await conn.rollback();
+                return redirectError(
+                    'Siswa ini masih belum merespons. Ubah status minatnya di menu Data Siswa terlebih dahulu.'
                 );
             }
 
@@ -303,43 +330,21 @@ const nilaiController = {
                 await nilaiModel.upsertNilai(id_siswa, item.id_kriteria, item.nilai_mentah, conn);
             }
 
-            // Nilai terisi => berminat (jika akun ada dan masih belum merespons).
-            let otomatisBerminat = false;
-
-            if (punyaAkun && siswa.status_minat === 'belum_respon') {
-                const [upd] = await conn.query(
-                    `UPDATE akun_siswa
-                     SET status_minat = 'berminat',
-                         tanggal_respon_minat = COALESCE(tanggal_respon_minat, NOW())
-                     WHERE id_siswa = ? AND status_minat = 'belum_respon'`,
-                    [id_siswa]
-                );
-
-                if (upd.affectedRows !== 1) {
-                    await conn.rollback();
-                    return redirectError('Status minat gagal diperbarui. Muat ulang halaman dan coba lagi.');
-                }
-
-                otomatisBerminat = true;
-            }
-
             await conn.commit();
             conn.release();
             conn = null;
 
             await userModel.logActivity(
                 req.session.user.id_user,
-                `Menginput/memperbarui nilai siswa: ${siswa.nama}` +
-                (otomatisBerminat ? ' (status minat otomatis: berminat)' : '')
+                `Menginput/memperbarui nilai siswa: ${siswa.nama}`
             );
 
             await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
-            let pesan = `Nilai siswa ${siswa.nama} berhasil disimpan.`;
-            if (otomatisBerminat) pesan += ' Siswa otomatis ditandai berminat.';
-            if (!punyaAkun) pesan += ' Siswa ditandai berminat otomatis setelah akunnya dibuat.';
-
-            return res.redirect('/admin/nilai?success=' + encodeURIComponent(pesan));
+            return res.redirect(
+                '/admin/nilai?success=' +
+                encodeURIComponent(`Nilai siswa ${siswa.nama} berhasil disimpan.`)
+            );
         } catch (error) {
             if (conn) {
                 try { await conn.rollback(); } catch (e) { console.error('Rollback gagal:', e); }
@@ -407,8 +412,8 @@ const nilaiController = {
 
     // =========================================================
     // POST /admin/nilai/import
-    // Siswa yang nilainya masuk otomatis berminat (jika sudah punya akun).
-    // Siswa tidak berminat dilewati. Siswa tanpa akun tetap disimpan nilainya.
+    // Hanya bisa jika tidak ada siswa yang masih "Belum merespons".
+    // Siswa tidak berminat dilewati.
     // =========================================================
     async importNilai(req, res) {
         const kembaliError = (pesan) =>
@@ -429,6 +434,13 @@ const nilaiController = {
             if (await cekTerkunci(periode.id_periode)) {
                 hapusFileUpload(req);
                 return kembaliError('Nilai tidak dapat diubah karena hasil seleksi telah difinalisasi.');
+            }
+
+            const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
+
+            if (jumlahBelumRespon > 0) {
+                hapusFileUpload(req);
+                return kembaliError(pesanBelumRespon(jumlahBelumRespon));
             }
 
             if (!(await waspasModel.checkBobotTersedia(periode.id_periode))) {
@@ -475,15 +487,18 @@ const nilaiController = {
                     continue;
                 }
 
-                // Hanya siswa yang menyatakan tidak berminat yang dilewati.
+                // Hanya siswa berminat yang boleh dinilai.
                 const [akunRows] = await db.query(
                     'SELECT status_minat FROM akun_siswa WHERE id_siswa = ? LIMIT 1',
                     [siswa.id_siswa]
                 );
                 const akun = akunRows[0];
 
-                if (akun && akun.status_minat === 'tidak_berminat') {
-                    siswaDilewati.push(`Baris ${baris} (NISN ${nisn}, tidak berminat)`);
+                if (!akun || akun.status_minat !== 'berminat') {
+                    const alasan = akun && akun.status_minat === 'tidak_berminat'
+                        ? 'tidak berminat'
+                        : 'belum berminat';
+                    siswaDilewati.push(`Baris ${baris} (NISN ${nisn}, ${alasan})`);
                     continue;
                 }
 
@@ -542,18 +557,14 @@ const nilaiController = {
 
             const hasil = await nilaiModel.bulkUpsertNilai(dataToSave);
 
-            // Siswa yang sudah punya nilai otomatis berminat.
-            const otomatisBerminat = await akunSiswaModel.syncMinatDariNilai(periode.id_periode);
-
             await userModel.logActivity(
                 req.session.user.id_user,
-                `Mengimpor nilai siswa dari Excel (${hasil.berhasil} data berhasil, ${otomatisBerminat} siswa otomatis berminat)`
+                `Mengimpor nilai siswa dari Excel (${hasil.berhasil} data berhasil)`
             );
 
             await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
             let pesan = `Import nilai selesai: ${hasil.berhasil} data berhasil disimpan.`;
-            if (otomatisBerminat > 0) pesan += ` ${otomatisBerminat} siswa otomatis ditandai berminat.`;
             if (nisnKosong.length) pesan += ` ${nisnKosong.length} baris dilewati karena NISN kosong (${formatDetail(nisnKosong, 10)}).`;
             if (nisnTidakDitemukan.length) pesan += ` ${nisnTidakDitemukan.length} NISN tidak ditemukan (${formatDetail(nisnTidakDitemukan, 10)}).`;
             if (siswaDilewati.length) pesan += ` ${siswaDilewati.length} siswa dilewati (${formatDetail(siswaDilewati, 10)}).`;

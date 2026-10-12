@@ -138,6 +138,85 @@ const siswaModel = {
             [id_siswa]
         );
         return jumlah > 0;
+    },
+
+    // Operator mengubah status minat siswa.
+    // Syarat: periode belum final, siswa punya akun, dan status saat ini 'belum_respon'.
+    // 'tidak_berminat' juga menonaktifkan akun (sama seperti jika siswa memilih sendiri).
+    // Return { ok: true } atau { ok: false, alasan }.
+    async setMinatOlehOperator(id_siswa, id_periode, statusBaru) {
+        if (!['berminat', 'tidak_berminat'].includes(statusBaru)) {
+            return { ok: false, alasan: 'STATUS_TIDAK_VALID' };
+        }
+
+        const conn = await db.getConnection();
+
+        try {
+            await conn.beginTransaction();
+
+            const [[periode]] = await conn.query(
+                'SELECT status_penyelesaian FROM periode_seleksi WHERE id_periode = ? LOCK IN SHARE MODE',
+                [id_periode]
+            );
+
+            if (!periode || periode.status_penyelesaian === 'selesai') {
+                await conn.rollback();
+                return { ok: false, alasan: 'PERIODE_FINAL' };
+            }
+
+            const [rows] = await conn.query(
+                `SELECT s.id_siswa, a.id_akun_siswa, a.status_minat
+                 FROM siswa s
+                 LEFT JOIN akun_siswa a ON a.id_siswa = s.id_siswa
+                 WHERE s.id_siswa = ? AND s.id_periode = ?
+                 FOR UPDATE`,
+                [id_siswa, id_periode]
+            );
+
+            if (!rows.length) {
+                await conn.rollback();
+                return { ok: false, alasan: 'SISWA_TIDAK_DITEMUKAN' };
+            }
+
+            const baris = rows[0];
+
+            if (baris.id_akun_siswa === null || baris.id_akun_siswa === undefined) {
+                await conn.rollback();
+                return { ok: false, alasan: 'TANPA_AKUN' };
+            }
+
+            if (baris.status_minat !== 'belum_respon') {
+                await conn.rollback();
+                return { ok: false, alasan: 'SUDAH_MERESPONS' };
+            }
+
+            if (statusBaru === 'tidak_berminat') {
+                await conn.query(
+                    `UPDATE akun_siswa
+                     SET status_minat = 'tidak_berminat',
+                         status_akun = 'nonaktif',
+                         tanggal_respon_minat = NOW()
+                     WHERE id_siswa = ? AND status_minat = 'belum_respon'`,
+                    [id_siswa]
+                );
+            } else {
+                await conn.query(
+                    `UPDATE akun_siswa
+                     SET status_minat = 'berminat',
+                         tanggal_respon_minat = NOW()
+                     WHERE id_siswa = ? AND status_minat = 'belum_respon'`,
+                    [id_siswa]
+                );
+            }
+
+            await conn.commit();
+            return { ok: true };
+        } catch (err) {
+            await conn.rollback();
+            throw err;
+        } finally {
+            conn.release();
+        }
     }
 };
 
