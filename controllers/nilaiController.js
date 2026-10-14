@@ -34,6 +34,66 @@ function pesanBelumRespon(jumlah) {
            'Ubah status minat mereka di menu Data Siswa atau tunggu siswa menjawab.';
 }
 
+// Daftar kriteria satu periode, dibaca langsung dari database.
+async function ambilKriteriaPeriode(id_periode) {
+    const [rows] = await db.query(
+        `SELECT id_kriteria, nama_kriteria, jenis
+         FROM kriteria
+         WHERE id_periode = ?
+         ORDER BY id_kriteria ASC`,
+        [id_periode]
+    );
+    return rows;
+}
+
+// Semua nilai satu periode sekaligus (satu query),
+// bentuk: { [id_siswa]: { [id_kriteria]: nilai_mentah } }
+async function ambilPetaNilai(id_periode) {
+    const [rows] = await db.query(
+        `SELECT ns.id_siswa, ns.id_kriteria, ns.nilai_mentah
+         FROM nilai_siswa ns
+         INNER JOIN siswa s ON s.id_siswa = ns.id_siswa
+         INNER JOIN kriteria k ON k.id_kriteria = ns.id_kriteria
+         WHERE s.id_periode = ? AND k.id_periode = ?`,
+        [id_periode, id_periode]
+    );
+
+    const peta = {};
+
+    rows.forEach(r => {
+        const idSiswa = String(r.id_siswa);
+        if (!peta[idSiswa]) peta[idSiswa] = {};
+        peta[idSiswa][String(r.id_kriteria)] =
+            r.nilai_mentah === null || r.nilai_mentah === undefined
+                ? null
+                : Number(r.nilai_mentah);
+    });
+
+    return peta;
+}
+
+// Kriteria + nilai satu siswa, dibaca langsung dari database.
+async function ambilKriteriaDenganNilai(id_siswa, id_periode) {
+    const [rows] = await db.query(
+        `SELECT k.id_kriteria, k.nama_kriteria, k.jenis, ns.nilai_mentah
+         FROM kriteria k
+         LEFT JOIN nilai_siswa ns
+            ON ns.id_kriteria = k.id_kriteria
+           AND ns.id_siswa = ?
+         WHERE k.id_periode = ?
+         ORDER BY k.id_kriteria ASC`,
+        [id_siswa, id_periode]
+    );
+
+    return rows.map(r => ({
+        ...r,
+        nilai_mentah:
+            r.nilai_mentah === null || r.nilai_mentah === undefined
+                ? null
+                : Number(r.nilai_mentah)
+    }));
+}
+
 const nilaiController = {
     // =========================================================
     // GET /admin/nilai
@@ -46,6 +106,8 @@ const nilaiController = {
                 return res.render('admin/nilai', {
                     user: req.session.user,
                     siswaList: [],
+                    kriteriaList: [],
+                    nilaiMap: {},
                     terkunci: false,
                     jumlahBelumRespon: 0,
                     activePage: 'nilai',
@@ -67,12 +129,25 @@ const nilaiController = {
             );
             const akunMap = new Map(akunRows.map(r => [Number(r.id_siswa), r]));
 
+            // Kriteria dan nilai dibaca langsung agar tampilan selalu sesuai database.
+            const kriteriaList = await ambilKriteriaPeriode(periode.id_periode);
+            const nilaiMap = await ambilPetaNilai(periode.id_periode);
+
             const siswaList = daftar.map(s => {
                 const akun = akunMap.get(Number(s.id_siswa));
+                const barisNilai = nilaiMap[String(s.id_siswa)] || {};
+
+                const jumlahTerisi = kriteriaList.filter(k => {
+                    const v = barisNilai[String(k.id_kriteria)];
+                    return v !== null && v !== undefined;
+                }).length;
+
                 return {
                     ...s,
                     punya_akun: !!akun,
-                    status_minat: akun ? akun.status_minat : null
+                    status_minat: akun ? akun.status_minat : null,
+                    jumlah_terisi: jumlahTerisi,
+                    total_kriteria: kriteriaList.length
                 };
             });
 
@@ -82,6 +157,8 @@ const nilaiController = {
             return res.render('admin/nilai', {
                 user: req.session.user,
                 siswaList,
+                kriteriaList,
+                nilaiMap,
                 terkunci,
                 jumlahBelumRespon,
                 activePage: 'nilai',
@@ -117,7 +194,8 @@ const nilaiController = {
                 return res.redirect('/admin/nilai?error=' + encodeURIComponent('Siswa tidak ditemukan pada periode aktif.'));
             }
 
-            const kriteriaList = await nilaiModel.getKriteriaWithNilai(id_siswa, periode.id_periode);
+            // Dibaca langsung dari database agar nilai selalu tampil, juga setelah finalisasi.
+            const kriteriaList = await ambilKriteriaDenganNilai(id_siswa, periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
             const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
 
@@ -144,7 +222,7 @@ const nilaiController = {
                 jumlahBelumRespon,
                 bolehIsi,
                 activePage: 'nilai',
-                pageTitle: 'Input Nilai: ' + siswa.nama,
+                pageTitle: (terkunci ? 'Nilai: ' : 'Input Nilai: ') + siswa.nama,
                 success: req.query.success || null,
                 error: req.query.error || null
             });

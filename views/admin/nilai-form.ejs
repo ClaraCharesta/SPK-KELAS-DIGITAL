@@ -1,10 +1,22 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <title>Input Nilai: <%= siswa.nama %></title>
+    <title><%= terkunci ? 'Nilai: ' : 'Input Nilai: ' %><%= siswa.nama %></title>
     <%- include('../partials/head') %>
+    <style>
+        .nilai-terkunci { font-size:18px; font-weight:700; color:#1f2937; }
+        .nilai-terkunci.kosong { font-weight:400; color:#aaa; }
+    </style>
 </head>
 <body>
+<%
+    const formatNilai = function(v) {
+        if (v === null || v === undefined || v === '') return null;
+        const n = Number(v);
+        if (!Number.isFinite(n)) return null;
+        return Number.isInteger(n) ? String(n) : n.toFixed(2);
+    };
+%>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
@@ -14,7 +26,7 @@
 
                 <% if (terkunci) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00;">
-                        <i class="bi bi-lock-fill"></i> Hasil seleksi sudah difinalisasi. Nilai terkunci.
+                        <i class="bi bi-lock-fill"></i> Hasil seleksi sudah difinalisasi. Nilai terkunci dan hanya bisa dilihat.
                     </div>
                 <% } else if (statusMinat === 'tidak_berminat') { %>
                     <div class="alert alert-danger">
@@ -44,18 +56,20 @@
                         </div>
                     </div>
 
-                    <form action="/admin/nilai/<%= siswa.id_siswa %>/save" method="POST" id="formNilai">
+                    <% if (terkunci) { %>
+
+                        <!-- Mode terkunci: nilai ditampilkan sebagai teks (tanpa input) -->
                         <table class="data-table">
                             <thead>
                                 <tr><th>Kriteria</th><th>Jenis</th><th>Nilai</th></tr>
                             </thead>
                             <tbody>
+                                <% if (kriteriaList.length === 0) { %>
+                                    <tr><td colspan="3" class="empty-state">Belum ada kriteria pada periode ini.</td></tr>
+                                <% } %>
+
                                 <% kriteriaList.forEach(function(k) {
-                                    var namaLower = (k.nama_kriteria || '').toLowerCase();
-                                    var isSkor100 = namaLower.indexOf('akademik') !== -1 || namaLower.indexOf('psikotes') !== -1;
-                                    var minVal = isSkor100 ? 10 : 1;
-                                    var maxVal = isSkor100 ? 100 : 5;
-                                    var stepVal = isSkor100 ? '0.01' : '1';
+                                    const tampil = formatNilai(k.nilai_mentah);
                                 %>
                                     <tr>
                                         <td><%= k.nama_kriteria %></td>
@@ -65,36 +79,72 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <input type="hidden" name="id_kriteria" value="<%= k.id_kriteria %>">
-                                            <input type="number"
-                                                step="<%= stepVal %>"
-                                                min="<%= minVal %>"
-                                                max="<%= maxVal %>"
-                                                name="nilai_mentah"
-                                                data-skala="<%= isSkor100 ? '100' : '5' %>"
-                                                value="<%= k.nilai_mentah !== null ? k.nilai_mentah : '' %>"
-                                                style="width:150px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;"
-                                                required
-                                                <%= bolehIsi ? '' : 'disabled' %>>
-                                            <div style="font-size:11px; color:#999; margin-top:4px;">
-                                                <% if (isSkor100) { %>
-                                                    Skala 10 - 100
-                                                <% } else { %>
-                                                    Skala 1 - 5 (bulat, tanpa desimal)
-                                                <% } %>
-                                            </div>
+                                            <% if (tampil !== null) { %>
+                                                <span class="nilai-terkunci"><%= tampil %></span>
+                                            <% } else { %>
+                                                <span class="nilai-terkunci kosong">Belum diisi</span>
+                                            <% } %>
                                         </td>
                                     </tr>
                                 <% }); %>
                             </tbody>
                         </table>
 
-                        <% if (bolehIsi) { %>
-                            <div class="modal-footer" style="margin-top:20px;">
-                                <button type="submit" class="btn-primary"><i class="bi bi-save-fill"></i> Simpan Semua Nilai</button>
-                            </div>
-                        <% } %>
-                    </form>
+                    <% } else { %>
+
+                        <form action="/admin/nilai/<%= siswa.id_siswa %>/save" method="POST" id="formNilai">
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Kriteria</th><th>Jenis</th><th>Nilai</th></tr>
+                                </thead>
+                                <tbody>
+                                    <% kriteriaList.forEach(function(k) {
+                                        var namaLower = (k.nama_kriteria || '').toLowerCase();
+                                        var isSkor100 = namaLower.indexOf('akademik') !== -1 || namaLower.indexOf('psikotes') !== -1;
+                                        var minVal = isSkor100 ? 10 : 1;
+                                        var maxVal = isSkor100 ? 100 : 5;
+                                        var stepVal = isSkor100 ? '0.01' : '1';
+                                    %>
+                                        <tr>
+                                            <td><%= k.nama_kriteria %></td>
+                                            <td>
+                                                <span class="badge badge-<%= k.jenis === 'benefit' ? 'green' : 'red' %>">
+                                                    <%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <input type="hidden" name="id_kriteria" value="<%= k.id_kriteria %>">
+                                                <input type="number"
+                                                    step="<%= stepVal %>"
+                                                    min="<%= minVal %>"
+                                                    max="<%= maxVal %>"
+                                                    name="nilai_mentah"
+                                                    data-skala="<%= isSkor100 ? '100' : '5' %>"
+                                                    value="<%= k.nilai_mentah !== null && k.nilai_mentah !== undefined ? k.nilai_mentah : '' %>"
+                                                    style="width:150px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;"
+                                                    required
+                                                    <%= bolehIsi ? '' : 'disabled' %>>
+                                                <div style="font-size:11px; color:#999; margin-top:4px;">
+                                                    <% if (isSkor100) { %>
+                                                        Skala 10 - 100
+                                                    <% } else { %>
+                                                        Skala 1 - 5 (bulat, tanpa desimal)
+                                                    <% } %>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+
+                            <% if (bolehIsi) { %>
+                                <div class="modal-footer" style="margin-top:20px;">
+                                    <button type="submit" class="btn-primary"><i class="bi bi-save-fill"></i> Simpan Semua Nilai</button>
+                                </div>
+                            <% } %>
+                        </form>
+
+                    <% } %>
                 </div>
 
                 <%- include('../partials/footer') %>
@@ -102,31 +152,38 @@
         </div>
     </div>
 
+    <% if (!terkunci) { %>
     <script>
-        document.getElementById('formNilai').addEventListener('submit', function(e) {
-            const inputs = this.querySelectorAll('input[name="nilai_mentah"]:not([disabled])');
-            let invalid = false;
+        (function () {
+            const form = document.getElementById('formNilai');
+            if (!form) return;
 
-            inputs.forEach(function(inp) {
-                const val = parseFloat(inp.value);
-                const skala = inp.getAttribute('data-skala');
-                const min = parseFloat(inp.getAttribute('min'));
-                const max = parseFloat(inp.getAttribute('max'));
-                let isValid = true;
+            form.addEventListener('submit', function(e) {
+                const inputs = this.querySelectorAll('input[name="nilai_mentah"]:not([disabled])');
+                let invalid = false;
 
-                if (inp.value.trim() === '' || isNaN(val)) isValid = false;
-                else if (val < min || val > max) isValid = false;
-                else if (skala === '5' && !Number.isInteger(val)) isValid = false;
+                inputs.forEach(function(inp) {
+                    const val = parseFloat(inp.value);
+                    const skala = inp.getAttribute('data-skala');
+                    const min = parseFloat(inp.getAttribute('min'));
+                    const max = parseFloat(inp.getAttribute('max'));
+                    let isValid = true;
 
-                inp.style.border = isValid ? '1px solid #ddd' : '2px solid #e74c3c';
-                if (!isValid) invalid = true;
+                    if (inp.value.trim() === '' || isNaN(val)) isValid = false;
+                    else if (val < min || val > max) isValid = false;
+                    else if (skala === '5' && !Number.isInteger(val)) isValid = false;
+
+                    inp.style.border = isValid ? '1px solid #ddd' : '2px solid #e74c3c';
+                    if (!isValid) invalid = true;
+                });
+
+                if (invalid) {
+                    e.preventDefault();
+                    alert('Ada nilai yang belum valid. Skala Akademik/Psikotes harus 10-100, kriteria lain harus 1-5 dan bilangan bulat. Kolom bertanda merah perlu diperbaiki.');
+                }
             });
-
-            if (invalid) {
-                e.preventDefault();
-                alert('Ada nilai yang belum valid. Skala Akademik/Psikotes harus 10-100, kriteria lain harus 1-5 dan bilangan bulat. Kolom bertanda merah perlu diperbaiki.');
-            }
-        });
+        })();
     </script>
+    <% } %>
 </body>
 </html>

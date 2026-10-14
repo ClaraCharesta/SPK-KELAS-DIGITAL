@@ -9,7 +9,7 @@ const PAGE_WIDTH = 595.28;   // A4 portrait (pt)
 const PAGE_HEIGHT = 841.89;
 const MARGIN = 40;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-const BOTTOM_LIMIT = PAGE_HEIGHT - MARGIN;
+const BOTTOM_LIMIT = PAGE_HEIGHT - MARGIN - 6;
 
 const SEKOLAH_INFO = {
     nama: 'SMA NEGERI 12 PADANG',
@@ -19,16 +19,34 @@ const SEKOLAH_INFO = {
     provinsi: 'Sumatera Barat'
 };
 
-// Palet monokrom — satu warna aksen gelap untuk judul & garis, sisanya hitam/abu.
+// Palet hitam putih: hitam untuk teks & garis utama, abu-abu untuk garis tipis, zebra, dan latar.
 const COLORS = {
-    ink: '#1a2740',     // navy tua, dipakai terbatas: judul & garis kop surat
-    text: '#1f1f1f',
-    textMuted: '#6b6b6b',
-    border: '#9aa0aa',
-    borderLight: '#d8dbe0'
+    ink: '#000000',          // hitam: judul, garis kop surat, teks utama
+    text: '#000000',
+    textMuted: '#555555',
+    border: '#999999',
+    borderLight: '#cccccc',
+    zebra: '#f4f4f4',
+    cardBg: '#f4f4f4',
+    headerBg: '#e6e6e6',
+    headerLine: '#000000',
+    neutral: '#555555',
+    track: '#dddddd'
 };
 
-const STATUS_LABEL = { lulus: 'Lulus', diusulkan: 'Diusulkan', cadangan: 'Cadangan' };
+// Status di database yang dianggap MASUK kelas digital. Selain ini dianggap TIDAK masuk.
+// (diterima = hasil WASPAS dalam kuota, lulus/diusulkan = status lanjutan setelah diterima)
+const STATUS_MASUK = ['diterima', 'lulus', 'diusulkan'];
+
+function isMasuk(status) {
+    return STATUS_MASUK.includes(String(status || '').toLowerCase().trim());
+}
+
+// Hanya ada 2 status tampilan di laporan
+const STATUS_LABEL = {
+    masuk: 'Masuk Kelas Digital',
+    tidak: 'Tidak Masuk Kelas Digital'
+};
 
 /**
  * Kop surat resmi klasik: logo di kiri, identitas sekolah center di tengah
@@ -87,6 +105,72 @@ function needsNewPage(y, blockHeight) {
     return y + blockHeight > BOTTOM_LIMIT;
 }
 
+/**
+ * Menggambar satu baris tabel: latar (fill), garis bawah, dan garis vertikal
+ * di setiap batas kolom (termasuk batas kiri dan kanan).
+ * bounds = daftar posisi X batas kolom.
+ * opts: { header: true } untuk baris header (latar abu muda), { fill: '#hex' } untuk baris biasa.
+ */
+function drawTableRow(doc, y, h, bounds, opts) {
+    const options = opts || {};
+    const left = bounds[0];
+    const right = bounds[bounds.length - 1];
+
+    if (options.header) {
+        doc.rect(left, y, right - left, h).fill(COLORS.headerBg);
+    } else if (options.fill) {
+        doc.rect(left, y, right - left, h).fill(options.fill);
+    }
+
+    const lineColor = options.header ? COLORS.headerLine : COLORS.border;
+    doc.lineWidth(options.header ? 0.8 : 0.5).strokeColor(lineColor);
+
+    doc.moveTo(left, y + h).lineTo(right, y + h).stroke();
+    bounds.forEach((x) => {
+        doc.moveTo(x, y).lineTo(x, y + h).stroke();
+    });
+
+    if (options.header) {
+        // garis atas header hitam supaya kotak header utuh
+        doc.moveTo(left, y).lineTo(right, y).lineWidth(0.8).strokeColor(COLORS.headerLine).stroke();
+    }
+}
+
+/**
+ * Badge status berbentuk pill (Masuk / Tidak Masuk Kelas Digital), di-center terhadap kolom [x1, x2].
+ * Masuk = hitam dengan teks putih. Tidak masuk = putih dengan garis tepi hitam.
+ */
+function drawStatusBadge(doc, masuk, x1, x2, rowY, rowH) {
+    const bw = 112;
+    const bh = 14;
+    const bx = x1 + ((x2 - x1) - bw) / 2;
+    const by = rowY + (rowH - bh) / 2;
+    const label = masuk ? STATUS_LABEL.masuk : STATUS_LABEL.tidak;
+
+    if (masuk) {
+        doc.roundedRect(bx, by, bw, bh, 7).fill(COLORS.ink);
+        doc.fillColor('#ffffff');
+    } else {
+        doc.roundedRect(bx, by, bw, bh, 7).lineWidth(0.6).strokeColor(COLORS.ink).stroke();
+        doc.fillColor(COLORS.ink);
+    }
+
+    doc.font('Helvetica-Bold').fontSize(7)
+        .text(label, bx, by + 3.8, { width: bw, align: 'center', lineBreak: false });
+}
+
+/** Judul bagian dengan garis aksen di kiri. */
+function drawSectionTitle(doc, y, title, accent, rightText) {
+    doc.rect(MARGIN, y, 4, 15).fill(accent);
+    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(11)
+        .text(title, MARGIN + 11, y + 2, { width: CONTENT_WIDTH - 90, lineBreak: false });
+    if (rightText) {
+        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(8.5)
+            .text(rightText, PAGE_WIDTH - MARGIN - 90, y + 3.5, { width: 90, align: 'right', lineBreak: false });
+    }
+    return y + 15 + 10;
+}
+
 function generateLaporanPDF(res, data) {
     const { periode, hasilRanking, bobotKriteria } = data;
 
@@ -98,124 +182,231 @@ function generateLaporanPDF(res, data) {
     );
     doc.pipe(res);
 
-    let y = drawLetterhead(doc, 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL');
-
-    // ===== Info periode — baris teks polos, tanpa kotak warna =====
-    doc.fillColor(COLORS.text).font('Helvetica').fontSize(9.5)
-        .text(`Tahun Ajaran     : ${periode.tahun_ajaran}`, MARGIN, y, { width: CONTENT_WIDTH });
-    y = doc.y + 2;
-    doc.text(`Kuota Kelas Digital : ${periode.kuota_kelas_digital} siswa`, MARGIN, y, { width: CONTENT_WIDTH });
-    y = doc.y + 14;
-
-    doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).lineWidth(0.6).strokeColor(COLORS.borderLight).stroke();
-    y += 18;
-
-    // ===== BOBOT KRITERIA =====
-    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(11)
-        .text('Bobot Kriteria (Hasil FUCOM)', MARGIN, y);
-    y = doc.y + 10;
-
-    const bobotColX = { nama: MARGIN + 4, bobot: PAGE_WIDTH - MARGIN - 96 };
-    const bobotRowH = 20;
-    const bobotTableTop = y;
-
-    // Header tabel: teks bold + garis atas-bawah, TANPA blok warna
-    doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).lineWidth(1).strokeColor(COLORS.text).stroke();
-    doc.fillColor(COLORS.text).font('Helvetica-Bold').fontSize(9);
-    doc.text('Kriteria', bobotColX.nama, y + 6, { width: 350 });
-    doc.text('Bobot', bobotColX.bobot, y + 6, { width: 92, align: 'right' });
-    y += bobotRowH;
-    doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).lineWidth(1).strokeColor(COLORS.text).stroke();
-
-    doc.font('Helvetica').fontSize(9);
-    bobotKriteria.forEach((b) => {
-        doc.fillColor(COLORS.text)
-            .text(b.nama_kriteria, bobotColX.nama, y + 5, { width: 350 });
-        doc.font('Helvetica-Bold')
-            .text(`${(b.nilai_bobot * 100).toFixed(2)}%`, bobotColX.bobot, y + 5, { width: 92, align: 'right' });
-        doc.font('Helvetica');
-        y += bobotRowH;
-        doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).lineWidth(0.4).strokeColor(COLORS.borderLight).stroke();
+    const tglSekarang = new Date().toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'long', year: 'numeric'
     });
 
+    const siswaMasuk = hasilRanking.filter((h) => isMasuk(h.status_penerimaan));
+    const siswaTidakMasuk = hasilRanking.filter((h) => !isMasuk(h.status_penerimaan));
+
+    let y = drawLetterhead(doc, 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL');
+
+    // ===== Info laporan (2 baris label : nilai) =====
+    const labelW = 95;
+    doc.font('Helvetica').fontSize(9.5).fillColor(COLORS.textMuted)
+        .text('Tahun Ajaran', MARGIN, y, { width: labelW, lineBreak: false });
+    doc.fillColor(COLORS.text).font('Helvetica-Bold')
+        .text(`:  ${periode.tahun_ajaran}`, MARGIN + labelW, y, { width: CONTENT_WIDTH - labelW, lineBreak: false });
+    y += 15;
+    doc.font('Helvetica').fillColor(COLORS.textMuted)
+        .text('Tanggal Cetak', MARGIN, y, { width: labelW, lineBreak: false });
+    doc.fillColor(COLORS.text).font('Helvetica-Bold')
+        .text(`:  ${tglSekarang}`, MARGIN + labelW, y, { width: CONTENT_WIDTH - labelW, lineBreak: false });
     y += 26;
 
-    // ===== HASIL PERANGKINGAN =====
-    if (needsNewPage(y, 60)) {
+    // ===== Kotak ringkasan =====
+    const cardGap = 10;
+    const cardW = (CONTENT_WIDTH - cardGap * 3) / 4;
+    const cardH = 48;
+    const cards = [
+        { label: 'Total Siswa', value: String(hasilRanking.length), color: COLORS.ink },
+        { label: 'Kuota Kelas Digital', value: String(periode.kuota_kelas_digital), color: COLORS.ink },
+        { label: 'Masuk Kelas Digital', value: String(siswaMasuk.length), color: COLORS.ink },
+        { label: 'Tidak Masuk Kelas Digital', value: String(siswaTidakMasuk.length), color: COLORS.neutral }
+    ];
+    cards.forEach((c, i) => {
+        const cx = MARGIN + i * (cardW + cardGap);
+        doc.roundedRect(cx, y, cardW, cardH, 5).fillAndStroke(COLORS.cardBg, COLORS.borderLight);
+        doc.rect(cx + 0.5, y + 8, 3, cardH - 16).fill(c.color);
+        doc.fillColor(c.color).font('Helvetica-Bold').fontSize(17)
+            .text(c.value, cx, y + 8, { width: cardW, align: 'center', lineBreak: false });
+        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(7.5)
+            .text(c.label, cx, y + 31, { width: cardW, align: 'center', lineBreak: false });
+    });
+    y += cardH + 26;
+
+    // ===== BOBOT KRITERIA =====
+    y = drawSectionTitle(doc, y, 'Bobot Kriteria (Hasil FUCOM)', COLORS.ink, `${bobotKriteria.length} kriteria`);
+
+    const bobotRowH = 22;
+    const bobotBounds = [MARGIN, MARGIN + 36, MARGIN + 290, PAGE_WIDTH - MARGIN];
+
+    drawTableRow(doc, y, bobotRowH, bobotBounds, { header: true });
+    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(8.5);
+    doc.text('No', bobotBounds[0] + 4, y + 7, { width: bobotBounds[1] - bobotBounds[0] - 8, align: 'center', lineBreak: false });
+    doc.text('Kriteria', bobotBounds[1] + 8, y + 7, { width: bobotBounds[2] - bobotBounds[1] - 16, lineBreak: false });
+    doc.text('Bobot', bobotBounds[2] + 8, y + 7, { width: bobotBounds[3] - bobotBounds[2] - 16, lineBreak: false });
+    y += bobotRowH;
+
+    let totalBobot = 0;
+    bobotKriteria.forEach((b, i) => {
+        const nilai = parseFloat(b.nilai_bobot) || 0;
+        totalBobot += nilai;
+
+        drawTableRow(doc, y, bobotRowH, bobotBounds, { fill: i % 2 === 1 ? COLORS.zebra : null });
+
+        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(9)
+            .text(String(i + 1), bobotBounds[0] + 4, y + 6.5, {
+                width: bobotBounds[1] - bobotBounds[0] - 8, align: 'center', lineBreak: false
+            });
+        doc.fillColor(COLORS.text).font('Helvetica').fontSize(9)
+            .text(b.nama_kriteria, bobotBounds[1] + 8, y + 6.5, {
+                width: bobotBounds[2] - bobotBounds[1] - 16, height: 12, lineBreak: false, ellipsis: true
+            });
+
+        // Bar proporsi + persentase
+        const barX = bobotBounds[2] + 8;
+        const barW = 120;
+        const barY = y + (bobotRowH - 6) / 2;
+        doc.roundedRect(barX, barY, barW, 6, 3).fill(COLORS.track);
+        const fillW = Math.max(0, Math.min(1, nilai)) * barW;
+        if (fillW > 0) {
+            doc.roundedRect(barX, barY, Math.max(fillW, 3), 6, 3).fill(COLORS.ink);
+        }
+        doc.fillColor(COLORS.text).font('Helvetica-Bold').fontSize(9)
+            .text(`${(nilai * 100).toFixed(2)}%`, barX + barW + 6, y + 6.5, {
+                width: bobotBounds[3] - (barX + barW + 6) - 8, align: 'right', lineBreak: false
+            });
+
+        y += bobotRowH;
+    });
+
+    // Baris total
+    drawTableRow(doc, y, bobotRowH, [bobotBounds[0], bobotBounds[2], bobotBounds[3]], { fill: COLORS.cardBg });
+    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(9)
+        .text('Total', bobotBounds[0] + 8, y + 6.5, {
+            width: bobotBounds[2] - bobotBounds[0] - 16, align: 'right', lineBreak: false
+        });
+    doc.text(`${(totalBobot * 100).toFixed(2)}%`, bobotBounds[2] + 8, y + 6.5, {
+        width: bobotBounds[3] - bobotBounds[2] - 16, align: 'right', lineBreak: false
+    });
+    y += bobotRowH;
+
+    y += 28;
+
+    // ===== HASIL PERANGKINGAN (DIPISAH: MASUK & TIDAK MASUK KELAS DIGITAL) =====
+    const rowH = 22;
+    const rankBounds = [
+        MARGIN,
+        MARGIN + 40,
+        MARGIN + 116,
+        PAGE_WIDTH - MARGIN - 210,
+        PAGE_WIDTH - MARGIN - 132,
+        PAGE_WIDTH - MARGIN
+    ];
+
+    function drawRankingHeader() {
+        drawTableRow(doc, y, rowH + 2, rankBounds, { header: true });
+        doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(8.5);
+        doc.text('Rank', rankBounds[0] + 4, y + 8, { width: rankBounds[1] - rankBounds[0] - 8, align: 'center', lineBreak: false });
+        doc.text('NISN', rankBounds[1] + 8, y + 8, { width: rankBounds[2] - rankBounds[1] - 16, lineBreak: false });
+        doc.text('Nama', rankBounds[2] + 8, y + 8, { width: rankBounds[3] - rankBounds[2] - 16, lineBreak: false });
+        doc.text('Nilai Q', rankBounds[3] + 8, y + 8, { width: rankBounds[4] - rankBounds[3] - 16, align: 'right', lineBreak: false });
+        doc.text('Status', rankBounds[4] + 4, y + 8, { width: rankBounds[5] - rankBounds[4] - 8, align: 'center', lineBreak: false });
+        y += rowH + 2;
+    }
+
+    function newPageLanjutan() {
         doc.addPage();
         y = drawLetterhead(doc, 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL (Lanjutan)');
     }
 
-    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(11)
-        .text('Hasil Perangkingan Siswa', MARGIN, y);
-    y = doc.y + 10;
-
-    const colX = {
-        rank: MARGIN + 4,
-        nisn: MARGIN + 40,
-        nama: MARGIN + 110,
-        q: MARGIN + 330,
-        status: MARGIN + 405
-    };
-    const rowH = 19;
-
-    function drawRankingHeader() {
-        doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).lineWidth(1).strokeColor(COLORS.text).stroke();
-        doc.fillColor(COLORS.text).font('Helvetica-Bold').fontSize(8.5);
-        doc.text('Rank', colX.rank, y + 6, { width: 34 });
-        doc.text('NISN', colX.nisn, y + 6, { width: 65 });
-        doc.text('Nama', colX.nama, y + 6, { width: 210 });
-        doc.text('Nilai Q', colX.q, y + 6, { width: 60, align: 'right' });
-        doc.text('Status', colX.status, y + 6, { width: 100, align: 'center' });
-        y += rowH + 4;
-        doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).lineWidth(1).strokeColor(COLORS.text).stroke();
-    }
-
-    drawRankingHeader();
-
-    doc.font('Helvetica').fontSize(8.5);
-    hasilRanking.forEach((h) => {
-        if (needsNewPage(y, rowH)) {
-            doc.addPage();
-            y = drawLetterhead(doc, 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL (Lanjutan)');
-            drawRankingHeader();
+    function drawRankingSection(judul, list, accent) {
+        // Pastikan judul + header + minimal 1 baris muat di halaman ini
+        if (needsNewPage(y, 80)) {
+            newPageLanjutan();
         }
 
-        doc.fillColor(COLORS.text);
-        doc.font('Helvetica-Bold').text(`#${h.ranking}`, colX.rank, y + 5, { width: 34 });
-        doc.font('Helvetica').text(h.nisn, colX.nisn, y + 5, { width: 65 });
-        doc.text(h.nama, colX.nama, y + 5, { width: 210 });
-        doc.text(parseFloat(h.nilai_akhir_q).toFixed(4), colX.q, y + 5, { width: 60, align: 'right' });
+        y = drawSectionTitle(doc, y, judul, accent, `${list.length} siswa`);
 
-        const label = STATUS_LABEL[h.status_penerimaan] || h.status_penerimaan;
-        doc.font(h.status_penerimaan === 'lulus' ? 'Helvetica-Bold' : 'Helvetica')
-            .text(label, colX.status, y + 5, { width: 100, align: 'center' });
-        doc.font('Helvetica');
+        drawRankingHeader();
 
-        y += rowH;
-        doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).lineWidth(0.4).strokeColor(COLORS.borderLight).stroke();
-    });
+        if (list.length === 0) {
+            drawTableRow(doc, y, rowH, [MARGIN, PAGE_WIDTH - MARGIN], {});
+            doc.fillColor(COLORS.textMuted).font('Helvetica-Oblique').fontSize(8.5)
+                .text('Tidak ada data.', MARGIN, y + 7, { width: CONTENT_WIDTH, align: 'center', lineBreak: false });
+            y += rowH;
+            return;
+        }
+
+        list.forEach((h, i) => {
+            if (needsNewPage(y, rowH)) {
+                newPageLanjutan();
+                drawRankingHeader();
+            }
+
+            drawTableRow(doc, y, rowH, rankBounds, { fill: i % 2 === 1 ? COLORS.zebra : null });
+
+            doc.fillColor(COLORS.text);
+            doc.font('Helvetica-Bold').fontSize(8.5)
+                .text(String(h.ranking), rankBounds[0] + 4, y + 7, {
+                    width: rankBounds[1] - rankBounds[0] - 8, align: 'center', lineBreak: false
+                });
+            doc.font('Helvetica').fontSize(8.5)
+                .text(String(h.nisn), rankBounds[1] + 8, y + 7, {
+                    width: rankBounds[2] - rankBounds[1] - 16, height: 12, lineBreak: false, ellipsis: true
+                });
+            doc.text(h.nama, rankBounds[2] + 8, y + 7, {
+                width: rankBounds[3] - rankBounds[2] - 16, height: 12, lineBreak: false, ellipsis: true
+            });
+            doc.font('Helvetica-Bold')
+                .text(parseFloat(h.nilai_akhir_q).toFixed(4), rankBounds[3] + 8, y + 7, {
+                    width: rankBounds[4] - rankBounds[3] - 16, align: 'right', lineBreak: false
+                });
+
+            drawStatusBadge(doc, isMasuk(h.status_penerimaan), rankBounds[4], rankBounds[5], y, rowH);
+
+            y += rowH;
+        });
+    }
+
+    drawRankingSection('A. Siswa yang Masuk Kelas Digital', siswaMasuk, COLORS.ink);
+
+    // Bagian B selalu mulai di halaman baru (tidak menempel di bawah tabel A)
+    newPageLanjutan();
+    drawRankingSection('B. Siswa yang Tidak Masuk Kelas Digital', siswaTidakMasuk, COLORS.neutral);
 
     y += 30;
 
     // ===== TANDA TANGAN =====
-    if (needsNewPage(y, 110)) {
+    if (needsNewPage(y, 120)) {
         doc.addPage();
         y = drawLetterhead(doc, 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL (Lanjutan)');
     }
 
-    const tglSekarang = new Date().toLocaleDateString('id-ID', {
-        day: 'numeric', month: 'long', year: 'numeric'
-    });
-    const sigX = PAGE_WIDTH - MARGIN - 175;
+    const sigW = 190;
+    const sigX = PAGE_WIDTH - MARGIN - sigW;
 
     doc.fillColor(COLORS.text).font('Helvetica').fontSize(9.5)
-        .text(`Padang, ${tglSekarang}`, sigX, y, { width: 175, align: 'center' });
+        .text(`Padang, ${tglSekarang}`, sigX, y, { width: sigW, align: 'center', lineBreak: false });
     y += 14;
-    doc.text('Kepala Sekolah,', sigX, y, { width: 175, align: 'center' });
-    y += 55;
+    doc.text('Mengetahui,', sigX, y, { width: sigW, align: 'center', lineBreak: false });
+    y += 13;
     doc.font('Helvetica-Bold')
-        .text('(_____________________)', sigX, y, { width: 175, align: 'center' });
+        .text('Kepala Sekolah', sigX, y, { width: sigW, align: 'center', lineBreak: false });
+    y += 58;
+    doc.moveTo(sigX + 15, y).lineTo(sigX + sigW - 15, y).lineWidth(0.6).strokeColor(COLORS.text).stroke();
+    y += 5;
+    doc.font('Helvetica').fontSize(9)
+        .text('NIP. ', sigX + 15, y, { width: sigW - 30, align: 'left', lineBreak: false });
+
+    // ===== FOOTER SEMUA HALAMAN (garis + identitas + nomor halaman) =====
+    const range = doc.bufferedPageRange();
+    for (let i = 0; i < range.count; i++) {
+        doc.switchToPage(range.start + i);
+        const fy = PAGE_HEIGHT - 32;
+        doc.moveTo(MARGIN, fy).lineTo(PAGE_WIDTH - MARGIN, fy)
+            .lineWidth(0.5).strokeColor(COLORS.borderLight).stroke();
+        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(7.5)
+            .text(
+                `Laporan Penempatan Siswa Kelas Digital  |  ${SEKOLAH_INFO.nama}  |  TA ${periode.tahun_ajaran}`,
+                MARGIN, fy + 7, { width: CONTENT_WIDTH - 90, align: 'left', lineBreak: false }
+            );
+        doc.text(
+            `Halaman ${i + 1} dari ${range.count}`,
+            PAGE_WIDTH - MARGIN - 90, fy + 7, { width: 90, align: 'right', lineBreak: false }
+        );
+    }
 
     doc.end();
 }

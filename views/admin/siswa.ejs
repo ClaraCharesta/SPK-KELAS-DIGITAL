@@ -52,6 +52,22 @@
         .btn-minat-tidak { background:#fde8e8; border-color:#f5c2c0; color:#b3261e; }
         .btn-minat-tidak:hover { background:#fbd5d3; }
 
+        /* Checklist massal */
+        .col-cek { width:38px; text-align:center; }
+        .col-cek input[type="checkbox"] { width:17px; height:17px; cursor:pointer; accent-color:#1e8449; }
+        .baris-siswa.terpilih td { background:#f1fbf5; }
+
+        .bulk-bar {
+            display:none; align-items:center; gap:10px; flex-wrap:wrap;
+            background:#ecfdf3; border:1px solid #b7e6c9; border-radius:10px;
+            padding:10px 14px; margin-bottom:12px;
+        }
+        .bulk-bar.tampil { display:flex; }
+        .bulk-bar .bulk-info { font-size:14px; color:#1e5e3a; }
+        .bulk-bar .bulk-info strong { font-size:16px; }
+        .bulk-bar .spacer { flex:1; }
+        .bulk-bar form { margin:0; }
+
         .info-alur { font-size:13px; color:#444; line-height:1.7; }
         .info-alur li { margin-bottom:2px; }
 
@@ -75,6 +91,11 @@
     const daftarSiswa = Array.isArray(siswaList) ? siswaList : [];
     const adaKartu = (Number(R.aktif) + Number(R.nonaktif)) > 0;
     const sudahTerkunci = typeof terkunci !== 'undefined' && Boolean(terkunci);
+
+    // Ada minimal satu siswa yang bisa dicentang (punya akun + belum merespons)?
+    const adaYangBisaDicentang = !sudahTerkunci && daftarSiswa.some(function(x) {
+        return Boolean(x.punya_akun) && (x.status_minat || 'belum_respon') === 'belum_respon';
+    });
 %>
 
 <div class="app-layout">
@@ -105,6 +126,11 @@
                             Siswa yang masih <strong>Belum merespons</strong> dapat diubah statusnya oleh operator
                             menjadi <strong>Berminat</strong> atau <strong>Tidak berminat</strong> lewat tombol di kolom Status Minat.
                             Status yang sudah Berminat atau Tidak berminat tidak dapat diubah lagi.
+                        </li>
+                        <li>
+                            Untuk banyak siswa sekaligus, <strong>centang</strong> siswa yang "Belum merespons"
+                            (atau centang kotak di header tabel untuk memilih semua yang tampil), lalu klik
+                            <strong>Konfirmasi Berminat</strong>. Gunakan filter "Belum merespons" agar pilihan lebih mudah.
                         </li>
                         <li>
                             Pengisian nilai oleh operator (Input/Edit Nilai dan Import Nilai) baru aktif setelah
@@ -256,10 +282,39 @@
                     <% } %>
                 </div>
 
+                <% if (adaYangBisaDicentang) { %>
+                    <!-- Bar aksi checklist massal (muncul otomatis saat ada yang dicentang) -->
+                    <form id="formMassal" class="bulk-bar" action="/admin/siswa/minat-massal" method="POST" onsubmit="return kirimMassal(this)">
+                        <span class="bulk-info">
+                            <i class="bi bi-check2-square"></i>
+                            <strong id="jumlahDipilih">0</strong> siswa dipilih
+                        </span>
+
+                        <button type="button" class="btn-kecil" onclick="pilihSemuaBelumRespon()">
+                            <i class="bi bi-check-all"></i> Pilih semua yang tampil
+                        </button>
+
+                        <button type="button" class="btn-kecil" onclick="batalPilih()">
+                            <i class="bi bi-x-circle"></i> Batal pilih
+                        </button>
+
+                        <span class="spacer"></span>
+
+                        <button type="submit" class="btn-primary">
+                            <i class="bi bi-check-lg"></i> Konfirmasi Berminat
+                        </button>
+                    </form>
+                <% } %>
+
                 <div class="table-scroll">
                     <table class="data-table" id="tabelSiswa">
                         <thead>
                             <tr>
+                                <th class="col-cek">
+                                    <% if (adaYangBisaDicentang) { %>
+                                        <input type="checkbox" id="cekSemua" title="Pilih semua siswa yang tampil dan belum merespons" aria-label="Pilih semua">
+                                    <% } %>
+                                </th>
                                 <th>No</th>
                                 <th>NISN</th>
                                 <th>Nama</th>
@@ -276,7 +331,7 @@
                         <tbody>
                             <% if (daftarSiswa.length === 0) { %>
                                 <tr>
-                                    <td colspan="10" class="empty-state">Belum ada data siswa. Tambahkan manual atau import dari Excel.</td>
+                                    <td colspan="11" class="empty-state">Belum ada data siswa. Tambahkan manual atau import dari Excel.</td>
                                 </tr>
                             <% } %>
 
@@ -296,6 +351,13 @@
                                     data-nisn="<%= s.nisn || '' %>"
                                     data-status="<%= st %>"
                                     data-minat="<%= minat %>">
+
+                                    <td class="col-cek">
+                                        <% if (bisaUbahMinat) { %>
+                                            <input type="checkbox" class="cek-siswa" value="<%= s.id_siswa %>"
+                                                   aria-label="Pilih <%= s.nama %>">
+                                        <% } %>
+                                    </td>
 
                                     <td class="no-urut"><%= index + 1 %></td>
                                     <td><%= s.nisn || '-' %></td>
@@ -392,7 +454,7 @@
                             <% }); %>
 
                             <tr id="barisKosongCari" style="display:none;">
-                                <td colspan="10" class="empty-state">Tidak ada siswa yang cocok dengan pencarian atau filter.</td>
+                                <td colspan="11" class="empty-state">Tidak ada siswa yang cocok dengan pencarian atau filter.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -551,6 +613,92 @@
         return true;
     }
 
+    // ===== CHECKLIST MASSAL =====
+    function semuaCekboxSiswa() {
+        return Array.prototype.slice.call(document.querySelectorAll('.cek-siswa'));
+    }
+
+    function cekboxTerlihat() {
+        return semuaCekboxSiswa().filter(function(cb) {
+            const tr = cb.closest('tr');
+            return tr && tr.style.display !== 'none';
+        });
+    }
+
+    function perbaruiPilihan() {
+        const bar = document.getElementById('formMassal');
+        const hitungEl = document.getElementById('jumlahDipilih');
+        const cekSemua = document.getElementById('cekSemua');
+
+        const terlihat = cekboxTerlihat();
+        const dipilih = semuaCekboxSiswa().filter(function(cb) { return cb.checked; });
+
+        semuaCekboxSiswa().forEach(function(cb) {
+            const tr = cb.closest('tr');
+            if (tr) tr.classList.toggle('terpilih', cb.checked);
+        });
+
+        if (hitungEl) hitungEl.textContent = dipilih.length;
+        if (bar) bar.classList.toggle('tampil', dipilih.length > 0);
+
+        if (cekSemua) {
+            const terlihatDipilih = terlihat.filter(function(cb) { return cb.checked; }).length;
+            cekSemua.checked = terlihat.length > 0 && terlihatDipilih === terlihat.length;
+            cekSemua.indeterminate = terlihatDipilih > 0 && terlihatDipilih < terlihat.length;
+        }
+    }
+
+    function pilihSemuaBelumRespon() {
+        cekboxTerlihat().forEach(function(cb) { cb.checked = true; });
+        perbaruiPilihan();
+    }
+
+    function batalPilih() {
+        semuaCekboxSiswa().forEach(function(cb) { cb.checked = false; });
+        perbaruiPilihan();
+    }
+
+    function kirimMassal(form) {
+        // Hapus input lama (jika sebelumnya batal), lalu isi ulang dari checkbox yang dicentang.
+        form.querySelectorAll('input[name="id_siswa"]').forEach(function(el) { el.remove(); });
+
+        const dipilih = semuaCekboxSiswa().filter(function(cb) { return cb.checked; });
+
+        if (dipilih.length === 0) {
+            alert('Centang minimal satu siswa terlebih dahulu.');
+            return false;
+        }
+
+        dipilih.forEach(function(cb) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'id_siswa';
+            input.value = cb.value;
+            form.appendChild(input);
+        });
+
+        return confirmDelete(
+            form,
+            'Yakin mengonfirmasi ' + dipilih.length + ' siswa ini sebagai BERMINAT? ' +
+            'Mereka akan ikut perankingan dan status ini tidak dapat diubah lagi.'
+        );
+    }
+
+    (function() {
+        const cekSemua = document.getElementById('cekSemua');
+
+        if (cekSemua) {
+            cekSemua.addEventListener('change', function() {
+                cekboxTerlihat().forEach(function(cb) { cb.checked = cekSemua.checked; });
+                perbaruiPilihan();
+            });
+        }
+
+        semuaCekboxSiswa().forEach(function(cb) {
+            cb.addEventListener('change', perbaruiPilihan);
+        });
+    })();
+
     // ===== PENCARIAN DAN FILTER =====
     (function() {
         const inputCari = document.getElementById('searchSiswa');
@@ -580,11 +728,17 @@
                     tampil++;
                     const nomor = row.querySelector('.no-urut');
                     if (nomor) nomor.textContent = tampil;
+                } else {
+                    // Baris yang tersembunyi tidak boleh ikut terkirim.
+                    const cb = row.querySelector('.cek-siswa');
+                    if (cb) cb.checked = false;
                 }
             });
 
             if (barisKosong) barisKosong.style.display = tampil === 0 ? '' : 'none';
             if (hitungEl) hitungEl.textContent = tampil + ' siswa ditampilkan';
+
+            perbaruiPilihan();
         }
 
         inputCari.addEventListener('input', terapkanFilter);

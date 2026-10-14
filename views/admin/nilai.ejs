@@ -10,6 +10,11 @@
         .badge-st.tidak_berminat { background:#fde8e8; color:#b3261e; }
         .badge-st.tanpa_akun { background:#eceff3; color:#5b6573; }
         .btn-nonaktif { opacity:.45; cursor:not-allowed !important; pointer-events:none; }
+
+        .table-scroll-x { overflow-x:auto; }
+        .sel-nilai { text-align:center; font-weight:600; white-space:nowrap; }
+        .sel-nilai.kosong { color:#aaa; font-weight:400; }
+        .teks-kunci { color:#8a6d3b; font-size:12px; white-space:nowrap; }
     </style>
 </head>
 <body>
@@ -17,12 +22,33 @@
     const belumRespon = Number(typeof jumlahBelumRespon !== 'undefined' ? jumlahBelumRespon : 0);
     const terblokir = !terkunci && belumRespon > 0;
 
+    const daftarKriteria = (typeof kriteriaList !== 'undefined' && Array.isArray(kriteriaList)) ? kriteriaList : [];
+    const petaNilai = (typeof nilaiMap !== 'undefined' && nilaiMap) ? nilaiMap : {};
+
+    // Setelah finalisasi, nilai tiap kriteria ditampilkan di tabel (hanya baca).
+    const tampilNilai = !!terkunci && daftarKriteria.length > 0;
+    const jumlahKolom = 6 + (tampilNilai ? daftarKriteria.length : 0);
+
     const labelMinat = { berminat:'Berminat', belum_respon:'Belum merespons', tidak_berminat:'Tidak berminat', tanpa_akun:'Belum ada akun' };
     const kunciMinat = function(s) { return !s.punya_akun ? 'tanpa_akun' : (s.status_minat || 'belum_respon'); };
 
     // Aksi aktif hanya jika belum final, siswa tidak menolak, dan tidak ada siswa yang belum merespons.
     const bisaIsi = function(s) {
         return !terkunci && !terblokir && s.status_minat !== 'tidak_berminat';
+    };
+
+    // Format angka nilai: bulat tampil bulat, desimal tampil 2 angka.
+    const formatNilai = function(v) {
+        if (v === null || v === undefined || v === '') return null;
+        const n = Number(v);
+        if (!Number.isFinite(n)) return null;
+        return Number.isInteger(n) ? String(n) : n.toFixed(2);
+    };
+
+    const ambilNilai = function(s, k) {
+        const baris = petaNilai[String(s.id_siswa)];
+        if (!baris) return null;
+        return formatNilai(baris[String(k.id_kriteria)]);
     };
 
     const belumLengkap = siswaList.filter(function(s) {
@@ -49,13 +75,14 @@
                             <li>Klik <strong>Unduh Template</strong>, isi nilai sesuai NISN, lalu <strong>Import Nilai (Excel)</strong>. Atau klik ikon pensil untuk mengisi satu per satu.</li>
                             <li>Siswa yang berstatus <strong>tidak berminat</strong> tidak bisa dinilai dan tidak ikut perankingan.</li>
                             <li>Nilai masih bisa diubah sampai hasil seleksi difinalisasi. Setiap perubahan mengosongkan hasil ranking, jadi perlu dihitung ulang.</li>
+                            <li>Setelah finalisasi, nilai setiap siswa tampil langsung di tabel di bawah, tetapi terkunci dan tidak bisa diubah lagi.</li>
                         </ol>
                     </div>
                 </div>
 
                 <% if (terkunci) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
-                        <i class="bi bi-lock-fill"></i> Hasil seleksi sudah difinalisasi. Seluruh nilai terkunci.
+                        <i class="bi bi-lock-fill"></i> Hasil seleksi sudah difinalisasi. Seluruh nilai terkunci dan hanya bisa dilihat di tabel.
                     </div>
                 <% } else if (terblokir) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
@@ -97,7 +124,7 @@
                                             <% } else if (terblokir) { %>
                                                 <span class="btn-icon btn-nonaktif" title="Nonaktif: masih ada siswa yang belum merespons"><i class="bi bi-pencil-square"></i></span>
                                             <% } else { %>
-                                                <span style="color:#999; font-size:12px;">Terkunci</span>
+                                                <span class="teks-kunci"><i class="bi bi-lock-fill"></i> Terkunci</span>
                                             <% } %>
                                         </td>
                                     </tr>
@@ -112,7 +139,7 @@
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pencil-square"></i></div>
-                            <h3>Input Nilai Siswa per Kriteria</h3>
+                            <h3><%= terkunci ? 'Nilai Siswa per Kriteria (Terkunci)' : 'Input Nilai Siswa per Kriteria' %></h3>
                         </div>
                         <div style="display:flex; gap:10px;">
                             <a href="/admin/nilai/template" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
@@ -134,50 +161,70 @@
                         </div>
                     </div>
 
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>NISN</th>
-                                <th>Nama</th>
-                                <th>Status Minat</th>
-                                <th>Kelengkapan Nilai</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% if (siswaList.length === 0) { %>
-                                <tr><td colspan="6" class="empty-state">Belum ada data siswa. Tambahkan siswa terlebih dahulu di menu Data Siswa.</td></tr>
-                            <% } %>
-
-                            <% siswaList.forEach(function(s, index) { const k = kunciMinat(s); %>
+                    <div class="table-scroll-x">
+                        <table class="data-table">
+                            <thead>
                                 <tr>
-                                    <td><%= index + 1 %></td>
-                                    <td><%= s.nisn %></td>
-                                    <td><%= s.nama %></td>
-                                    <td><span class="badge-st <%= k %>"><%= labelMinat[k] %></span></td>
-                                    <td>
-                                        <span class="badge badge-<%= s.jumlah_terisi >= s.total_kriteria && s.total_kriteria > 0 ? 'green' : 'red' %>">
-                                            <%= s.jumlah_terisi %> / <%= s.total_kriteria %> kriteria
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <% if (terkunci) { %>
-                                            <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Lihat"><i class="bi bi-eye-fill"></i></a>
-                                        <% } else if (s.status_minat === 'tidak_berminat') { %>
-                                            <span style="color:#999; font-size:12px;">Tidak ikut</span>
-                                        <% } else if (terblokir) { %>
-                                            <span class="btn-icon btn-nonaktif" title="Nonaktif: masih ada siswa yang belum merespons">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </span>
-                                        <% } else { %>
-                                            <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai"><i class="bi bi-pencil-square"></i></a>
-                                        <% } %>
-                                    </td>
+                                    <th>No</th>
+                                    <th>NISN</th>
+                                    <th>Nama</th>
+                                    <th>Status Minat</th>
+                                    <th>Kelengkapan Nilai</th>
+                                    <% if (tampilNilai) { %>
+                                        <% daftarKriteria.forEach(function(k) { %>
+                                            <th style="text-align:center;"><%= k.nama_kriteria || k.id_kriteria %></th>
+                                        <% }); %>
+                                    <% } %>
+                                    <th>Aksi</th>
                                 </tr>
-                            <% }); %>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <% if (siswaList.length === 0) { %>
+                                    <tr><td colspan="<%= jumlahKolom %>" class="empty-state">Belum ada data siswa. Tambahkan siswa terlebih dahulu di menu Data Siswa.</td></tr>
+                                <% } %>
+
+                                <% siswaList.forEach(function(s, index) { const k = kunciMinat(s); %>
+                                    <tr>
+                                        <td><%= index + 1 %></td>
+                                        <td><%= s.nisn %></td>
+                                        <td><%= s.nama %></td>
+                                        <td><span class="badge-st <%= k %>"><%= labelMinat[k] %></span></td>
+                                        <td>
+                                            <span class="badge badge-<%= s.jumlah_terisi >= s.total_kriteria && s.total_kriteria > 0 ? 'green' : 'red' %>">
+                                                <%= s.jumlah_terisi %> / <%= s.total_kriteria %> kriteria
+                                            </span>
+                                        </td>
+
+                                        <% if (tampilNilai) { %>
+                                            <% daftarKriteria.forEach(function(kr) {
+                                                const nilaiTampil = ambilNilai(s, kr);
+                                            %>
+                                                <% if (nilaiTampil !== null) { %>
+                                                    <td class="sel-nilai"><%= nilaiTampil %></td>
+                                                <% } else { %>
+                                                    <td class="sel-nilai kosong">-</td>
+                                                <% } %>
+                                            <% }); %>
+                                        <% } %>
+
+                                        <td>
+                                            <% if (terkunci) { %>
+                                                <span class="teks-kunci"><i class="bi bi-lock-fill"></i> Terkunci</span>
+                                            <% } else if (s.status_minat === 'tidak_berminat') { %>
+                                                <span style="color:#999; font-size:12px;">Tidak ikut</span>
+                                            <% } else if (terblokir) { %>
+                                                <span class="btn-icon btn-nonaktif" title="Nonaktif: masih ada siswa yang belum merespons">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </span>
+                                            <% } else { %>
+                                                <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai"><i class="bi bi-pencil-square"></i></a>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <%- include('../partials/footer') %>

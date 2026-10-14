@@ -15,6 +15,8 @@ const REGEX_HURUF_SAJA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$
 // Untuk sekolah asal: huruf DAN angka (contoh: "SMPN 1 Padang")
 const REGEX_SEKOLAH = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9]+( [A-Za-zÀ-ÖØ-öø-ÿ0-9]+)*$/;
 
+const BATAS_MASSAL = 1000;
+
 const redirectError = (res, pesan) =>
     res.redirect('/admin/siswa?error=' + encodeURIComponent(pesan));
 
@@ -82,7 +84,8 @@ const PESAN_UBAH_MINAT = {
     PERIODE_FINAL: 'Hasil seleksi sudah difinalisasi. Status minat tidak dapat diubah.',
     SISWA_TIDAK_DITEMUKAN: 'Siswa tidak ditemukan pada periode aktif.',
     TANPA_AKUN: 'Siswa ini belum punya akun. Buat akun siswa terlebih dahulu.',
-    SUDAH_MERESPONS: 'Status minat hanya dapat diubah jika siswa masih "Belum merespons".'
+    SUDAH_MERESPONS: 'Status minat hanya dapat diubah jika siswa masih "Belum merespons".',
+    TIDAK_ADA_PILIHAN: 'Pilih minimal satu siswa.'
 };
 
 const siswaController = {
@@ -325,6 +328,79 @@ const siswaController = {
             );
         } catch (error) {
             console.error('ERROR UBAH MINAT SISWA:', error);
+            return redirectError(res, 'Terjadi kesalahan sistem.');
+        }
+    },
+
+    // POST /admin/siswa/minat-massal
+    // Operator menandai banyak siswa (checklist) sebagai "Berminat" sekaligus.
+    // Hanya siswa yang punya akun dan masih "Belum merespons" yang diubah.
+    async ubahMinatMassal(req, res) {
+        try {
+            let ids = req.body.id_siswa;
+
+            if (ids === undefined || ids === null || ids === '') {
+                return redirectError(res, PESAN_UBAH_MINAT.TIDAK_ADA_PILIHAN);
+            }
+
+            if (!Array.isArray(ids)) ids = [ids];
+
+            ids = [...new Set(ids.map(v => String(v).trim()))];
+
+            if (ids.length === 0) {
+                return redirectError(res, PESAN_UBAH_MINAT.TIDAK_ADA_PILIHAN);
+            }
+
+            if (ids.length > BATAS_MASSAL) {
+                return redirectError(res, `Terlalu banyak siswa dipilih sekaligus (maksimal ${BATAS_MASSAL}).`);
+            }
+
+            if (ids.some(v => !/^[1-9]\d*$/.test(v))) {
+                return redirectError(res, 'Data siswa yang dipilih tidak valid.');
+            }
+
+            const periode = await periodeModel.getActivePeriode();
+
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return redirectError(res, !periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode));
+            }
+
+            if (await cekTerkunci(periode.id_periode)) {
+                return redirectError(res, PESAN_UBAH_MINAT.PERIODE_FINAL);
+            }
+
+            const hasil = await siswaModel.setMinatMassal(ids.map(Number), periode.id_periode);
+
+            if (!hasil.ok) {
+                return redirectError(res, PESAN_UBAH_MINAT[hasil.alasan] || 'Status minat gagal diubah.');
+            }
+
+            if (hasil.diubah > 0) {
+                await userModel.logActivity(
+                    req.session.user.id_user,
+                    `Operator menandai ${hasil.diubah} siswa sebagai Berminat (checklist massal)`
+                );
+
+                // Mengubah peserta seleksi mempengaruhi ranking.
+                await waspasModel.invalidateHasilJikaAda(periode.id_periode);
+            }
+
+            if (hasil.diubah === 0) {
+                return redirectError(
+                    res,
+                    'Tidak ada siswa yang diubah. Pastikan siswa yang dipilih punya akun dan masih "Belum merespons".'
+                );
+            }
+
+            let pesan = `${hasil.diubah} siswa berhasil diubah menjadi "Berminat".`;
+
+            if (hasil.dilewati > 0) {
+                pesan += ` ${hasil.dilewati} siswa dilewati karena sudah merespons atau tidak memenuhi syarat.`;
+            }
+
+            return redirectSuccess(res, pesan);
+        } catch (error) {
+            console.error('ERROR UBAH MINAT MASSAL:', error);
             return redirectError(res, 'Terjadi kesalahan sistem.');
         }
     },

@@ -2,6 +2,12 @@
  * Hitung WASPAS untuk seluruh siswa, LENGKAP dengan detail tiap tahap
  * (Matrix Keputusan, Matrix Ternormalisasi, kontribusi WSM & WPM per kriteria).
  *
+ * Aturan pemutus nilai seri (tie-breaker), berurutan:
+ *   1. Nilai Q lebih tinggi.
+ *   2. Jika Q sama: nilai ternormalisasi (r) pada kriteria berbobot terbesar,
+ *      lalu kriteria berbobot terbesar berikutnya, dan seterusnya.
+ *   3. Jika seluruh kriteria identik: urutan data (id_siswa lebih kecil lebih dulu).
+ *
  * @param {Array} siswaData   - array {id_siswa, nama, nilai: {id_kriteria: nilai_mentah, ...}}
  * @param {Array} kriteriaList - array {id_kriteria, nama_kriteria?, jenis: 'benefit'|'cost'}
  * @param {Array} bobotList   - array {id_kriteria, nilai_bobot}
@@ -10,14 +16,26 @@
  * @returns {Object} {
  *   lambda,
  *   kriteriaList,
- *   bobotMap,        // { id_kriteria: bobot }
- *   maxNilai,        // { id_kriteria: nilai_max }
- *   minNilai,        // { id_kriteria: nilai_min }
- *   matrixKeputusan, // [{ id_siswa, nama, nilai: { id_kriteria: nilai } }]
+ *   bobotMap,          // { id_kriteria: bobot }
+ *   maxNilai,          // { id_kriteria: nilai_max }
+ *   minNilai,          // { id_kriteria: nilai_min }
+ *   urutanKriteria,    // kriteria diurutkan dari bobot terbesar (dipakai tie-breaker)
+ *   matrixKeputusan,   // [{ id_siswa, nama, nilai: { id_kriteria: nilai } }]
  *   matrixNormalisasi, // [{ id_siswa, nama, normalisasi: { id_kriteria: r } }]
- *   hasil            // [{ id_siswa, nama, wsm, wpm, q, ranking, detailKriteria: { id_kriteria: {nilaiNormalisasi, bobot, kontribusiWSM, kontribusiWPM} } }]
+ *   hasil,             // [{ id_siswa, nama, wsm, wpm, q, ranking, seri, kelompokSeri, alasanSeri, seriPenuh, detailKriteria }]
+ *   seri               // { jumlahKelompok, jumlahSiswa, jumlahSeriPenuh, kelompok: [...] }
  * }
  */
+
+// Pembulatan 10 desimal agar selisih floating point tidak dianggap perbedaan nilai.
+function bulat(x) {
+    return Math.round(Number(x) * 1e10) / 1e10;
+}
+
+function namaKriteria(k) {
+    return k.nama_kriteria || k.id_kriteria;
+}
+
 function hitungWASPAS(siswaData, kriteriaList, bobotList, lambda = 0.5) {
     const bobotMap = {};
     bobotList.forEach(b => { bobotMap[b.id_kriteria] = parseFloat(b.nilai_bobot); });
@@ -109,15 +127,123 @@ function hitungWASPAS(siswaData, kriteriaList, bobotList, lambda = 0.5) {
             wsm,
             wpm,
             q,
+            seri: false,
+            kelompokSeri: null,
+            alasanSeri: null,
+            seriPenuh: false,
             detailKriteria
         };
     });
 
     // ================================================================
     // Langkah 6: Urutkan berdasarkan Q tertinggi -> ranking
+    // Jika Q sama, dipakai tie-breaker berbobot (lihat bandingkan()).
     // ================================================================
-    hasil.sort((a, b) => b.q - a.q);
+
+    // Kriteria diurutkan dari bobot terbesar (seri bobot -> id_kriteria terkecil).
+    const urutanKriteria = kriteriaList
+        .slice()
+        .sort((a, b) => {
+            const selisih = (bobotMap[b.id_kriteria] || 0) - (bobotMap[a.id_kriteria] || 0);
+            if (selisih !== 0) return selisih;
+            return Number(a.id_kriteria) - Number(b.id_kriteria);
+        });
+
+    // Mengembalikan { nilai, alasan }. nilai < 0 berarti a di atas b.
+    // alasan = null jika diputuskan oleh Q, selain itu penjelasan pemutusnya.
+    function bandingkan(a, b) {
+        const qa = bulat(a.q);
+        const qb = bulat(b.q);
+        if (qa !== qb) return { nilai: qb - qa, alasan: null };
+
+        for (let i = 0; i < urutanKriteria.length; i++) {
+            const k = urutanKriteria[i];
+            const ra = bulat(a.detailKriteria[k.id_kriteria].nilaiNormalisasi);
+            const rb = bulat(b.detailKriteria[k.id_kriteria].nilaiNormalisasi);
+            if (ra !== rb) {
+                return {
+                    nilai: rb - ra,
+                    alasan: { tipe: 'kriteria', kriteria: k, urutan: i + 1 }
+                };
+            }
+        }
+
+        return {
+            nilai: Number(a.id_siswa) - Number(b.id_siswa),
+            alasan: { tipe: 'urutan_data' }
+        };
+    }
+
+    function teksAlasan(alasan) {
+        if (!alasan) return null;
+
+        if (alasan.tipe === 'kriteria') {
+            const bobot = bobotMap[alasan.kriteria.id_kriteria] || 0;
+            return 'Nilai Q sama; dipisahkan oleh kriteria "' + namaKriteria(alasan.kriteria) +
+                '" (bobot ' + bobot.toFixed(4) + ', prioritas ke-' + alasan.urutan + ')';
+        }
+
+        return 'Nilai Q dan seluruh kriteria identik; diurutkan berdasarkan urutan data (ID siswa)';
+    }
+
+    hasil.sort((a, b) => bandingkan(a, b).nilai);
     hasil.forEach((item, idx) => { item.ranking = idx + 1; });
+
+    // ================================================================
+    // Langkah 7: Deteksi kelompok nilai seri (Q sama) untuk transparansi
+    // ================================================================
+    const kelompok = [];
+    let sekarang = null;
+    let nomor = 0;
+
+    for (let i = 1; i < hasil.length; i++) {
+        const sebelum = hasil[i - 1];
+        const ini = hasil[i];
+
+        if (bulat(sebelum.q) === bulat(ini.q)) {
+            if (!sekarang) {
+                nomor++;
+                sekarang = { nomor, anggota: [sebelum] };
+                sebelum.seri = true;
+                sebelum.kelompokSeri = nomor;
+                kelompok.push(sekarang);
+            }
+
+            const pembanding = bandingkan(sebelum, ini);
+
+            ini.seri = true;
+            ini.kelompokSeri = nomor;
+            ini.alasanSeri = teksAlasan(pembanding.alasan);
+            ini.seriPenuh = !!pembanding.alasan && pembanding.alasan.tipe === 'urutan_data';
+
+            sekarang.anggota.push(ini);
+        } else {
+            sekarang = null;
+        }
+    }
+
+    const kelompokRingkas = kelompok.map(g => ({
+        nomor: g.nomor,
+        q: g.anggota[0].q,
+        jumlah: g.anggota.length,
+        rankMulai: g.anggota[0].ranking,
+        rankSelesai: g.anggota[g.anggota.length - 1].ranking,
+        adaSeriPenuh: g.anggota.some(a => a.seriPenuh),
+        anggota: g.anggota.map(a => ({
+            id_siswa: a.id_siswa,
+            nama: a.nama,
+            ranking: a.ranking,
+            alasan: a.alasanSeri,
+            seriPenuh: a.seriPenuh
+        }))
+    }));
+
+    const seri = {
+        jumlahKelompok: kelompokRingkas.length,
+        jumlahSiswa: kelompokRingkas.reduce((n, g) => n + g.jumlah, 0),
+        jumlahSeriPenuh: kelompokRingkas.filter(g => g.adaSeriPenuh).length,
+        kelompok: kelompokRingkas
+    };
 
     return {
         lambda,
@@ -125,10 +251,32 @@ function hitungWASPAS(siswaData, kriteriaList, bobotList, lambda = 0.5) {
         bobotMap,
         maxNilai,
         minNilai,
+        urutanKriteria,
         matrixKeputusan,
         matrixNormalisasi,
-        hasil
+        hasil,
+        seri
     };
 }
 
-module.exports = { hitungWASPAS };
+/**
+ * Menandai kelompok seri yang berada tepat di batas kuota
+ * (sebagian anggota masuk kuota, sebagian tidak).
+ */
+function tandaiSeriKuota(seri, kuota) {
+    const kuotaNum = Number(kuota) || 0;
+
+    const kelompok = seri.kelompok.map(g => ({
+        ...g,
+        diBatasKuota: kuotaNum > 0 && g.rankMulai <= kuotaNum && g.rankSelesai > kuotaNum
+    }));
+
+    return {
+        ...seri,
+        kuota: kuotaNum,
+        kelompok,
+        jumlahDiBatasKuota: kelompok.filter(g => g.diBatasKuota).length
+    };
+}
+
+module.exports = { hitungWASPAS, tandaiSeriKuota };

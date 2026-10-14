@@ -5,17 +5,120 @@
     <%- include('../partials/head') %>
     <link rel="stylesheet" href="/css/fucom.css">
     <style>
-        .input-skala {
-            width:140px; padding:9px 12px; border:1px solid #ddd; border-radius:8px;
-            font-size:14px; text-align:center; letter-spacing:1px;
+        /* ===== Kartu perbandingan ===== */
+        .skala-group {
+            background:#f7f9fc; border:1px solid #e6eaf2; border-radius:12px;
+            padding:12px 14px; margin-bottom:14px;
         }
-        .input-skala:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-        .input-skala.tidak-valid { border:2px solid #e74c3c; }
-        .skala-hint { font-size:11px; color:#888; margin-top:4px; }
+        .pair-label { display:block; font-weight:600; color:#0b2545; margin-bottom:8px; }
+
+        /* ===== Stepper ===== */
+        .skala-stepper {
+            display:inline-flex; align-items:center; background:#fff;
+            border:1.5px solid #dcdfe6; border-radius:12px; overflow:hidden;
+            transition:border-color .15s, box-shadow .15s;
+        }
+        .skala-stepper:focus-within { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+        .skala-stepper.valid { border-color:#22a559; }
+        .skala-stepper.valid:focus-within { box-shadow:0 0 0 3px rgba(34,165,89,.14); }
+        .skala-stepper.tidak-valid { border-color:#e74c3c; box-shadow:0 0 0 3px rgba(231,76,60,.12); }
+        .input-skala {
+            width:90px; padding:10px 8px; border:none; border-radius:0;
+            font-size:18px; font-weight:600; text-align:center; letter-spacing:1px;
+            background:transparent; color:#0b2545;
+        }
+        .input-skala:focus { outline:none; box-shadow:none; }
+        .btn-skala {
+            width:42px; height:42px; border:none; background:#eef3ff; color:#2563eb;
+            font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+            transition:background .15s, color .15s; user-select:none; touch-action:manipulation;
+        }
+        .btn-skala:hover { background:#2563eb; color:#fff; }
+        .btn-skala:active { transform:scale(.96); }
+
+        /* ===== Nilai cepat ===== */
+        .skala-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+        .chip-nilai {
+            border:1px solid #d5dbe7; background:#fff; color:#334155; border-radius:999px;
+            padding:3px 12px; font-size:12px; cursor:pointer; transition:all .15s;
+        }
+        .chip-nilai:hover { border-color:#2563eb; color:#2563eb; }
+        .chip-nilai.aktif { background:#2563eb; border-color:#2563eb; color:#fff; }
+
+        .skala-hint { font-size:11px; color:#888; margin-top:6px; }
+        .skala-warn { font-size:12px; color:#b35c00; background:#fdf1de; border-radius:6px; padding:5px 8px; margin-top:6px; display:none; }
         .skala-error { font-size:12px; color:#e74c3c; margin-top:4px; display:none; }
+
+        /* ===== Dropdown urutan ===== */
+        .urutan-select {
+            width:100%; padding:10px 12px; border:1.5px solid #dcdfe6; border-radius:10px;
+            background:#fff; font-size:14px; transition:border-color .15s, box-shadow .15s; margin-bottom:8px;
+        }
+        .urutan-select:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+        .urutan-select option:disabled { color:#aaa; }
+
+        /* ===== Pratinjau urutan ===== */
+        .urutan-preview { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 12px; }
+        .chip-urutan {
+            font-size:12px; padding:4px 10px; border-radius:999px; background:#eef0f4; color:#8a93a3;
+            border:1px dashed #cdd3de;
+        }
+        .chip-urutan.terisi { background:#e8f0ff; color:#1e40af; border:1px solid #bcd0ff; }
+
+        /* ===== Progres isian ===== */
+        .progres-wrap { margin-top:14px; }
+        .progres-track { height:6px; background:#e6eaf2; border-radius:999px; overflow:hidden; }
+        .progres-bar { height:100%; width:0; background:#2563eb; transition:width .2s, background .2s; }
+        .progres-bar.penuh { background:#22a559; }
+        .progres-teks { font-size:12px; color:#666; margin-top:4px; }
+
+        .peringatan-nama, .peringatan-form { color:#e74c3c; font-size:12px; margin-top:4px; display:none; }
+        .peringatan-form { background:#fdecea; border-radius:8px; padding:8px 10px; margin-top:12px; }
+        .btn-teks { background:none; border:none; color:#2563eb; font-size:12px; cursor:pointer; padding:0; text-decoration:underline; }
     </style>
 </head>
 <body>
+<%
+    const aman = function (obj) { return JSON.stringify(obj).replace(/</g, '\\u003c'); };
+
+    // Data untuk prefill modal edit (hanya 1 responden yang diizinkan).
+    let dataEdit = null;
+    if (respondenList.length === 1) {
+        const rows = dataResponden[respondenList[0]] || [];
+        const urutan = [];
+        rows.forEach(function (r) {
+            if (!urutan.includes(r.id_kriteria_asal)) urutan.push(r.id_kriteria_asal);
+        });
+        if (rows.length > 0) {
+            const last = rows[rows.length - 1];
+            if (!urutan.includes(last.id_kriteria_pembanding)) urutan.push(last.id_kriteria_pembanding);
+        }
+        dataEdit = {
+            nama: respondenList[0],
+            urutan: urutan.map(String),
+            nilai: rows.map(function (r) { return String(parseFloat(r.nilai_perbandingan)).replace('.', ','); })
+        };
+    }
+
+    // Modal mana saja yang perlu dirender.
+    const bolehEdit = !terkunci && respondenList.length === 1 && (bobotFinal.length === 0 || !dfcKonsisten);
+    const bolehInput = !terkunci && respondenList.length === 0;
+    const daftarModal = [];
+    if (bolehInput) {
+        daftarModal.push({
+            id: 'modalInput', mode: 'input', icon: 'bi-clipboard-data',
+            judul: 'Input Data Perbandingan Kriteria (Hasil Musyawarah)',
+            action: '/admin/fucom/input', tombol: 'Simpan Data'
+        });
+    }
+    if (bolehEdit) {
+        daftarModal.push({
+            id: 'modalEdit', mode: 'edit', icon: 'bi-pencil-fill',
+            judul: 'Edit Data Perbandingan Kriteria',
+            action: '/admin/fucom/edit', tombol: 'Simpan Perubahan'
+        });
+    }
+%>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
@@ -47,7 +150,7 @@
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
                             <li>Klik <strong>"Input Data Responden"</strong> dan isi nama pengambil keputusan resmi (misalnya Waka Kurikulum) yang menginput hasil kuesioner.</li>
                             <li>Urutkan 6 kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>. Urutan dan nilai yang diinput merupakan hasil kesepakatan/musyawarah bersama guru-guru terkait, bukan opini pribadi satu orang saja.</li>
-                            <li>Isi nilai perbandingan antar kriteria yang bersebelahan dengan <strong>mengetik angka</strong> pada kolom yang tersedia. Aturan pengisian:</li>
+                            <li>Isi nilai perbandingan antar kriteria yang bersebelahan dengan <strong>mengetik angka</strong>, memakai tombol <strong>+ / −</strong> (tahan untuk menaik/menurunkan cepat), tombol panah atas/bawah di keyboard, atau tombol <strong>nilai cepat</strong>. Aturan pengisian:</li>
                         </ol>
 
                         <table class="data-table" style="margin: 10px 0 15px 20px; max-width: 620px;">
@@ -56,7 +159,7 @@
                             </thead>
                             <tbody>
                                 <tr><td><strong>1</strong></td><td>Kedua kriteria sama penting</td></tr>
-                                <tr><td><strong>1,5 &nbsp;/&nbsp; 2,25</strong></td><td>Desimal diperbolehkan, maksimal 2 angka di belakang koma</td></tr>
+                                <tr><td><strong>1,5 &nbsp;/&nbsp; 2,25</strong></td><td>Desimal diperbolehkan, maksimal 2 angka di belakang koma (titik otomatis menjadi koma)</td></tr>
                                 <tr><td><strong>2 - 4</strong></td><td>Kriteria sebelumnya lebih penting (disarankan untuk sebagian besar perbandingan)</td></tr>
                                 <tr><td><strong>9</strong></td><td>Batas maksimum</td></tr>
                                 <tr><td><strong style="color:#b3261e;">0, 0,0, 0,00, 10, huruf, minus</strong></td><td>Tidak diperbolehkan. Nilai harus lebih dari 0 dan paling besar 9</td></tr>
@@ -64,7 +167,7 @@
                         </table>
 
                         <ol start="4" style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
-                            <li>Gunakan nilai yang <strong>moderat</strong> (misalnya 1 sampai 4, boleh desimal). Semakin besar lompatan nilai antar kriteria, semakin besar risiko hasil pembobotan menjadi tidak konsisten.</li>
+                            <li>Gunakan nilai yang <strong>moderat</strong> (misalnya 1 sampai 4, boleh desimal). Semakin besar lompatan nilai antar kriteria, semakin besar risiko hasil pembobotan menjadi tidak konsisten. Sistem akan memberi peringatan jika nilai melebihi 4.</li>
                             <li>Data hanya diinput <strong>satu kali</strong> (1 responden). Selama bobot belum dihitung, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
                             <li>
                                 Setelah dihitung, sistem akan menampilkan nilai <strong>DFC (Deviation from Full Consistency)</strong> — semacam skor yang menunjukkan seberapa konsisten urutan dan nilai yang diinput tadi secara matematis.
@@ -84,10 +187,8 @@
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clipboard-data"></i></div>
                             <h3>Data Perbandingan Kriteria (1 Responden)</h3>
                         </div>
-                        <% if (!terkunci && respondenList.length === 0) { %>
-                            <button
-                                class="btn-primary"
-                                onclick="document.getElementById('modalInput').style.display='flex'">
+                        <% if (bolehInput) { %>
+                            <button type="button" class="btn-primary" onclick="bukaModalInput()">
                                 <i class="bi bi-plus-lg"></i> Input Data Responden
                             </button>
                         <% } %>
@@ -101,11 +202,7 @@
                                     <strong style="font-size:14px; color:#0b2545;"><i class="bi bi-person-fill"></i> <%= nama %></strong>
                                     <% if (!terkunci && (bobotFinal.length === 0 || !dfcKonsisten)) { %>
                                         <div style="display:flex; gap:6px;">
-                                            <button
-                                                type="button"
-                                                class="btn-icon"
-                                                title="Edit"
-                                                onclick="bukaModalEdit()">
+                                            <button type="button" class="btn-icon" title="Edit" onclick="bukaModalEdit()">
                                                 <i class="bi bi-pencil-fill"></i>
                                             </button>
                                             <form action="/admin/fucom/hapus" method="POST" onsubmit="return confirmDelete(this,'Hapus data responden ini?');">
@@ -205,25 +302,34 @@
         </div>
     </div>
 
-    <!-- Modal Input Data Responden -->
-    <% if (!terkunci && respondenList.length === 0) { %>
-    <div class="modal-overlay" id="modalInput">
-        <div class="modal-box" style="max-width:600px;">
+    <!-- ===== Modal Input & Edit (satu markup, dipakai dua kali) ===== -->
+    <% daftarModal.forEach(function(m) { %>
+    <div class="modal-overlay" id="<%= m.id %>">
+        <div class="modal-box" style="max-width:600px; max-height:92vh; overflow-y:auto;">
             <div class="modal-header">
-                <h3><i class="bi bi-clipboard-data"></i> Input Data Perbandingan Kriteria (Hasil Musyawarah)</h3>
-                <button class="modal-close" onclick="document.getElementById('modalInput').style.display='none'">&times;</button>
+                <h3><i class="bi <%= m.icon %>"></i> <%= m.judul %></h3>
+                <button type="button" class="modal-close" onclick="tutupModalFucom('<%= m.id %>')">&times;</button>
             </div>
-            <form action="/admin/fucom/input" method="POST" onsubmit="return validasiFormResponden(this)">
-                <label>Nama Pengambil Keputusan Resmi (Hanya Huruf)</label>
-                <input type="text" name="nama_responden" id="nama_responden_input" required placeholder="Contoh: Desi Wahyuni" autocomplete="off">
-                <p id="peringatan_nama_responden" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
 
-                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
-                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting.
+            <form class="form-fucom" data-mode="<%= m.mode %>" action="<%= m.action %>" method="POST" novalidate>
+                <% if (m.mode === 'edit') { %>
+                    <input type="hidden" name="nama_asli" value="<%= respondenList[0] %>">
+                <% } %>
+
+                <label>Nama Pengambil Keputusan Resmi (Hanya Huruf)</label>
+                <input type="text" name="nama_responden" required placeholder="Contoh: Desi Wahyuni" autocomplete="off">
+                <p class="peringatan-nama"></p>
+
+                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
+                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>.
+                    Kriteria yang sudah dipilih tidak bisa dipilih lagi di urutan lain.
                 </p>
+
+                <div class="urutan-preview"></div>
+
                 <% kriteriaList.forEach(function(k, idx) { %>
                     <label>Kriteria <%= idx + 1 %></label>
-                    <select name="id_kriteria_urutan" class="urutan-select" data-index="<%= idx %>" required style="margin-bottom:8px;">
+                    <select name="id_kriteria_urutan" class="urutan-select" data-index="<%= idx %>" required>
                         <option value="">-- Pilih Kriteria --</option>
                         <% kriteriaList.forEach(function(k2) { %>
                             <option value="<%= k2.id_kriteria %>"><%= k2.nama_kriteria %></option>
@@ -231,379 +337,428 @@
                     </select>
                 <% }); %>
 
-                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
-                    Nilai perbandingan antar peringkat berurutan. Ketik angka <strong>lebih dari 0 sampai 9</strong>, boleh desimal maksimal 2 angka di belakang koma (lihat panduan pada bagian tutorial di atas). <strong>Disarankan nilai moderat</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
+                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:8px;">
+                    Nilai perbandingan antar peringkat berurutan: <strong>lebih dari 0 sampai 9</strong>,
+                    boleh desimal maksimal 2 angka di belakang koma. <strong>Disarankan nilai moderat</strong>
+                    kecuali benar-benar yakin ada kesenjangan sangat besar.
                 </p>
+
                 <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>
-                    <div class="skala-group" style="margin-bottom:20px;">
-                        <label id="label_pair_<%= i %>">Kriteria <%= i + 1 %> dibanding Kriteria <%= i + 2 %></label>
-                        <input type="text"
-                               name="nilai_perbandingan_<%= i %>"
-                               class="input-skala"
-                               inputmode="decimal"
-                               maxlength="4"
-                               placeholder="Contoh: 1,5"
-                               autocomplete="off"
-                               required>
-                        <div class="skala-hint">Lebih dari 0 sampai 9, maksimal 2 angka desimal</div>
+                    <div class="skala-group" data-index="<%= i %>">
+                        <div class="pair-label">Kriteria <%= i + 1 %> dibanding Kriteria <%= i + 2 %></div>
+
+                        <div class="skala-stepper">
+                            <button type="button" class="btn-skala" data-aksi="kurang" aria-label="Kurangi nilai"><i class="bi bi-dash-lg"></i></button>
+                            <input type="text"
+                                   name="nilai_perbandingan_<%= i %>"
+                                   class="input-skala"
+                                   inputmode="decimal"
+                                   maxlength="4"
+                                   placeholder="1,5"
+                                   autocomplete="off">
+                            <button type="button" class="btn-skala" data-aksi="tambah" aria-label="Tambah nilai"><i class="bi bi-plus-lg"></i></button>
+                        </div>
+
+                        <div class="skala-chips">
+                            <button type="button" class="chip-nilai" data-nilai="1">1</button>
+                            <button type="button" class="chip-nilai" data-nilai="1,5">1,5</button>
+                            <button type="button" class="chip-nilai" data-nilai="2">2</button>
+                            <button type="button" class="chip-nilai" data-nilai="3">3</button>
+                            <button type="button" class="chip-nilai" data-nilai="4">4</button>
+                        </div>
+
+                        <div class="skala-hint">Lebih dari 0 sampai 9, maksimal 2 angka desimal. Panah atas/bawah juga bisa dipakai.</div>
+                        <div class="skala-warn">Nilai di atas 4 tergolong besar dan berisiko membuat hasil pembobotan tidak konsisten.</div>
                         <div class="skala-error"></div>
                     </div>
                 <% } %>
 
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalInput').style.display='none'">Batal</button>
-                    <button type="submit" class="btn-primary">Simpan Data</button>
+                <div class="progres-wrap">
+                    <div class="progres-track"><div class="progres-bar"></div></div>
+                    <div class="progres-teks">Terisi 0 isian</div>
                 </div>
-            </form>
-        </div>
-    </div>
-    <% } %>
 
-    <!-- Modal Edit Data Responden -->
-    <% if (!terkunci && respondenList.length === 1 && (bobotFinal.length === 0 || !dfcKonsisten)) { %>
-    <div class="modal-overlay" id="modalEdit">
-        <div class="modal-box" style="max-width:600px;">
-            <div class="modal-header">
-                <h3><i class="bi bi-pencil-fill"></i> Edit Data Perbandingan Kriteria</h3>
-                <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
-            </div>
-            <form action="/admin/fucom/edit" method="POST" onsubmit="return validasiFormRespondenEdit(this)">
-                <input type="hidden" name="nama_asli" id="nama_asli_edit" value="<%= respondenList[0] %>">
+                <div class="peringatan-form"></div>
 
-                <label>Nama Pengambil Keputusan Resmi (Hanya Huruf)</label>
-                <input type="text" name="nama_responden" id="nama_responden_edit" required placeholder="Contoh: Desi Wahyuni" autocomplete="off">
-                <p id="peringatan_nama_responden_edit" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
-
-                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:10px;">
-                    Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting.
-                </p>
-                <% kriteriaList.forEach(function(k, idx) { %>
-                    <label>Kriteria <%= idx + 1 %></label>
-                    <select name="id_kriteria_urutan" class="urutan-select-edit" data-index="<%= idx %>" required style="margin-bottom:8px;">
-                        <option value="">-- Pilih Kriteria --</option>
-                        <% kriteriaList.forEach(function(k2) { %>
-                            <option value="<%= k2.id_kriteria %>"><%= k2.nama_kriteria %></option>
-                        <% }); %>
-                    </select>
-                <% }); %>
-
-                <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
-                    Nilai perbandingan antar peringkat berurutan. Ketik angka <strong>lebih dari 0 sampai 9</strong>, boleh desimal maksimal 2 angka di belakang koma (lihat panduan pada bagian tutorial di atas). <strong>Disarankan nilai moderat</strong> kecuali benar-benar yakin ada kesenjangan sangat besar.
-                </p>
-                <% for (let i = 0; i < kriteriaList.length - 1; i++) { %>
-                    <div class="skala-group" style="margin-bottom:20px;">
-                        <label id="label_pair_edit_<%= i %>">Kriteria <%= i + 1 %> dibanding Kriteria <%= i + 2 %></label>
-                        <input type="text"
-                               name="nilai_perbandingan_<%= i %>"
-                               class="input-skala input-skala-edit"
-                               data-pair-index="<%= i %>"
-                               inputmode="decimal"
-                               maxlength="4"
-                               placeholder="Contoh: 1,5"
-                               autocomplete="off"
-                               required>
-                        <div class="skala-hint">Lebih dari 0 sampai 9, maksimal 2 angka desimal</div>
-                        <div class="skala-error"></div>
+                <div class="modal-footer" style="justify-content:space-between; align-items:center;">
+                    <button type="button" class="btn-teks btn-kosongkan">Kosongkan isian</button>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn-secondary" onclick="tutupModalFucom('<%= m.id %>')">Batal</button>
+                        <button type="submit" class="btn-primary"><%= m.tombol %></button>
                     </div>
-                <% } %>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
-                    <button type="submit" class="btn-primary">Simpan Perubahan</button>
                 </div>
             </form>
         </div>
     </div>
-    <% } %>
+    <% }); %>
 
     <script>
-    // ==== DATA RESPONDEN SAAT INI (UNTUK PREFILL MODAL EDIT) ====
-    // Karena hanya 1 responden yang diizinkan, kita ambil data urutan & nilai dari respondenList[0] jika ada
-    <% if (respondenList.length === 1) { %>
-    const dataEditFucom = {
-        nama: <%- JSON.stringify(respondenList[0]) %>,
-        urutan: <%- JSON.stringify(
-            (function() {
-                const rows = dataResponden[respondenList[0]];
-                const urutan = [];
-                rows.forEach(function(r) {
-                    if (!urutan.includes(r.id_kriteria_asal)) urutan.push(r.id_kriteria_asal);
+    (function () {
+        // ==== DATA DARI SERVER ====
+        var kriteriaMap = <%- aman(Object.fromEntries(kriteriaList.map(function (k) { return [String(k.id_kriteria), k.nama_kriteria]; }))) %>;
+        var daftarResponden = <%- aman(respondenList.map(function (n) { return n.trim().toLowerCase(); })) %>;
+        var dataEditFucom = <%- aman(dataEdit) %>;
+
+        // ==== ATURAN VALIDASI ====
+        var REGEX_NAMA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+        var REGEX_SKALA = /^[0-9](,[0-9]{1,2})?$/;
+        var LANGKAH = 0.5;
+        var AMBANG_BESAR = 4;
+        var PESAN_SKALA = 'Isi angka lebih dari 0 sampai 9 (maksimal 2 desimal). Nilai 0, 0,0, 0,00, dan angka 10 ke atas tidak diperbolehkan.';
+
+        function skalaValid(teks) {
+            if (!REGEX_SKALA.test(teks)) return false;
+            var angka = Number(teks.replace(',', '.'));
+            return isFinite(angka) && angka > 0 && angka <= 9;
+        }
+
+        // Hanya angka dan satu koma, 1 digit di depan koma, maksimal 2 digit di belakang koma.
+        function bersihkanSkala(v) {
+            v = v.replace(/[^0-9.,]/g, '').replace(/\./g, ',');
+            var idx = v.indexOf(',');
+            if (idx === -1) return v.slice(0, 1);
+            var depan = v.slice(0, idx).slice(0, 1) || '0';
+            var belakang = v.slice(idx + 1).replace(/,/g, '').slice(0, 2);
+            return depan + ',' + belakang;
+        }
+
+        function formatAngka(n) { return String(n).replace('.', ','); }
+
+        // ==== INISIALISASI SATU FORM (dipakai modal input & edit) ====
+        function initForm(form, opsi) {
+            var selects = Array.prototype.slice.call(form.querySelectorAll('.urutan-select'));
+            var groups = Array.prototype.slice.call(form.querySelectorAll('.skala-group'));
+            var namaInput = form.querySelector('input[name="nama_responden"]');
+            var namaWarn = form.querySelector('.peringatan-nama');
+            var formWarn = form.querySelector('.peringatan-form');
+            var preview = form.querySelector('.urutan-preview');
+            var progresTeks = form.querySelector('.progres-teks');
+            var progresBar = form.querySelector('.progres-bar');
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var totalIsian = selects.length + groups.length + 1;
+
+            function inputDari(g) { return g.querySelector('.input-skala'); }
+            function namaKriteria(sel) { return sel.value ? kriteriaMap[sel.value] : null; }
+
+            function bukaSemuaOpsi() {
+                Array.prototype.forEach.call(form.querySelectorAll('option'), function (o) { o.disabled = false; });
+            }
+
+            // Kriteria yang sudah dipilih di urutan lain dinonaktifkan.
+            function sinkronOpsi() {
+                var terpakai = selects.map(function (s) { return s.value; }).filter(Boolean);
+                selects.forEach(function (s) {
+                    Array.prototype.forEach.call(s.options, function (o) {
+                        if (!o.value) return;
+                        o.disabled = (o.value !== s.value) && terpakai.indexOf(o.value) !== -1;
+                    });
                 });
-                if (rows.length > 0) {
-                    const last = rows[rows.length - 1];
-                    if (!urutan.includes(last.id_kriteria_pembanding)) urutan.push(last.id_kriteria_pembanding);
-                }
-                return urutan;
-            })()
-        ) %>,
-        nilai: <%- JSON.stringify(dataResponden[respondenList[0]].map(r => String(parseFloat(r.nilai_perbandingan)).replace('.', ','))) %>
-    };
-    <% } else { %>
-    const dataEditFucom = null;
-    <% } %>
-
-    // ==== PETA ID KRITERIA -> NAMA KRITERIA (UNTUK LABEL PERBANDINGAN OTOMATIS) ====
-    const kriteriaMap = <%- JSON.stringify(Object.fromEntries(kriteriaList.map(k => [String(k.id_kriteria), k.nama_kriteria]))) %>;
-
-    // ==== VALIDASI NAMA RESPONDEN (MODAL INPUT): HANYA HURUF, TIDAK DUPLIKAT, TIDAK BOLEH KOSONG/SPASI SAJA ====
-    const daftarResponden = <%- JSON.stringify(respondenList.map(n => n.trim().toLowerCase())) %>;
-    const REGEX_HURUF_SAJA_FUCOM = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
-
-    // ==== VALIDASI SKALA PERBANDINGAN: LEBIH DARI 0 SAMPAI 9, MAKSIMAL 2 DESIMAL ====
-    // Valid: 1, 1,5, 2,25, 0,5, 9. Tidak valid: 0, 0,0, 0,00, 10, 9,5, minus, huruf.
-    const REGEX_SKALA_FUCOM = /^[0-9](,[0-9]{1,2})?$/;
-
-    function nilaiSkalaValid(teks) {
-        if (!REGEX_SKALA_FUCOM.test(teks)) return false;
-        const angka = Number(teks.replace(',', '.'));
-        return Number.isFinite(angka) && angka > 0 && angka <= 9;
-    }
-
-    // Bersihkan ketikan: hanya angka dan satu koma, 1 digit di depan koma, maksimal 2 digit di belakang koma.
-    function bersihkanInputSkala(input) {
-        let v = input.value.replace(/[^0-9.,]/g, '').replace(/\./g, ',');
-
-        const idx = v.indexOf(',');
-        if (idx === -1) {
-            v = v.slice(0, 1);
-        } else {
-            let depan = v.slice(0, idx).slice(0, 1);
-            let belakang = v.slice(idx + 1).replace(/,/g, '').slice(0, 2);
-            if (depan === '') depan = '0';
-            v = depan + ',' + belakang;
-        }
-
-        input.value = v;
-        input.classList.remove('tidak-valid');
-
-        const err = input.parentElement.querySelector('.skala-error');
-        if (err) err.style.display = 'none';
-    }
-
-    document.querySelectorAll('.input-skala').forEach(function(input) {
-        input.addEventListener('input', function() { bersihkanInputSkala(this); });
-    });
-
-    // Cek semua kolom skala dalam satu form. Return true jika semuanya valid.
-    function validasiSemuaSkala(form) {
-        let semuaValid = true;
-        let pertamaSalah = null;
-
-        form.querySelectorAll('.input-skala').forEach(function(input) {
-            const teks = input.value.trim();
-            const err = input.parentElement.querySelector('.skala-error');
-
-            if (nilaiSkalaValid(teks)) {
-                input.classList.remove('tidak-valid');
-                if (err) err.style.display = 'none';
-            } else {
-                semuaValid = false;
-                input.classList.add('tidak-valid');
-                if (err) {
-                    err.innerText = 'Isi angka lebih dari 0 sampai 9 (maksimal 2 desimal). Nilai 0, 0,0, 0,00, dan angka 10 ke atas tidak diperbolehkan.';
-                    err.style.display = 'block';
-                }
-                if (!pertamaSalah) pertamaSalah = input;
             }
-        });
 
-        if (pertamaSalah) pertamaSalah.focus();
-        return semuaValid;
-    }
-
-    const inputNamaResponden = document.getElementById('nama_responden_input');
-    if (inputNamaResponden) {
-        inputNamaResponden.addEventListener('input', function() {
-            let val = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '');
-            val = val.replace(/\s{2,}/g, ' ');
-            this.value = val;
-            document.getElementById('peringatan_nama_responden').style.display = 'none';
-        });
-    }
-
-    function validasiFormResponden(form) {
-        const namaTrim = form.nama_responden.value.trim();
-        const peringatanEl = document.getElementById('peringatan_nama_responden');
-
-        if (namaTrim === '' || !REGEX_HURUF_SAJA_FUCOM.test(namaTrim)) {
-            peringatanEl.innerText = 'Nama responden hanya boleh berisi huruf dan spasi antar kata, tidak boleh angka/simbol/kosong.';
-            peringatanEl.style.display = 'block';
-            form.nama_responden.focus();
-            return false;
-        }
-
-        if (daftarResponden.includes(namaTrim.toLowerCase())) {
-            peringatanEl.innerText = 'Nama responden ini sudah pernah diinput sebelumnya.';
-            peringatanEl.style.display = 'block';
-            form.nama_responden.focus();
-            return false;
-        }
-
-        if (!validasiSemuaSkala(form)) return false;
-
-        form.nama_responden.value = namaTrim;
-        return true;
-    }
-
-    // ==== VALIDASI NAMA RESPONDEN (MODAL EDIT): HANYA HURUF, TIDAK BOLEH KOSONG/SPASI SAJA ====
-    // (tidak dicek duplikat terhadap dirinya sendiri karena hanya ada 1 responden)
-    const inputNamaRespondenEdit = document.getElementById('nama_responden_edit');
-    if (inputNamaRespondenEdit) {
-        inputNamaRespondenEdit.addEventListener('input', function() {
-            let val = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '');
-            val = val.replace(/\s{2,}/g, ' ');
-            this.value = val;
-            document.getElementById('peringatan_nama_responden_edit').style.display = 'none';
-        });
-    }
-
-    function validasiFormRespondenEdit(form) {
-        const namaTrim = form.nama_responden.value.trim();
-        const peringatanEl = document.getElementById('peringatan_nama_responden_edit');
-
-        if (namaTrim === '' || !REGEX_HURUF_SAJA_FUCOM.test(namaTrim)) {
-            peringatanEl.innerText = 'Nama responden hanya boleh berisi huruf dan spasi antar kata, tidak boleh angka/simbol/kosong.';
-            peringatanEl.style.display = 'block';
-            form.nama_responden.focus();
-            return false;
-        }
-
-        if (!validasiSemuaSkala(form)) return false;
-
-        form.nama_responden.value = namaTrim;
-        return true;
-    }
-
-    // ==== LABEL PERBANDINGAN OTOMATIS (MODAL INPUT) ====
-    // Begitu kriteria dipilih di dropdown, label "Kriteria X dibanding Kriteria Y" berubah
-    // menjadi nama kriteria asli yang dipilih, misalnya "Nilai Akademik dibanding Hasil Psikotes"
-    function perbaruiLabelPerbandingan() {
-        const selects = document.querySelectorAll('.urutan-select');
-        for (let i = 0; i < selects.length - 1; i++) {
-            const labelEl = document.getElementById('label_pair_' + i);
-            if (!labelEl) continue;
-            const idAsal = selects[i].value;
-            const idPembanding = selects[i + 1].value;
-            const namaAsal = idAsal ? kriteriaMap[idAsal] : null;
-            const namaPembanding = idPembanding ? kriteriaMap[idPembanding] : null;
-            if (namaAsal && namaPembanding) {
-                labelEl.innerText = namaAsal + ' dibanding ' + namaPembanding;
-            } else {
-                labelEl.innerText = 'Kriteria ' + (i + 1) + ' dibanding Kriteria ' + (i + 2);
+            function sinkronLabel() {
+                groups.forEach(function (g, i) {
+                    var a = namaKriteria(selects[i]);
+                    var b = namaKriteria(selects[i + 1]);
+                    g.querySelector('.pair-label').textContent =
+                        (a && b) ? (a + ' dibanding ' + b)
+                                 : ('Kriteria ' + (i + 1) + ' dibanding Kriteria ' + (i + 2));
+                });
             }
-        }
-    }
 
-    // ==== LABEL PERBANDINGAN OTOMATIS (MODAL EDIT) ====
-    function perbaruiLabelPerbandinganEdit() {
-        const selects = document.querySelectorAll('.urutan-select-edit');
-        for (let i = 0; i < selects.length - 1; i++) {
-            const labelEl = document.getElementById('label_pair_edit_' + i);
-            if (!labelEl) continue;
-            const idAsal = selects[i].value;
-            const idPembanding = selects[i + 1].value;
-            const namaAsal = idAsal ? kriteriaMap[idAsal] : null;
-            const namaPembanding = idPembanding ? kriteriaMap[idPembanding] : null;
-            if (namaAsal && namaPembanding) {
-                labelEl.innerText = namaAsal + ' dibanding ' + namaPembanding;
-            } else {
-                labelEl.innerText = 'Kriteria ' + (i + 1) + ' dibanding Kriteria ' + (i + 2);
+            function sinkronPreview() {
+                preview.innerHTML = '';
+                selects.forEach(function (s, i) {
+                    var chip = document.createElement('span');
+                    chip.className = 'chip-urutan' + (s.value ? ' terisi' : '');
+                    chip.textContent = (i + 1) + '. ' + (namaKriteria(s) || '—');
+                    preview.appendChild(chip);
+                });
             }
-        }
-    }
 
-    // ==== DROPDOWN URUTAN PERINGKAT (MODAL INPUT): KRITERIA YANG SUDAH DIPILIH TIDAK MUNCUL LAGI DI SELECT LAIN ====
-    function perbaruiOpsiUrutanSelect() {
-        const semuaSelect = document.querySelectorAll('.urutan-select');
-        const nilaiTerpilih = Array.from(semuaSelect).map(s => s.value).filter(v => v !== '');
+            // paksa = true: tampilkan error walau kosong (saat submit).
+            function periksaGroup(g, paksa) {
+                var input = inputDari(g);
+                var stepper = g.querySelector('.skala-stepper');
+                var err = g.querySelector('.skala-error');
+                var warn = g.querySelector('.skala-warn');
+                var teks = input.value.trim();
+                var valid = skalaValid(teks);
+                var tampilError = !valid && (paksa || (teks !== '' && input.dataset.disentuh === '1'));
 
-        semuaSelect.forEach(function(select) {
-            const nilaiSaatIni = select.value;
-            Array.from(select.options).forEach(function(opt) {
-                if (opt.value === '') return;
-                if (opt.value === nilaiSaatIni) {
-                    opt.hidden = false;
+                stepper.classList.toggle('valid', valid);
+                stepper.classList.toggle('tidak-valid', tampilError);
+                err.style.display = tampilError ? 'block' : 'none';
+                if (tampilError) err.textContent = PESAN_SKALA;
+
+                var besar = valid && Number(teks.replace(',', '.')) > AMBANG_BESAR;
+                warn.style.display = besar ? 'block' : 'none';
+
+                Array.prototype.forEach.call(g.querySelectorAll('.chip-nilai'), function (c) {
+                    c.classList.toggle('aktif', valid && c.dataset.nilai === teks);
+                });
+
+                return valid;
+            }
+
+            function hitungProgres() {
+                var terisi = 0;
+                selects.forEach(function (s) { if (s.value) terisi++; });
+                groups.forEach(function (g) { if (skalaValid(inputDari(g).value.trim())) terisi++; });
+                if (REGEX_NAMA.test(namaInput.value.trim())) terisi++;
+                progresTeks.textContent = 'Terisi ' + terisi + ' dari ' + totalIsian + ' isian';
+                progresBar.style.width = ((terisi / totalIsian) * 100) + '%';
+                progresBar.classList.toggle('penuh', terisi === totalIsian);
+            }
+
+            function segarkan() {
+                sinkronOpsi();
+                sinkronLabel();
+                sinkronPreview();
+                groups.forEach(function (g) { periksaGroup(g, false); });
+                hitungProgres();
+            }
+
+            function sembunyikanPeringatan() {
+                namaWarn.style.display = 'none';
+                formWarn.style.display = 'none';
+            }
+
+            function tampilkanPeringatanForm(pesan) {
+                formWarn.textContent = pesan;
+                formWarn.style.display = 'block';
+            }
+
+            // ---- Ubah nilai lewat stepper ----
+            function ubah(input, arah) {
+                var teks = input.value.trim().replace(',', '.');
+                var angka = Number(teks);
+                if (teks === '' || !isFinite(angka)) {
+                    angka = 1;
                 } else {
-                    opt.hidden = nilaiTerpilih.includes(opt.value);
+                    angka = angka + (arah * LANGKAH);
                 }
+                angka = Math.round(angka * 100) / 100;
+                if (angka > 9) angka = 9;
+                if (angka <= 0) return false;
+
+                input.value = formatAngka(angka);
+                input.dataset.disentuh = '1';
+                periksaGroup(input.closest('.skala-group'), false);
+                hitungProgres();
+                return true;
+            }
+
+            // ---- Event: nama ----
+            namaInput.addEventListener('input', function () {
+                var val = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '').replace(/\s{2,}/g, ' ');
+                this.value = val;
+                namaWarn.style.display = 'none';
+                hitungProgres();
+            });
+
+            // ---- Event: dropdown urutan ----
+            selects.forEach(function (s) {
+                s.addEventListener('change', function () {
+                    formWarn.style.display = 'none';
+                    segarkan();
+                });
+            });
+
+            // ---- Event: kolom skala ----
+            groups.forEach(function (g) {
+                var input = inputDari(g);
+
+                input.addEventListener('input', function () {
+                    this.value = bersihkanSkala(this.value);
+                    periksaGroup(g, false);
+                    hitungProgres();
+                });
+
+                input.addEventListener('blur', function () {
+                    this.dataset.disentuh = '1';
+                    periksaGroup(g, false);
+                });
+
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'ArrowUp') { e.preventDefault(); ubah(this, 1); }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); ubah(this, -1); }
+                });
+
+                Array.prototype.forEach.call(g.querySelectorAll('.chip-nilai'), function (chip) {
+                    chip.addEventListener('click', function () {
+                        input.value = chip.dataset.nilai;
+                        input.dataset.disentuh = '1';
+                        periksaGroup(g, false);
+                        hitungProgres();
+                        input.focus();
+                    });
+                });
+            });
+
+            // ---- Event: tombol +/− (klik, tahan = ulang cepat) ----
+            var timerTunda = null;
+            var timerUlang = null;
+
+            function berhenti() {
+                clearTimeout(timerTunda);
+                clearInterval(timerUlang);
+                timerTunda = null;
+                timerUlang = null;
+            }
+
+            form.addEventListener('pointerdown', function (e) {
+                var btn = e.target.closest('.btn-skala');
+                if (!btn) return;
+                e.preventDefault();
+
+                var input = btn.parentElement.querySelector('.input-skala');
+                var arah = btn.dataset.aksi === 'tambah' ? 1 : -1;
+
+                berhenti();
+                ubah(input, arah);
+
+                timerTunda = setTimeout(function () {
+                    timerUlang = setInterval(function () {
+                        if (!ubah(input, arah)) berhenti();
+                    }, 90);
+                }, 400);
+            });
+
+            document.addEventListener('pointerup', berhenti);
+            document.addEventListener('pointercancel', berhenti);
+            form.addEventListener('pointerleave', berhenti);
+
+            // Aktivasi lewat keyboard (Enter/Spasi pada tombol) tidak punya pointerdown.
+            form.addEventListener('click', function (e) {
+                var btn = e.target.closest('.btn-skala');
+                if (!btn || e.detail !== 0) return;
+                var input = btn.parentElement.querySelector('.input-skala');
+                ubah(input, btn.dataset.aksi === 'tambah' ? 1 : -1);
+            });
+
+            // ---- Kosongkan & isi ----
+            function kosongkan() {
+                bukaSemuaOpsi();
+                namaInput.value = '';
+                selects.forEach(function (s) { s.value = ''; });
+                groups.forEach(function (g) {
+                    var input = inputDari(g);
+                    input.value = '';
+                    delete input.dataset.disentuh;
+                });
+                sembunyikanPeringatan();
+                segarkan();
+            }
+
+            function isi(data) {
+                bukaSemuaOpsi();
+                namaInput.value = data.nama || '';
+                selects.forEach(function (s, i) { s.value = data.urutan[i] || ''; });
+                groups.forEach(function (g, i) {
+                    var input = inputDari(g);
+                    input.value = data.nilai[i] !== undefined ? data.nilai[i] : '';
+                    delete input.dataset.disentuh;
+                });
+                sembunyikanPeringatan();
+                segarkan();
+            }
+
+            form.querySelector('.btn-kosongkan').addEventListener('click', kosongkan);
+
+            // ---- Submit ----
+            form.addEventListener('submit', function (e) {
+                var nama = namaInput.value.trim();
+                var pesanForm = null;
+                var fokus = null;
+
+                if (nama === '' || !REGEX_NAMA.test(nama)) {
+                    namaWarn.textContent = 'Nama responden hanya boleh berisi huruf dan spasi antar kata, tidak boleh angka/simbol/kosong.';
+                    namaWarn.style.display = 'block';
+                    fokus = namaInput;
+                } else if (opsi.cekDuplikat && daftarResponden.indexOf(nama.toLowerCase()) !== -1) {
+                    namaWarn.textContent = 'Nama responden ini sudah pernah diinput sebelumnya.';
+                    namaWarn.style.display = 'block';
+                    fokus = namaInput;
+                }
+
+                var kosong = selects.filter(function (s) { return !s.value; })[0];
+                if (kosong) {
+                    pesanForm = 'Semua urutan kriteria harus dipilih terlebih dahulu.';
+                    if (!fokus) fokus = kosong;
+                }
+
+                var semuaSkalaValid = true;
+                groups.forEach(function (g) {
+                    if (!periksaGroup(g, true)) {
+                        semuaSkalaValid = false;
+                        if (!fokus) fokus = inputDari(g);
+                    }
+                });
+
+                if (!semuaSkalaValid && !pesanForm) {
+                    pesanForm = 'Masih ada nilai perbandingan yang belum valid. Periksa kolom yang bertanda merah.';
+                }
+
+                if (fokus) {
+                    e.preventDefault();
+                    if (pesanForm) tampilkanPeringatanForm(pesanForm);
+                    fokus.focus();
+                    return;
+                }
+
+                namaInput.value = nama;
+                if (submitBtn) submitBtn.disabled = true;
+            });
+
+            form._fucom = { kosongkan: kosongkan, isi: isi };
+            segarkan();
+        }
+
+        Array.prototype.forEach.call(document.querySelectorAll('.form-fucom'), function (form) {
+            initForm(form, { cekDuplikat: form.dataset.mode === 'input' });
+        });
+
+        // ==== MODAL ====
+        function ambilModal(id) { return document.getElementById(id); }
+
+        window.bukaModalInput = function () {
+            var modal = ambilModal('modalInput');
+            if (!modal) return;
+            var form = modal.querySelector('form');
+            form._fucom.kosongkan();
+            var btn = form.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = false;
+            modal.style.display = 'flex';
+        };
+
+        window.bukaModalEdit = function () {
+            var modal = ambilModal('modalEdit');
+            if (!modal || !dataEditFucom) return;
+            var form = modal.querySelector('form');
+            form._fucom.isi(dataEditFucom);
+            var btn = form.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = false;
+            modal.style.display = 'flex';
+        };
+
+        window.tutupModalFucom = function (id) {
+            var modal = ambilModal(id);
+            if (modal) modal.style.display = 'none';
+        };
+
+        Array.prototype.forEach.call(document.querySelectorAll('.modal-overlay'), function (modal) {
+            modal.addEventListener('mousedown', function (e) {
+                if (e.target === modal) modal.style.display = 'none';
             });
         });
-    }
 
-    document.querySelectorAll('.urutan-select').forEach(function(select) {
-        select.addEventListener('change', function() {
-            perbaruiOpsiUrutanSelect();
-            perbaruiLabelPerbandingan();
-        });
-    });
-
-    document.querySelector('button[onclick*="modalInput"]')?.addEventListener('click', function() {
-        perbaruiOpsiUrutanSelect();
-        perbaruiLabelPerbandingan();
-        // ==== KOSONGKAN KOLOM SKALA SAAT MODAL DIBUKA ULANG ====
-        document.querySelectorAll('#modalInput .input-skala').forEach(function(input) {
-            input.value = '';
-            input.classList.remove('tidak-valid');
-            const err = input.parentElement.querySelector('.skala-error');
-            if (err) err.style.display = 'none';
-        });
-    });
-
-    // ==== DROPDOWN URUTAN PERINGKAT (MODAL EDIT): KRITERIA YANG SUDAH DIPILIH TIDAK MUNCUL LAGI DI SELECT LAIN ====
-    function perbaruiOpsiUrutanSelectEdit() {
-        const semuaSelect = document.querySelectorAll('.urutan-select-edit');
-        const nilaiTerpilih = Array.from(semuaSelect).map(s => s.value).filter(v => v !== '');
-
-        semuaSelect.forEach(function(select) {
-            const nilaiSaatIni = select.value;
-            Array.from(select.options).forEach(function(opt) {
-                if (opt.value === '') return;
-                if (opt.value === nilaiSaatIni) {
-                    opt.hidden = false;
-                } else {
-                    opt.hidden = nilaiTerpilih.includes(opt.value);
-                }
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            Array.prototype.forEach.call(document.querySelectorAll('.modal-overlay'), function (modal) {
+                modal.style.display = 'none';
             });
         });
-    }
-
-    document.querySelectorAll('.urutan-select-edit').forEach(function(select) {
-        select.addEventListener('change', function() {
-            perbaruiOpsiUrutanSelectEdit();
-            perbaruiLabelPerbandinganEdit();
-        });
-    });
-
-    // ==== BUKA MODAL EDIT & PREFILL DATA YANG SUDAH TERSIMPAN ====
-    function bukaModalEdit() {
-        const modal = document.getElementById('modalEdit');
-        if (!modal || !dataEditFucom) return;
-
-        // Prefill nama
-        const inputNama = document.getElementById('nama_responden_edit');
-        if (inputNama) inputNama.value = dataEditFucom.nama;
-        const peringatanNama = document.getElementById('peringatan_nama_responden_edit');
-        if (peringatanNama) peringatanNama.style.display = 'none';
-
-        // Prefill urutan select
-        const selects = document.querySelectorAll('.urutan-select-edit');
-        selects.forEach(function(select, idx) {
-            select.value = dataEditFucom.urutan[idx] || '';
-        });
-        perbaruiOpsiUrutanSelectEdit();
-        perbaruiLabelPerbandinganEdit();
-
-        // Prefill kolom skala (nilai dari database sudah diformat: titik jadi koma, tanpa nol berlebih)
-        document.querySelectorAll('.input-skala-edit').forEach(function(input) {
-            const i = Number(input.dataset.pairIndex);
-            input.value = dataEditFucom.nilai[i] !== undefined ? dataEditFucom.nilai[i] : '';
-            input.classList.remove('tidak-valid');
-            const err = input.parentElement.querySelector('.skala-error');
-            if (err) err.style.display = 'none';
-        });
-
-        modal.style.display = 'flex';
-    }
+    })();
     </script>
 </body>
 </html>
