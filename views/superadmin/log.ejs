@@ -1,3 +1,5 @@
+<% const ROLE_LABEL = { admin: 'Admin', operator: 'Operator', kepsek: 'Kepala Sekolah' }; %>
+<% const ROLE_BADGE = { admin: 'purple', operator: 'blue', kepsek: 'green' }; %>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -19,8 +21,8 @@
                         <form method="GET" style="display:flex; gap:10px;">
                             <select name="role" onchange="this.form.submit()" style="padding:8px 12px; border:1px solid #ddd; border-radius:8px; font-size:13px;">
                                 <option value="">Semua Role</option>
-                                <option value="super_admin" <%= filterRole === 'super_admin' ? 'selected' : '' %>>Super Admin</option>
                                 <option value="admin" <%= filterRole === 'admin' ? 'selected' : '' %>>Admin</option>
+                                <option value="operator" <%= filterRole === 'operator' ? 'selected' : '' %>>Operator</option>
                                 <option value="kepsek" <%= filterRole === 'kepsek' ? 'selected' : '' %>>Kepala Sekolah</option>
                             </select>
                             <input type="date" name="tanggal" value="<%= filterTanggal %>" onchange="this.form.submit()" style="padding:8px 12px; border:1px solid #ddd; border-radius:8px; font-size:13px;">
@@ -43,8 +45,8 @@
                                         <td style="white-space:nowrap;"><%= new Date(l.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) %></td>
                                         <td style="white-space:nowrap;"><%= l.nama %></td>
                                         <td style="white-space:nowrap;">
-                                            <span class="badge badge-<%= l.role === 'super_admin' ? 'purple' : (l.role === 'admin' ? 'blue' : 'green') %>">
-                                                <%= l.role === 'super_admin' ? 'Super Admin' : (l.role === 'admin' ? 'Admin' : 'Kepala Sekolah') %>
+                                            <span class="badge badge-<%= ROLE_BADGE[l.role] || 'green' %>">
+                                                <%= ROLE_LABEL[l.role] || l.role %>
                                             </span>
                                         </td>
                                         <td><%= l.aktivitas %></td>
