@@ -1,7 +1,7 @@
 const waspasModel = require('../models/waspasModel');
 const periodeModel = require('../models/periodeModel');
 const userModel = require('../models/userModel');
-const { hitungWASPAS } = require('../utils/waspasCalculator');
+const { hitungWASPAS, tandaiSeriKuota } = require('../utils/waspasCalculator');
 const { cekTerkunci } = require('../utils/lockHelper');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
 
@@ -23,6 +23,7 @@ const waspasController = {
                     cekData: null,
                     kuota: 0,
                     detailPerhitungan: null,
+                    infoSeri: null,
                     error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
                     success: null,
                     terkunci: false
@@ -33,23 +34,30 @@ const waspasController = {
             const hasilRanking = await waspasModel.getHasilRanking(periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
 
-            // Detail tahapan dihitung ulang dari data saat ini (tidak disimpan di database).
-            let detailPerhitungan = null;
+            // Perhitungan dibangun ulang dari data saat ini (tidak disimpan di database).
+            // Dipakai untuk detail tahapan (jika hasil sudah ada) dan untuk
+            // pratinjau nilai seri sebelum operator menekan tombol Hitung.
+            let hitungan = null;
 
-            if (hasilRanking.length > 0 && cekData.totalBobot > 0) {
+            if (cekData.totalBobot > 0 && (hasilRanking.length > 0 || cekData.bisaHitung)) {
                 try {
                     const siswaData = await waspasModel.getSiswaWithNilai(periode.id_periode);
                     const kriteriaList = await waspasModel.getKriteria(periode.id_periode);
                     const bobotList = await waspasModel.getBobot(periode.id_periode);
 
                     if (siswaData.length > 0 && kriteriaList.length > 0 && bobotList.length > 0) {
-                        detailPerhitungan = hitungWASPAS(siswaData, kriteriaList, bobotList);
+                        hitungan = hitungWASPAS(siswaData, kriteriaList, bobotList);
                     }
                 } catch (detailError) {
                     console.error('Gagal membangun detail perhitungan WASPAS:', detailError);
-                    detailPerhitungan = null;
+                    hitungan = null;
                 }
             }
+
+            const detailPerhitungan = hasilRanking.length > 0 ? hitungan : null;
+            const infoSeri = hitungan
+                ? tandaiSeriKuota(hitungan.seri, periode.kuota_kelas_digital)
+                : null;
 
             return res.render('admin/waspas', {
                 user: req.session.user,
@@ -59,6 +67,7 @@ const waspasController = {
                 cekData,
                 kuota: periode.kuota_kelas_digital,
                 detailPerhitungan,
+                infoSeri,
                 success: req.query.success || null,
                 error: req.query.error || null,
                 terkunci
@@ -112,15 +121,28 @@ const waspasController = {
 
             const detail = hitungWASPAS(siswaData, kriteriaList, bobotList);
             const hasil = detail.hasil;
+            const infoSeri = tandaiSeriKuota(detail.seri, periode.kuota_kelas_digital);
 
             await waspasModel.saveHasil(periode.id_periode, hasil, periode.kuota_kelas_digital);
 
-            await userModel.logActivity(
-                req.session.user.id_user,
-                `Menghitung perangkingan WASPAS untuk ${hasil.length} siswa`
-            );
+            let logPesan = `Menghitung perangkingan WASPAS untuk ${hasil.length} siswa`;
+            if (infoSeri.jumlahKelompok > 0) {
+                logPesan += ` (${infoSeri.jumlahKelompok} kelompok nilai seri diurutkan dengan tie-breaker bobot kriteria)`;
+            }
 
-            return res.redirect('/admin/waspas?success=' + encodeURIComponent('Perangkingan WASPAS berhasil dihitung.'));
+            await userModel.logActivity(req.session.user.id_user, logPesan);
+
+            let pesan = 'Perangkingan WASPAS berhasil dihitung.';
+
+            if (infoSeri.jumlahKelompok > 0) {
+                pesan += ` Terdapat ${infoSeri.jumlahKelompok} kelompok siswa dengan nilai Q yang sama; urutannya ditentukan oleh tie-breaker berdasarkan bobot kriteria.`;
+            }
+
+            if (infoSeri.jumlahDiBatasKuota > 0) {
+                pesan += ' PERHATIAN: ada nilai seri tepat di batas kuota, periksa kembali sebelum finalisasi.';
+            }
+
+            return res.redirect('/admin/waspas?success=' + encodeURIComponent(pesan));
         } catch (error) {
             if (error.message === 'PERIODE_FINAL') {
                 return redirectError(res, 'Hasil seleksi sudah difinalisasi dan tidak dapat dihitung ulang.');

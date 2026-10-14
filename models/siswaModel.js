@@ -140,7 +140,7 @@ const siswaModel = {
         return jumlah > 0;
     },
 
-    // Operator mengubah status minat siswa.
+    // Operator mengubah status minat satu siswa.
     // Syarat: periode belum final, siswa punya akun, dan status saat ini 'belum_respon'.
     // 'tidak_berminat' juga menonaktifkan akun (sama seperti jika siswa memilih sendiri).
     // Return { ok: true } atau { ok: false, alasan }.
@@ -211,6 +211,72 @@ const siswaModel = {
 
             await conn.commit();
             return { ok: true };
+        } catch (err) {
+            await conn.rollback();
+            throw err;
+        } finally {
+            conn.release();
+        }
+    },
+
+    // Operator menandai BANYAK siswa sekaligus sebagai 'berminat' (checklist).
+    // Hanya siswa yang punya akun dan masih 'belum_respon' pada periode ini yang diubah;
+    // sisanya dilewati. Semua dalam satu transaksi.
+    // Return { ok: true, diubah, dilewati } atau { ok: false, alasan }.
+    async setMinatMassal(daftarId, id_periode) {
+        if (!Array.isArray(daftarId) || daftarId.length === 0) {
+            return { ok: false, alasan: 'TIDAK_ADA_PILIHAN' };
+        }
+
+        const conn = await db.getConnection();
+
+        try {
+            await conn.beginTransaction();
+
+            const [[periode]] = await conn.query(
+                'SELECT status_penyelesaian FROM periode_seleksi WHERE id_periode = ? LOCK IN SHARE MODE',
+                [id_periode]
+            );
+
+            if (!periode || periode.status_penyelesaian === 'selesai') {
+                await conn.rollback();
+                return { ok: false, alasan: 'PERIODE_FINAL' };
+            }
+
+            // Kunci baris akun yang dipilih agar tidak bentrok dengan jawaban siswa.
+            const [terkunci] = await conn.query(
+                `SELECT a.id_siswa
+                 FROM akun_siswa a
+                 INNER JOIN siswa s ON s.id_siswa = a.id_siswa
+                 WHERE s.id_periode = ?
+                   AND a.id_siswa IN (?)
+                   AND a.status_minat = 'belum_respon'
+                 FOR UPDATE`,
+                [id_periode, daftarId]
+            );
+
+            const idLayak = terkunci.map(r => r.id_siswa);
+            let diubah = 0;
+
+            if (idLayak.length > 0) {
+                const [hasil] = await conn.query(
+                    `UPDATE akun_siswa
+                     SET status_minat = 'berminat',
+                         tanggal_respon_minat = NOW()
+                     WHERE id_siswa IN (?)
+                       AND status_minat = 'belum_respon'`,
+                    [idLayak]
+                );
+                diubah = hasil.affectedRows;
+            }
+
+            await conn.commit();
+
+            return {
+                ok: true,
+                diubah,
+                dilewati: daftarId.length - diubah
+            };
         } catch (err) {
             await conn.rollback();
             throw err;

@@ -36,6 +36,100 @@
             background: #f4f6f9;
         }
         tr.baris-diterima td { background:#f3fbf6; }
+
+        .badge-seri {
+            display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px;
+            font-size:11px; font-weight:700; background:#fff4e0; color:#b45309; border:1px solid #fcd9a8;
+            white-space:nowrap;
+        }
+        .badge-seri.penuh { background:#fdecea; color:#b3261e; border-color:#f5c2c0; }
+        .sub-seri { display:block; font-size:11px; color:#92400e; margin-top:3px; line-height:1.4; max-width:360px; }
+        tr.baris-seri td:first-child { box-shadow:inset 3px 0 0 #f59e0b; }
+
+        .seri-kelompok { border:1px solid #fcd9a8; background:#fffbeb; border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+        .seri-kelompok.kuota { border-color:#f5c2c0; background:#fff5f5; }
+        .seri-kelompok h5 { margin:0 0 6px; font-size:14px; }
+        .seri-kelompok ul { margin:6px 0 0; padding-left:18px; font-size:13px; line-height:1.6; }
+        .seri-kelompok .alasan { color:#78350f; font-size:12px; }
+
+        /* ===================== STEPPER STICKY (satu-satunya navigasi) ===================== */
+        .stepper {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, .07);
+        }
+        .stepper-item {
+            display: flex; align-items: center; gap: 10px;
+            flex: 0 0 auto;
+            background: none; border: none; border-radius: 10px;
+            padding: 8px 14px; cursor: pointer;
+            font-family: inherit; text-align: left;
+            transition: background .15s;
+        }
+        .stepper-item:hover:not(:disabled) { background: #f1f5fd; }
+        .stepper-item.active { background: #eaf1ff; }
+        .stepper-item:disabled { cursor: not-allowed; opacity: .45; }
+        .stepper-item:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+        .stepper-num {
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700;
+            background: #eef1f6; color: #6b7685; border: 2px solid #d7dde7;
+            transition: all .2s;
+        }
+        .stepper-label { display: flex; flex-direction: column; line-height: 1.25; }
+        .stepper-label small { font-size: 11px; color: #8a94a3; }
+        .stepper-label strong { font-size: 13px; color: #44505f; }
+
+        .stepper-line {
+            flex: 1 1 auto; height: 3px; border-radius: 3px;
+            background: #e1e6ee; margin: 0 6px; min-width: 20px;
+            transition: background .25s;
+        }
+        .stepper-line.terisi { background: #2563eb; }
+
+        .stepper-item.active .stepper-num { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .stepper-item.active .stepper-label strong { color: #1d4ed8; }
+        .stepper-item.selesai .stepper-num { background: #e2f8ea; color: #1e8449; border-color: #9bd8b3; }
+
+        .step-pane { display: none; }
+        .step-pane.active { display: block; animation: stepFade .25s ease; }
+        @keyframes stepFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+        .step-hint {
+            font-size: 13px; color: #6b7685; background: #f4f8ff; border: 1px dashed #bcd0f5;
+            border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;
+        }
+
+        /* Tombol Finalisasi versi kecil di header panel hasil */
+        .btn-kecil {
+            padding: 7px 14px !important;
+            font-size: 13px !important;
+            white-space: nowrap;
+        }
+        .form-inline { margin: 0; }
+
+        @media (max-width: 820px) {
+            .stepper { padding: 6px; }
+            .stepper-item { padding: 6px 8px; gap: 6px; }
+            .stepper-label small { display: none; }
+            .stepper-label strong { font-size: 12px; }
+            .stepper-num { width: 28px; height: 28px; font-size: 13px; }
+            .stepper-line { margin: 0 2px; min-width: 8px; }
+        }
+        @media (max-width: 520px) {
+            .stepper-item.active .stepper-label { display: flex; }
+            .stepper-item:not(.active) .stepper-label { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -55,12 +149,17 @@
                     </div>
                     <div id="tutorialWaspas" class="tutorial-content">
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
-                            <li>Hanya siswa yang sudah menyatakan <strong>bersedia</strong> (dikonfirmasi siswa atau operator) yang ikut perankingan.</li>
-                            <li>Pastikan bobot kriteria tersedia dan seluruh siswa yang bersedia memiliki nilai lengkap. Siswa yang belum diaktifkan atau belum konfirmasi perlu dihubungi.</li>
-                            <li>Jumlah siswa harus lebih banyak minimal 1 dari kuota agar perhitungan bisa dijalankan.</li>
-                            <li>Klik <strong>"Hitung Ranking WASPAS"</strong>. Siswa dengan peringkat dalam kuota otomatis berstatus <strong>Masuk Kelas Digital</strong>, sisanya <strong>Tidak Masuk Kelas Digital</strong>.</li>
-                            <li>Jika ada perubahan data siswa, nilai, kesediaan, kriteria, atau bobot sebelum finalisasi, hasil dikosongkan dan perlu dihitung ulang.</li>
-                            <li>Setelah hasil diperiksa, klik <strong>"Finalisasi Hasil"</strong>. Setelah itu seluruh data terkunci dan siswa dapat melihat hasilnya di tahap 3.</li>
+                            <li>Hanya siswa yang <strong>berminat</strong> (dikonfirmasi siswa atau operator) yang ikut perankingan.</li>
+                            <li>Pastikan bobot kriteria sudah ada dan semua siswa yang berminat sudah punya nilai lengkap. Siswa yang belum merespons perlu diselesaikan dulu di menu Data Siswa.</li>
+                            <li>Jumlah siswa berminat harus lebih banyak minimal 1 dari kuota.</li>
+                            <li>Klik <strong>"Hitung Ranking WASPAS"</strong>. Siswa yang masuk peringkat kuota otomatis berstatus <strong>Masuk Kelas Digital</strong>, sisanya <strong>Tidak Masuk Kelas Digital</strong>.</li>
+                            <li>
+                                Jika ada siswa dengan <strong>nilai akhir yang sama</strong>, sistem mengurutkannya berdasarkan kriteria yang paling penting.
+                                Kalau semua nilainya tetap sama, urutan mengikuti urutan data.
+                                Sistem akan memberi tahu Anda di bagian <strong>Peringatan Nilai Seri</strong>, terutama bila nilai sama itu tepat di batas kuota.
+                            </li>
+                            <li>Kalau ada data yang diubah (siswa, nilai, minat, kriteria, atau bobot) sebelum finalisasi, hasil ranking akan dikosongkan dan Anda tinggal menghitung lagi.</li>
+                            <li>Setelah hasil dicek, klik <strong>"Finalisasi Hasil"</strong>. Setelah itu semua data terkunci dan siswa bisa melihat pengumuman hasil di beranda mereka.</li>
                         </ol>
                     </div>
                 </div>
@@ -74,7 +173,7 @@
                 <% if (terkunci) { %>
                     <div class="alert" style="background:#e2f8ea; color:#1e8449;">
                         <i class="bi bi-lock-fill"></i>
-                        Hasil seleksi sudah difinalisasi. Data siswa, nilai, kriteria, bobot, dan hasil perankingan terkunci.
+                        Hasil seleksi sudah difinalisasi. Data siswa, nilai, kriteria, bobot, dan hasil ranking terkunci.
                     </div>
                 <% } %>
 
@@ -88,17 +187,40 @@
                         return Number(h.ranking) <= kuotaNum ? 'diterima' : 'tidak_diterima';
                     };
 
+                    const adaHasil = Array.isArray(hasilRanking) && hasilRanking.length > 0;
+
                     const jumlahDiterima = hasilRanking.filter(h => statusDariRanking(h) === 'diterima').length;
                     const tombolHitungNonaktif = cekData ? (!cekData.bisaHitung || kuotaBelumTerpenuhi) : true;
                     const infoAkunAda = (typeof infoAkun !== 'undefined') && infoAkun;
                     const belumKonfirmasi = cekData ? cekData.belumKonfirmasi : 0;
 
-                    let pesanFinal = 'Finalisasi hasil seleksi? Setelah ini data siswa, nilai, kriteria, bobot, dan hasil tidak dapat diubah lagi.';
+                    // Informasi nilai seri (nilai Q sama)
+                    const seriInfo = (typeof infoSeri !== 'undefined' && infoSeri) ? infoSeri : null;
+                    const adaSeri = !!seriInfo && seriInfo.jumlahKelompok > 0;
+                    const seriDiKuota = adaSeri && seriInfo.jumlahDiBatasKuota > 0;
+
+                    // Peringatan seri hanya tampil jika hasil ranking MASIH ADA
+                    // dan belum difinalisasi. Kalau ada perubahan data dan hasil
+                    // dikosongkan, peringatan ikut hilang.
+                    const tampilSeri = adaSeri && adaHasil && !terkunci;
+
+                    // Konfirmasi hitung: hanya muncul kalau sudah ada hasil sebelumnya.
+                    // Bahasa singkat dan sederhana.
+                    const pesanHitung = adaHasil
+                        ? 'Hasil ranking yang lama akan diganti dengan yang baru. Lanjutkan?'
+                        : null;
+
+                    let pesanFinal = 'Finalisasi hasil seleksi? Setelah ini data tidak bisa diubah lagi.';
                     if (belumKonfirmasi > 0) {
-                        pesanFinal += ' Perhatian: ' + belumKonfirmasi + ' siswa belum konfirmasi kesediaan dan TIDAK ikut seleksi.';
+                        pesanFinal += ' Perhatian: ' + belumKonfirmasi + ' siswa belum merespons dan tidak ikut seleksi.';
+                    }
+                    if (seriDiKuota) {
+                        pesanFinal += ' Perhatian: ada siswa dengan nilai sama tepat di batas kuota, pastikan urutannya sudah Anda cek.';
                     }
 
-                    const adaDetailWaspas = (typeof detailPerhitungan !== 'undefined')
+                    // Detail perhitungan hanya tampil jika hasil ranking ada
+                    const adaDetailWaspas = adaHasil
+                        && (typeof detailPerhitungan !== 'undefined')
                         && detailPerhitungan
                         && Array.isArray(detailPerhitungan.matrixKeputusan)
                         && detailPerhitungan.matrixKeputusan.length > 0;
@@ -107,277 +229,399 @@
                     if (adaDetailWaspas) {
                         detailPerhitungan.hasil.forEach(d => { detailMap[d.id_siswa] = d; });
                     }
+
+                    const tampilFinalisasi = !terkunci && hasilRanking.length > 0;
+                    const tipTerkunci = 'Hitung ranking dulu untuk membuka langkah ini';
                 %>
 
-                <% if (cekData) { %>
-                <div class="panel">
-                    <div class="panel-header-row">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-graph-up-arrow"></i></div>
-                            <h3>Status Kesiapan Perhitungan</h3>
-                        </div>
-                        <% if (!terkunci) { %>
-                        <div style="display:flex; gap:10px;">
-                            <form action="/admin/waspas/hitung" method="POST" onsubmit="return confirmDelete(this, 'Hitung ulang perankingan? Hasil sebelumnya akan digantikan.');">
-                                <button type="submit" class="btn-primary"
-                                        <%= tombolHitungNonaktif ? 'disabled' : '' %>
-                                        style="<%= tombolHitungNonaktif ? 'opacity:0.5;cursor:not-allowed;' : '' %>">
-                                    <i class="bi bi-calculator-fill"></i> Hitung Ranking WASPAS
-                                </button>
-                            </form>
-                        </div>
-                        <% } %>
-                    </div>
-
-                    <% if (kuotaBelumTerpenuhi) { %>
-                        <div class="alert" style="background:#fdecea; color:#b3261e; margin-bottom:15px;">
-                            <i class="bi bi-x-circle-fill"></i> Jumlah siswa yang bersedia (<%= cekData.totalSiswa %>) belum mencukupi. Perhitungan hanya bisa dijalankan jika jumlahnya lebih banyak minimal 1 dari kuota (kuota saat ini: <%= kuotaNum %>).
-                        </div>
-                    <% } %>
-
-                    <% if (!cekData.bisaHitung) { %>
-                        <div class="alert" style="background:#fdecea; color:#b3261e; margin-bottom:15px;">
-                            <i class="bi bi-x-circle-fill"></i> Perhitungan belum dapat dijalankan. Lengkapi kekurangan berikut terlebih dahulu.
-                        </div>
-                    <% } %>
-
-                    <table class="data-table">
-                        <tbody>
-                            <tr><td>Kuota Kelas Digital</td><td><strong><%= kuota || '-' %> siswa</strong></td></tr>
-                            <tr><td>Siswa Bersedia (ikut perankingan)</td><td><%= cekData.totalSiswa %></td></tr>
-                            <tr>
-                                <td>Siswa Belum Konfirmasi Kesediaan</td>
-                                <td>
-                                    <span class="badge badge-<%= belumKonfirmasi === 0 ? 'diterima' : 'tidak_diterima' %>"><%= belumKonfirmasi %> siswa</span>
-                                    <% if (belumKonfirmasi > 0) { %>
-                                        <a href="/admin/siswa" style="margin-left:8px; font-size:12px;">Lihat &amp; hubungi</a>
-                                    <% } %>
-                                </td>
-                            </tr>
-                            <tr><td>Siswa Tidak Berminat</td><td><%= cekData.tidakBerminat %></td></tr>
-                            <tr><td>Total Kriteria</td><td><%= cekData.totalKriteria %></td></tr>
-                            <tr>
-                                <td>Bobot Kriteria Tersedia</td>
-                                <td><span class="badge badge-<%= cekData.totalBobot > 0 ? 'diterima' : 'tidak_diterima' %>"><%= cekData.totalBobot > 0 ? 'Sudah' : 'Belum' %></span></td>
-                            </tr>
-                            <tr>
-                                <td>Siswa Bersedia dengan Nilai Belum Lengkap</td>
-                                <td><span class="badge badge-<%= cekData.siswaBelumLengkap === 0 ? 'diterima' : 'tidak_diterima' %>"><%= cekData.siswaBelumLengkap %> siswa</span></td>
-                            </tr>
-                            <% if (infoAkunAda) { %>
-                            <tr>
-                                <td>Akun Belum Diaktifkan</td>
-                                <td>
-                                    <span class="badge badge-<%= infoAkun.belumAktif === 0 ? 'diterima' : 'tidak_diterima' %>"><%= infoAkun.belumAktif %> siswa</span>
-                                    <% if (infoAkun.belumAktif > 0) { %>
-                                        <a href="/admin/siswa?filter=belum_aktif" style="margin-left:8px; font-size:12px;">Lihat &amp; hubungi</a>
-                                    <% } %>
-                                </td>
-                            </tr>
-                            <% } %>
-                        </tbody>
-                    </table>
+                <!-- ============================================================ -->
+                <!-- STEPPER STICKY: klik langkah untuk berpindah                 -->
+                <!-- ============================================================ -->
+                <div class="stepper" id="stepper">
+                    <button type="button" class="stepper-item active" data-step="1" onclick="goStep(1)">
+                        <span class="stepper-num">1</span>
+                        <span class="stepper-label"><small>Langkah 1</small><strong>Status Kesiapan</strong></span>
+                    </button>
+                    <div class="stepper-line" data-line="1"></div>
+                    <button type="button" class="stepper-item" data-step="2" onclick="goStep(2)"
+                            <%= adaHasil ? '' : 'disabled' %> title="<%= adaHasil ? '' : tipTerkunci %>">
+                        <span class="stepper-num">2</span>
+                        <span class="stepper-label"><small>Langkah 2</small><strong>Perhitungan WASPAS</strong></span>
+                    </button>
+                    <div class="stepper-line" data-line="2"></div>
+                    <button type="button" class="stepper-item" data-step="3" onclick="goStep(3)"
+                            <%= adaHasil ? '' : 'disabled' %> title="<%= adaHasil ? '' : tipTerkunci %>">
+                        <span class="stepper-num">3</span>
+                        <span class="stepper-label"><small>Langkah 3</small><strong>Hasil Perangkingan</strong></span>
+                    </button>
                 </div>
-                <% } %>
 
                 <!-- ============================================================ -->
-                <!-- PANEL: Detail Tahapan Perhitungan WASPAS (terbuka otomatis)  -->
+                <!-- LANGKAH 1: Status Kesiapan Perhitungan                       -->
                 <!-- ============================================================ -->
-                <% if (adaDetailWaspas) { %>
-                <div class="panel" style="background:#fdf8f4;">
-                    <div class="panel-header-row" style="cursor:pointer;" onclick="document.getElementById('detailWaspas').classList.toggle('show')">
+                <div class="step-pane active" data-step="1">
+                    <% if (!adaHasil) { %>
+                        <div class="step-hint">
+                            <i class="bi bi-info-circle-fill"></i>
+                            Klik <strong>"Hitung Ranking WASPAS"</strong> dulu untuk membuka langkah 2 dan 3.
+                        </div>
+                    <% } %>
+
+                    <% if (cekData) { %>
+                    <div class="panel">
+                        <div class="panel-header-row">
+                            <div class="panel-header">
+                                <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-graph-up-arrow"></i></div>
+                                <h3>Status Kesiapan Perhitungan</h3>
+                            </div>
+                            <% if (!terkunci) { %>
+                            <div style="display:flex; gap:10px;">
+                                <form id="formHitung" class="form-inline" action="/admin/waspas/hitung" method="POST"
+                                      <% if (pesanHitung) { %>onsubmit='return confirmDelete(this, <%- JSON.stringify(pesanHitung) %>);'<% } %>>
+                                    <button type="submit" class="btn-primary"
+                                            <%= tombolHitungNonaktif ? 'disabled' : '' %>
+                                            style="<%= tombolHitungNonaktif ? 'opacity:0.5;cursor:not-allowed;' : '' %>">
+                                        <i class="bi bi-calculator-fill"></i> Hitung Ranking WASPAS
+                                    </button>
+                                </form>
+                            </div>
+                            <% } %>
+                        </div>
+
+                        <% if (kuotaBelumTerpenuhi) { %>
+                            <div class="alert" style="background:#fdecea; color:#b3261e; margin-bottom:15px;">
+                                <i class="bi bi-x-circle-fill"></i> Jumlah siswa berminat (<%= cekData.totalSiswa %>) belum cukup. Perhitungan baru bisa dijalankan jika jumlahnya lebih banyak minimal 1 dari kuota (kuota saat ini: <%= kuotaNum %>).
+                            </div>
+                        <% } %>
+
+                        <% if (!cekData.bisaHitung) { %>
+                            <div class="alert" style="background:#fdecea; color:#b3261e; margin-bottom:15px;">
+                                <i class="bi bi-x-circle-fill"></i> Perhitungan belum bisa dijalankan. Lengkapi dulu yang masih kurang di bawah ini.
+                            </div>
+                        <% } %>
+
+                        <table class="data-table">
+                            <tbody>
+                                <tr><td>Kuota Kelas Digital</td><td><strong><%= kuota || '-' %> siswa</strong></td></tr>
+                                <tr><td>Siswa Berminat (ikut perankingan)</td><td><%= cekData.totalSiswa %></td></tr>
+                                <tr>
+                                    <td>Siswa Belum Merespons</td>
+                                    <td>
+                                        <span class="badge badge-<%= belumKonfirmasi === 0 ? 'diterima' : 'tidak_diterima' %>"><%= belumKonfirmasi %> siswa</span>
+                                        <% if (belumKonfirmasi > 0) { %>
+                                            <a href="/admin/siswa" style="margin-left:8px; font-size:12px;">Lihat &amp; hubungi</a>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                                <tr><td>Siswa Tidak Berminat</td><td><%= cekData.tidakBerminat %></td></tr>
+                                <tr><td>Total Kriteria</td><td><%= cekData.totalKriteria %></td></tr>
+                                <tr>
+                                    <td>Bobot Kriteria Tersedia</td>
+                                    <td><span class="badge badge-<%= cekData.totalBobot > 0 ? 'diterima' : 'tidak_diterima' %>"><%= cekData.totalBobot > 0 ? 'Sudah' : 'Belum' %></span></td>
+                                </tr>
+                                <tr>
+                                    <td>Siswa Berminat dengan Nilai Belum Lengkap</td>
+                                    <td><span class="badge badge-<%= cekData.siswaBelumLengkap === 0 ? 'diterima' : 'tidak_diterima' %>"><%= cekData.siswaBelumLengkap %> siswa</span></td>
+                                </tr>
+                                <% if (infoAkunAda) { %>
+                                <tr>
+                                    <td>Akun Belum Diaktifkan</td>
+                                    <td>
+                                        <span class="badge badge-<%= infoAkun.belumAktif === 0 ? 'diterima' : 'tidak_diterima' %>"><%= infoAkun.belumAktif %> siswa</span>
+                                        <% if (infoAkun.belumAktif > 0) { %>
+                                            <a href="/admin/siswa?filter=belum_aktif" style="margin-left:8px; font-size:12px;">Lihat &amp; hubungi</a>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- LANGKAH 2: Detail Tahapan Perhitungan WASPAS                 -->
+                <!-- ============================================================ -->
+                <div class="step-pane" data-step="2">
+                    <% if (adaDetailWaspas) { %>
+                    <div class="panel" style="background:#fdf8f4;">
                         <div class="panel-header">
                             <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-diagram-3-fill"></i></div>
                             <h3>Detail Tahapan Perhitungan WASPAS</h3>
                         </div>
-                        <i class="bi bi-chevron-up"></i>
+                        <div id="detailWaspas">
+
+                            <h4 style="margin-top:0;">1. Bobot &amp; Jenis Kriteria</h4>
+                            <div class="table-scroll" style="max-height:260px;">
+                                <table class="data-table">
+                                    <thead><tr><th>Kriteria</th><th>Jenis</th><th>Bobot</th></tr></thead>
+                                    <tbody>
+                                        <% detailPerhitungan.kriteriaList.forEach(function(k) { %>
+                                            <tr>
+                                                <td><%= k.nama_kriteria || k.id_kriteria %></td>
+                                                <td><span class="badge badge-<%= k.jenis === 'benefit' ? 'diterima' : 'belum_diproses' %>"><%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %></span></td>
+                                                <td><%= (detailPerhitungan.bobotMap[k.id_kriteria] || 0).toFixed(4) %></td>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <% if (Array.isArray(detailPerhitungan.urutanKriteria) && !terkunci) { %>
+                                <p style="font-size:12px;color:#777;margin-top:8px;">
+                                    Urutan kriteria yang dipakai jika ada nilai sama (paling penting lebih dulu):
+                                    <strong>
+                                        <%= detailPerhitungan.urutanKriteria.map(function(k) { return k.nama_kriteria || k.id_kriteria; }).join(' > ') %>
+                                    </strong>
+                                </p>
+                            <% } %>
+
+                            <h4>2. Matrix Keputusan (X) &mdash; Nilai Mentah</h4>
+                            <p style="font-size:12px;color:#777;">Total baris: <strong><%= detailPerhitungan.matrixKeputusan.length %> siswa</strong> — geser ke bawah/samping untuk melihat semuanya.</p>
+                            <div class="table-scroll">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Siswa</th>
+                                            <% detailPerhitungan.kriteriaList.forEach(function(k) { %><th><%= k.nama_kriteria || k.id_kriteria %></th><% }); %>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% detailPerhitungan.matrixKeputusan.forEach(function(baris) { %>
+                                            <tr>
+                                                <td><%= baris.nama %></td>
+                                                <% detailPerhitungan.kriteriaList.forEach(function(k) { %>
+                                                    <td><%= parseFloat(baris.nilai[k.id_kriteria]).toFixed(4) %></td>
+                                                <% }); %>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h4>3. Matrix Ternormalisasi (R)</h4>
+                            <p style="font-size:12px;color:#777;">Benefit: nilai &divide; nilai maksimum kolom. Cost: nilai minimum kolom &divide; nilai.</p>
+                            <div class="table-scroll">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Siswa</th>
+                                            <% detailPerhitungan.kriteriaList.forEach(function(k) { %><th><%= k.nama_kriteria || k.id_kriteria %></th><% }); %>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% detailPerhitungan.matrixNormalisasi.forEach(function(baris) { %>
+                                            <tr>
+                                                <td><%= baris.nama %></td>
+                                                <% detailPerhitungan.kriteriaList.forEach(function(k) { %>
+                                                    <td><%= baris.normalisasi[k.id_kriteria].toFixed(4) %></td>
+                                                <% }); %>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h4>4. Kontribusi WSM (R &times; Bobot) &amp; WPM (R ^ Bobot) per Kriteria</h4>
+                            <div class="table-scroll">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="2" style="vertical-align:middle;">Siswa</th>
+                                            <% detailPerhitungan.kriteriaList.forEach(function(k) { %><th colspan="2"><%= k.nama_kriteria || k.id_kriteria %></th><% }); %>
+                                        </tr>
+                                        <tr>
+                                            <% detailPerhitungan.kriteriaList.forEach(function() { %><th>WSM</th><th>WPM</th><% }); %>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% detailPerhitungan.hasil.forEach(function(h) { %>
+                                            <tr>
+                                                <td><%= h.nama %></td>
+                                                <% detailPerhitungan.kriteriaList.forEach(function(k) { const dk = h.detailKriteria[k.id_kriteria]; %>
+                                                    <td><%= dk.kontribusiWSM.toFixed(4) %></td>
+                                                    <td><%= dk.kontribusiWPM.toFixed(4) %></td>
+                                                <% }); %>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h4>5. Rekap Total WSM, WPM, dan Nilai Akhir Q</h4>
+                            <p style="font-size:12px;color:#777;">Q = (&lambda; &times; Total WSM) + ((1 &minus; &lambda;) &times; Total WPM), dengan &lambda; = <%= detailPerhitungan.lambda %>. Total baris: <strong><%= detailPerhitungan.hasil.length %> siswa</strong>.</p>
+                            <div class="table-scroll">
+                                <table class="data-table">
+                                    <thead><tr><th>Rank</th><th>Siswa</th><th>Total WSM</th><th>Total WPM</th><th>Nilai Q</th></tr></thead>
+                                    <tbody>
+                                        <% detailPerhitungan.hasil.forEach(function(h) {
+                                            const rekapSeri = tampilSeri && !!h.seri;
+                                        %>
+                                            <tr class="<%= rekapSeri ? 'baris-seri' : '' %>">
+                                                <td>#<%= h.ranking %></td>
+                                                <td>
+                                                    <%= h.nama %>
+                                                    <% if (rekapSeri) { %><span class="badge-seri <%= h.seriPenuh ? 'penuh' : '' %>">Nilai sama</span><% } %>
+                                                </td>
+                                                <td><%= h.wsm.toFixed(4) %></td>
+                                                <td><%= h.wpm.toFixed(4) %></td>
+                                                <td><strong><%= h.q.toFixed(4) %></strong></td>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
                     </div>
-                    <div id="detailWaspas" class="tutorial-content show">
-
-                        <h4 style="margin-top:0;">1. Bobot &amp; Jenis Kriteria</h4>
-                        <div class="table-scroll" style="max-height:260px;">
-                            <table class="data-table">
-                                <thead><tr><th>Kriteria</th><th>Jenis</th><th>Bobot</th></tr></thead>
-                                <tbody>
-                                    <% detailPerhitungan.kriteriaList.forEach(function(k) { %>
-                                        <tr>
-                                            <td><%= k.nama_kriteria || k.id_kriteria %></td>
-                                            <td><span class="badge badge-<%= k.jenis === 'benefit' ? 'diterima' : 'belum_diproses' %>"><%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %></span></td>
-                                            <td><%= (detailPerhitungan.bobotMap[k.id_kriteria] || 0).toFixed(4) %></td>
-                                        </tr>
-                                    <% }); %>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <h4>2. Matrix Keputusan (X) &mdash; Nilai Mentah</h4>
-                        <p style="font-size:12px;color:#777;">Total baris: <strong><%= detailPerhitungan.matrixKeputusan.length %> siswa</strong> — scroll ke bawah/samping untuk melihat semua.</p>
-                        <div class="table-scroll">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Siswa</th>
-                                        <% detailPerhitungan.kriteriaList.forEach(function(k) { %><th><%= k.nama_kriteria || k.id_kriteria %></th><% }); %>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% detailPerhitungan.matrixKeputusan.forEach(function(baris) { %>
-                                        <tr>
-                                            <td><%= baris.nama %></td>
-                                            <% detailPerhitungan.kriteriaList.forEach(function(k) { %>
-                                                <td><%= parseFloat(baris.nilai[k.id_kriteria]).toFixed(4) %></td>
-                                            <% }); %>
-                                        </tr>
-                                    <% }); %>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <h4>3. Matrix Ternormalisasi (R)</h4>
-                        <p style="font-size:12px;color:#777;">Benefit: nilai &divide; nilai maksimum kolom. Cost: nilai minimum kolom &divide; nilai.</p>
-                        <div class="table-scroll">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Siswa</th>
-                                        <% detailPerhitungan.kriteriaList.forEach(function(k) { %><th><%= k.nama_kriteria || k.id_kriteria %></th><% }); %>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% detailPerhitungan.matrixNormalisasi.forEach(function(baris) { %>
-                                        <tr>
-                                            <td><%= baris.nama %></td>
-                                            <% detailPerhitungan.kriteriaList.forEach(function(k) { %>
-                                                <td><%= baris.normalisasi[k.id_kriteria].toFixed(4) %></td>
-                                            <% }); %>
-                                        </tr>
-                                    <% }); %>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <h4>4. Kontribusi WSM (R &times; Bobot) &amp; WPM (R ^ Bobot) per Kriteria</h4>
-                        <div class="table-scroll">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th rowspan="2" style="vertical-align:middle;">Siswa</th>
-                                        <% detailPerhitungan.kriteriaList.forEach(function(k) { %><th colspan="2"><%= k.nama_kriteria || k.id_kriteria %></th><% }); %>
-                                    </tr>
-                                    <tr>
-                                        <% detailPerhitungan.kriteriaList.forEach(function() { %><th>WSM</th><th>WPM</th><% }); %>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% detailPerhitungan.hasil.forEach(function(h) { %>
-                                        <tr>
-                                            <td><%= h.nama %></td>
-                                            <% detailPerhitungan.kriteriaList.forEach(function(k) { const dk = h.detailKriteria[k.id_kriteria]; %>
-                                                <td><%= dk.kontribusiWSM.toFixed(4) %></td>
-                                                <td><%= dk.kontribusiWPM.toFixed(4) %></td>
-                                            <% }); %>
-                                        </tr>
-                                    <% }); %>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <h4>5. Rekap Total WSM, WPM, dan Nilai Akhir Q</h4>
-                        <p style="font-size:12px;color:#777;">Q = (&lambda; &times; Total WSM) + ((1 &minus; &lambda;) &times; Total WPM), dengan &lambda; = <%= detailPerhitungan.lambda %>. Total baris: <strong><%= detailPerhitungan.hasil.length %> siswa</strong>.</p>
-                        <div class="table-scroll">
-                            <table class="data-table">
-                                <thead><tr><th>Rank</th><th>Siswa</th><th>Total WSM</th><th>Total WPM</th><th>Nilai Q</th></tr></thead>
-                                <tbody>
-                                    <% detailPerhitungan.hasil.forEach(function(h) { %>
-                                        <tr>
-                                            <td>#<%= h.ranking %></td>
-                                            <td><%= h.nama %></td>
-                                            <td><%= h.wsm.toFixed(4) %></td>
-                                            <td><%= h.wpm.toFixed(4) %></td>
-                                            <td><strong><%= h.q.toFixed(4) %></strong></td>
-                                        </tr>
-                                    <% }); %>
-                                </tbody>
-                            </table>
-                        </div>
-
-                    </div>
-                </div>
-                <% } %>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
-                        <h3>Hasil Perangkingan Siswa</h3>
-                    </div>
-
-                    <% if (hasilRanking.length === 0) { %>
-                        <p class="empty-state">Perangkingan belum dihitung.</p>
                     <% } else { %>
-                        <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." class="search-input" onkeyup="filterTabelSiswa()">
+                    <div class="panel">
+                        <p class="empty-state">Detail perhitungan belum tersedia. Hitung ranking dulu di langkah 1.</p>
+                    </div>
+                    <% } %>
+                </div>
 
-                        <div class="status-legend">
-                            <span><span class="dot-legend badge-diterima"></span> Masuk Kelas Digital</span>
-                            <span><span class="dot-legend badge-tidak_diterima"></span> Tidak Masuk Kelas Digital</span>
+                <!-- ============================================================ -->
+                <!-- LANGKAH 3: Peringatan Seri + Hasil Perangkingan              -->
+                <!-- ============================================================ -->
+                <div class="step-pane" data-step="3">
+
+                    <% if (tampilSeri) { %>
+                    <div class="panel" style="border-left:4px solid <%= seriDiKuota ? '#b3261e' : '#f59e0b' %>;">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                            <h3>Ada Siswa dengan Nilai Sama (<%= seriInfo.jumlahKelompok %> kelompok, <%= seriInfo.jumlahSiswa %> siswa)</h3>
                         </div>
 
-                        <p style="font-size:13px; color:#666; margin-bottom:10px;">
-                            Masuk Kelas Digital: <strong><%= jumlahDiterima %> / <%= kuota %></strong> kuota
-                            <% if (!terkunci) { %> &middot; <em>hasil sementara, belum difinalisasi</em><% } %>
+                        <p style="font-size:13px; color:#555; line-height:1.6;">
+                            Beberapa siswa mendapat nilai akhir yang sama persis. Agar urutannya tetap adil,
+                            sistem melihat nilai mereka pada kriteria yang paling penting lebih dulu.
+                            Kalau semua nilainya tetap sama, urutan mengikuti urutan data.
                         </p>
 
-                        <div class="table-scroll" style="max-height:560px;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Rank</th><th>NISN</th><th>Nama</th>
-                                        <% if (adaDetailWaspas) { %><th>WSM</th><th>WPM</th><% } %>
-                                        <th>Nilai Q</th><th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% hasilRanking.forEach(function(h) {
-                                        const d = detailMap[h.id_siswa];
-                                        const statusBaris = statusDariRanking(h);
-                                    %>
-                                        <tr class="baris-siswa <%= statusBaris === 'diterima' ? 'baris-diterima' : '' %>"
-                                            data-nama="<%= h.nama.toLowerCase() %>" data-nisn="<%= h.nisn %>">
-                                            <td><strong>#<%= h.ranking %></strong></td>
-                                            <td><%= h.nisn %></td>
-                                            <td><%= h.nama %></td>
-                                            <% if (adaDetailWaspas) { %>
-                                                <td><%= d ? d.wsm.toFixed(4) : '-' %></td>
-                                                <td><%= d ? d.wpm.toFixed(4) : '-' %></td>
-                                            <% } %>
-                                            <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
-                                            <td>
-                                                <% if (statusBaris === 'diterima') { %>
-                                                    <span class="badge badge-diterima">Masuk Kelas Digital</span>
-                                                <% } else { %>
-                                                    <span class="badge badge-tidak_diterima">Tidak Masuk Kelas Digital</span>
-                                                <% } %>
-                                            </td>
-                                        </tr>
-                                    <% }); %>
-                                </tbody>
-                            </table>
-                        </div>
+                        <% if (seriDiKuota) { %>
+                            <div class="alert" style="background:#fdecea; color:#b3261e; margin-bottom:12px;">
+                                <i class="bi bi-x-circle-fill"></i>
+                                <strong>Nilai sama tepat di batas kuota (<%= kuotaNum %>).</strong>
+                                Sebagian siswa yang nilainya sama masuk kuota, sebagian lagi tidak. Mohon cek kelompok bertanda merah di bawah sebelum finalisasi.
+                            </div>
+                        <% } %>
 
-                        <% if (!terkunci) { %>
-                            <div style="margin-top:15px;">
-                                <form action="/admin/waspas/finalisasi" method="POST"
+                        <% seriInfo.kelompok.forEach(function(g) { %>
+                            <div class="seri-kelompok <%= g.diBatasKuota ? 'kuota' : '' %>">
+                                <h5>
+                                    Kelompok <%= g.nomor %> &mdash; Nilai = <%= Number(g.q).toFixed(4) %>
+                                    (peringkat #<%= g.rankMulai %><%= g.rankSelesai !== g.rankMulai ? ' sampai #' + g.rankSelesai : '' %>)
+                                    <% if (g.diBatasKuota) { %><span class="badge-seri penuh">Di batas kuota</span><% } %>
+                                    <% if (g.adaSeriPenuh) { %><span class="badge-seri penuh">Sama persis</span><% } %>
+                                </h5>
+                                <ul>
+                                    <% g.anggota.forEach(function(a) { %>
+                                        <li>
+                                            <strong>#<%= a.ranking %></strong> <%= a.nama %>
+                                            <% if (a.alasan) { %><div class="alasan"><%= a.alasan %></div><% } %>
+                                        </li>
+                                    <% }); %>
+                                </ul>
+                            </div>
+                        <% }); %>
+
+                        <% if (seriInfo.jumlahSeriPenuh > 0) { %>
+                            <p style="font-size:12px; color:#b3261e; margin:8px 0 0;">
+                                <i class="bi bi-info-circle-fill"></i>
+                                &ldquo;Sama persis&rdquo; artinya semua nilai siswa tersebut identik, tidak ada perbedaan sama sekali.
+                                Urutannya mengikuti urutan data, jadi sebaiknya dipertimbangkan secara manual oleh operator.
+                            </p>
+                        <% } %>
+                    </div>
+                    <% } %>
+
+                    <div class="panel">
+                        <div class="panel-header-row">
+                            <div class="panel-header">
+                                <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
+                                <h3>Hasil Perangkingan Siswa</h3>
+                            </div>
+                            <% if (tampilFinalisasi) { %>
+                                <form id="formFinalisasi" class="form-inline" action="/admin/waspas/finalisasi" method="POST"
                                       onsubmit='return confirmDelete(this, <%- JSON.stringify(pesanFinal) %>);'>
-                                    <button type="submit" class="btn-primary">
+                                    <button type="submit" class="btn-primary btn-kecil">
                                         <i class="bi bi-check-circle-fill"></i> Finalisasi Hasil
                                     </button>
                                 </form>
-                            </div>
+                            <% } %>
+                        </div>
+
+                        <% if (hasilRanking.length === 0) { %>
+                            <p class="empty-state">Perangkingan belum dihitung.</p>
                         <% } else { %>
-                            <div class="alert" style="background:#e2f8ea; color:#1e8449; margin-top:15px;">
-                                <i class="bi bi-check-circle-fill"></i> Hasil sudah difinalisasi dan bersifat final.
+                            <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." class="search-input" onkeyup="filterTabelSiswa()">
+
+                            <div class="status-legend">
+                                <span><span class="dot-legend badge-diterima"></span> Masuk Kelas Digital</span>
+                                <span><span class="dot-legend badge-tidak_diterima"></span> Tidak Masuk Kelas Digital</span>
+                                <% if (tampilSeri) { %>
+                                    <span><span class="badge-seri" style="margin:0;">Nilai sama</span> Nilainya sama dengan siswa lain (urutan sudah diatur otomatis)</span>
+                                <% } %>
                             </div>
+
+                            <p style="font-size:13px; color:#666; margin-bottom:10px;">
+                                Masuk Kelas Digital: <strong><%= jumlahDiterima %> / <%= kuota %></strong> kuota
+                                <% if (!terkunci) { %> &middot; <em>hasil sementara, belum difinalisasi</em><% } %>
+                            </p>
+
+                            <div class="table-scroll" style="max-height:560px;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th><th>NISN</th><th>Nama</th>
+                                            <% if (adaDetailWaspas) { %><th>WSM</th><th>WPM</th><% } %>
+                                            <th>Nilai Q</th><th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% hasilRanking.forEach(function(h) {
+                                            const d = detailMap[h.id_siswa];
+                                            const statusBaris = statusDariRanking(h);
+                                            const barisSeri = tampilSeri && !!(d && d.seri);
+                                        %>
+                                            <tr class="baris-siswa <%= statusBaris === 'diterima' ? 'baris-diterima' : '' %> <%= barisSeri ? 'baris-seri' : '' %>"
+                                                data-nama="<%= h.nama.toLowerCase() %>" data-nisn="<%= h.nisn %>">
+                                                <td><strong>#<%= h.ranking %></strong></td>
+                                                <td><%= h.nisn %></td>
+                                                <td>
+                                                    <%= h.nama %>
+                                                    <% if (barisSeri) { %>
+                                                        <span class="badge-seri <%= d.seriPenuh ? 'penuh' : '' %>">Nilai sama</span>
+                                                        <% if (d.alasanSeri) { %><span class="sub-seri"><%= d.alasanSeri %></span><% } %>
+                                                    <% } %>
+                                                </td>
+                                                <% if (adaDetailWaspas) { %>
+                                                    <td><%= d ? d.wsm.toFixed(4) : '-' %></td>
+                                                    <td><%= d ? d.wpm.toFixed(4) : '-' %></td>
+                                                <% } %>
+                                                <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
+                                                <td>
+                                                    <% if (statusBaris === 'diterima') { %>
+                                                        <span class="badge badge-diterima">Masuk Kelas Digital</span>
+                                                    <% } else { %>
+                                                        <span class="badge badge-tidak_diterima">Tidak Masuk Kelas Digital</span>
+                                                    <% } %>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <% if (terkunci) { %>
+                                <div class="alert" style="background:#e2f8ea; color:#1e8449; margin-top:15px;">
+                                    <i class="bi bi-check-circle-fill"></i> Hasil sudah difinalisasi dan bersifat final.
+                                </div>
+                            <% } %>
                         <% } %>
-                    <% } %>
+                    </div>
                 </div>
 
                 <%- include('../partials/footer') %>
@@ -393,6 +637,68 @@
                 row.style.display = cocok ? '' : 'none';
             });
         }
+
+        // ===================== STEPPER =====================
+        const ADA_HASIL = <%- adaHasil ? 'true' : 'false' %>;
+        const STEP_KEY = 'waspasStep';
+
+        function goStep(n, opsi) {
+            n = Number(n) || 1;
+            if (n < 1) n = 1;
+            if (n > 3) n = 3;
+            if (!ADA_HASIL && n > 1) n = 1;
+
+            document.querySelectorAll('.step-pane').forEach(function(p) {
+                p.classList.toggle('active', Number(p.dataset.step) === n);
+            });
+
+            document.querySelectorAll('.stepper-item').forEach(function(b) {
+                const s = Number(b.dataset.step);
+                b.classList.toggle('active', s === n);
+                b.classList.toggle('selesai', s < n);
+                const num = b.querySelector('.stepper-num');
+                if (num) num.innerHTML = s < n ? '<i class="bi bi-check-lg"></i>' : String(s);
+            });
+
+            // Garis penghubung terisi untuk langkah yang sudah dilewati
+            document.querySelectorAll('.stepper-line').forEach(function(l) {
+                l.classList.toggle('terisi', Number(l.dataset.line) < n);
+            });
+
+            try { sessionStorage.setItem(STEP_KEY, String(n)); } catch (e) {}
+
+            if (!opsi || !opsi.tanpaScroll) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const mc = document.querySelector('.main-content');
+                if (mc && mc.scrollTo) mc.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // Setelah klik Hitung (dan tidak dibatalkan di konfirmasi), buka langkah 2 setelah reload.
+        // Setelah Finalisasi, tetap di langkah 3.
+        (function() {
+            const formHitung = document.getElementById('formHitung');
+            if (formHitung) {
+                formHitung.addEventListener('submit', function(e) {
+                    if (e.defaultPrevented) return;
+                    try { sessionStorage.setItem(STEP_KEY, '2'); } catch (err) {}
+                });
+            }
+            const formFinal = document.getElementById('formFinalisasi');
+            if (formFinal) {
+                formFinal.addEventListener('submit', function(e) {
+                    if (e.defaultPrevented) return;
+                    try { sessionStorage.setItem(STEP_KEY, '3'); } catch (err) {}
+                });
+            }
+        })();
+
+        // Pulihkan langkah terakhir saat halaman dimuat
+        (function() {
+            let awal = 1;
+            try { awal = parseInt(sessionStorage.getItem(STEP_KEY), 10) || 1; } catch (e) {}
+            goStep(awal, { tanpaScroll: true });
+        })();
     </script>
 </body>
 </html>

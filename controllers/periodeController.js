@@ -22,10 +22,11 @@ const periodeController = {
     async index(req, res) {
         try {
             const periodeListRaw = await periodeModel.getAll();
-            const periodeList = periodeListRaw.map(p => ({
+            const periodeList = await Promise.all(periodeListRaw.map(async p => ({
                 ...p,
-                display_status: computeDisplayStatus(p)
-            }));
+                display_status: computeDisplayStatus(p),
+                bobot_final: await kriteriaModel.checkBobotSudahFinal(p.id_periode)
+            })));
             const latestId = await periodeModel.getLatestId();
             res.render('superadmin/periode', {
                 user: req.session.user, periodeList, latestId, activePage: 'periode',
@@ -105,6 +106,10 @@ async create(req, res) {
                 return res.redirect('/superadmin/periode?error=Periode ini tidak dapat diedit karena sudah dinyatakan selesai (kuota terpenuhi).');
             }
 
+            if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
+                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat diedit karena pembobotan FUCOM sudah dijalankan dan final.');
+            }
+
             if (parseInt(kuota_kelas_digital) < 30) {
                 return res.redirect('/superadmin/periode?error=Kuota minimal 30 siswa.');
             }
@@ -135,6 +140,10 @@ async create(req, res) {
             const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
             if (statusPenyelesaian === 'selesai') {
                 return res.redirect('/superadmin/periode?error=Periode ini tidak dapat dihapus karena sudah dinyatakan selesai dan tersimpan sebagai data historis.');
+            }
+
+            if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
+                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat dihapus karena pembobotan FUCOM sudah dijalankan dan final.');
             }
 
             await periodeModel.deleteCascade(id_periode);

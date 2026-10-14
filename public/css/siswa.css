@@ -125,9 +125,12 @@
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 600;
     cursor: pointer; text-decoration: none; border: 1px solid transparent;
+    transition: background .15s, opacity .15s, transform .1s;
 }
+.s-btn:active:not(:disabled) { transform: translateY(1px); }
+.s-btn:disabled { opacity: .45; cursor: not-allowed; }
 .s-btn-primary { background: var(--s-primary); color: #fff; }
-.s-btn-primary:hover { background: var(--s-primary-dark); }
+.s-btn-primary:hover:not(:disabled) { background: var(--s-primary-dark); }
 .s-btn-outline { background: #fff; color: var(--s-text); border-color: var(--s-border); }
 .s-btn-outline:hover { background: var(--s-bg); }
 .s-btn-danger { background: var(--s-danger); color: #fff; }
@@ -189,8 +192,138 @@
 .siswa-shell input[type="password"] {
     width: 100%; padding: 10px 12px; border: 1px solid var(--s-border);
     border-radius: 10px; font-size: 14px; background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+}
+.siswa-shell input[type="text"]:focus,
+.siswa-shell input[type="password"]:focus {
+    outline: none; border-color: var(--s-primary); box-shadow: 0 0 0 3px rgba(29, 95, 214, .15);
 }
 .siswa-shell input:disabled { background: var(--s-bg); color: #8a94a3; }
+
+/* =====================================================
+   BARU: GANTI PASSWORD (syarat, meter, peringatan)
+   ===================================================== */
+.s-reassure {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--s-info-bg); color: #1e3a8a;
+    border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.5;
+    margin-bottom: 6px;
+}
+.s-reassure i { margin-top: 2px; }
+
+.siswa-shell input.input-salah { border-color: var(--s-danger) !important; box-shadow: 0 0 0 3px rgba(185, 28, 28, .12) !important; background: #fffafa; }
+.siswa-shell input.input-benar { border-color: var(--s-ok) !important; box-shadow: 0 0 0 3px rgba(30, 126, 52, .12) !important; }
+
+.pw-pesan-konf { display: none; margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--s-danger); }
+.pw-pesan-konf.tampil { display: block; }
+
+.s-capslock {
+    display: none; margin-top: 10px; padding: 8px 12px; border-radius: 8px;
+    background: var(--s-warn-bg); color: var(--s-warn); font-size: 12.5px; font-weight: 600;
+}
+.s-capslock.tampil { display: block; }
+
+.pw-meter { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.pw-meter-track { flex: 1; height: 7px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+.pw-meter-bar { height: 100%; width: 0; border-radius: 999px; transition: width .25s, background .25s; }
+.pw-meter-bar.lemah { background: #ef4444; }
+.pw-meter-bar.sedang { background: #f59e0b; }
+.pw-meter-bar.kuat { background: #22c55e; }
+.pw-meter-label { font-size: 12px; color: var(--s-muted); min-width: 120px; text-align: right; }
+
+.pw-rules {
+    margin-top: 16px; padding: 14px 16px; border-radius: 12px;
+    background: #fffbeb; border: 2px solid #fcd34d;
+    transition: background .2s, border-color .2s;
+}
+.pw-rules.ada-gagal { background: #fff5f5; border-color: #fca5a5; }
+.pw-rules.semua-ok { background: #f0fdf4; border-color: #86efac; }
+
+.pw-rules-title {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 14px; font-weight: 700; color: #92400e; margin-bottom: 8px;
+}
+.pw-rules.ada-gagal .pw-rules-title { color: var(--s-danger); }
+.pw-rules.semua-ok .pw-rules-title { color: var(--s-ok); }
+.pw-rules-count {
+    margin-left: auto; font-size: 12px; font-weight: 700;
+    background: #fff; border-radius: 999px; padding: 2px 10px; border: 1px solid currentColor;
+}
+
+.pw-rules ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pw-rule {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 8px; font-size: 13.5px;
+    background: #fff; border: 1px solid var(--s-border); color: #4b5563;
+    transition: background .2s, border-color .2s, color .2s;
+}
+.pw-rule-ikon { font-size: 16px; display: inline-flex; color: #9ca3af; }
+.pw-rule.ok { background: var(--s-ok-bg); border-color: #86efac; color: #14532d; }
+.pw-rule.ok .pw-rule-ikon { color: var(--s-ok); }
+.pw-rule.gagal { background: var(--s-danger-bg); border-color: #fca5a5; color: #7f1d1d; animation: pw-getar .3s; }
+.pw-rule.gagal .pw-rule-ikon { color: var(--s-danger); }
+
+.pw-tips { margin: 10px 0 0; font-size: 12.5px; color: #78350f; line-height: 1.5; }
+.pw-tips i { color: #f59e0b; }
+
+#infoTombol { margin: 10px 0 0; }
+#infoTombol.siap { color: var(--s-ok); font-weight: 600; }
+
+@keyframes pw-getar {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+    100% { transform: translateX(0); }
+}
+
+/* =====================================================
+   BARU: PERNYATAAN KESEDIAAN (beranda tahap minat)
+   ===================================================== */
+.s-pernyataan {
+    margin-top: 18px; padding: 16px; border-radius: 12px;
+    background: #fffbeb; border: 2px solid #fcd34d;
+    transition: background .2s, border-color .2s;
+}
+.s-pernyataan.lengkap { background: #f0fdf4; border-color: #86efac; }
+
+.s-pernyataan-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; color: #92400e; }
+.s-pernyataan-head i { font-size: 20px; margin-top: 2px; }
+.s-pernyataan-head strong { display: block; font-size: 14.5px; }
+.s-pernyataan-head span { display: block; font-size: 12.5px; margin-top: 2px; }
+.s-pernyataan.lengkap .s-pernyataan-head { color: var(--s-ok); }
+
+.siswa-shell label.s-cek {
+    display: flex; align-items: flex-start; gap: 12px;
+    margin: 8px 0; padding: 12px; border-radius: 10px;
+    background: #fff; border: 1.5px solid var(--s-border);
+    cursor: pointer; font-weight: 400; font-size: 14px; line-height: 1.5;
+    transition: border-color .15s, background .15s;
+}
+.siswa-shell label.s-cek:hover { border-color: var(--s-primary); }
+.siswa-shell label.s-cek.dicentang { border-color: var(--s-ok); background: #f6fdf8; }
+.s-cek input { accent-color: var(--s-ok); width: 20px; height: 20px; margin: 2px 0 0; flex-shrink: 0; cursor: pointer; }
+
+.s-progress { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; margin: 14px 0 6px; }
+.s-progress-bar { height: 100%; width: 0; background: var(--s-primary); border-radius: 999px; transition: width .25s, background .25s; }
+.s-progress-bar.penuh { background: var(--s-ok); }
+
+/* ----- Modal konfirmasi portal siswa ----- */
+.s-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(17, 24, 39, .55);
+    align-items: center; justify-content: center; padding: 16px;
+}
+.s-modal-overlay.tampil { display: flex; animation: s-fade .15s; }
+.s-modal {
+    width: 100%; max-width: 440px; background: #fff; border-radius: 16px;
+    padding: 26px 22px; text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+    animation: s-naik .2s;
+}
+.s-modal h3 { margin: 0 0 8px; font-size: 19px; }
+.s-modal p { line-height: 1.6; font-size: 14px; }
+
+@keyframes s-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes s-naik { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 @media (max-width: 720px) {
     .s-profile-grid { grid-template-columns: 1fr; }
@@ -199,4 +332,5 @@
     .s-actions { justify-content: stretch; }
     .s-actions .s-btn, .s-actions form { flex: 1; }
     .s-actions form .s-btn { width: 100%; }
+    .pw-meter-label { min-width: 90px; font-size: 11px; }
 }

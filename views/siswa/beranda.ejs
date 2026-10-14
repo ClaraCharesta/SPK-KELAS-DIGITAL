@@ -47,18 +47,80 @@
 
         <% if (tahap === 'minat') { %>
 
-            <section class="s-card s-center">
-                <div class="s-icon s-icon-blue"><i class="bi bi-laptop"></i></div>
-                <h2>Apakah Anda tertarik mengikuti Kelas Digital?</h2>
-                <p class="s-muted">
-                    Jawaban Anda dipakai dalam proses seleksi penempatan siswa ke Kelas Digital.
-                    Jika tertarik, Anda akan diminta mengisi tiga pertanyaan singkat.
-                </p>
+            <section class="s-card">
+                <div class="s-center">
+                    <div class="s-icon s-icon-blue"><i class="bi bi-laptop"></i></div>
+                    <h2>Apakah Anda tertarik mengikuti Kelas Digital?</h2>
+                    <p class="s-muted">
+                        Jawaban Anda dipakai dalam proses seleksi penempatan siswa ke Kelas Digital.
+                        Jika setuju, Anda akan diminta mengisi tiga pertanyaan singkat.
+                    </p>
+                </div>
+
+                <!-- Pernyataan kesediaan -->
+                <div class="s-pernyataan" id="boxPernyataan">
+                    <div class="s-pernyataan-head">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div>
+                            <strong>Baca dan centang semua pernyataan sebelum melanjutkan</strong>
+                            <span>Pilihan &ldquo;Ya, saya setuju&rdquo; bersifat mengikat dan tidak dapat dibatalkan.</span>
+                        </div>
+                    </div>
+
+                    <label class="s-cek">
+                        <input type="checkbox" class="cek-pernyataan">
+                        <span>
+                            Saya memilih <strong>berminat</strong> mengikuti Kelas Digital atas kemauan saya sendiri,
+                            dan sudah memahami informasi tentang Kelas Digital.
+                        </span>
+                    </label>
+
+                    <label class="s-cek">
+                        <input type="checkbox" class="cek-pernyataan">
+                        <span>
+                            Saya memahami bahwa setelah jawaban saya disimpan, status <strong>Berminat tidak dapat dibatalkan</strong>
+                            dan saya <strong>tidak dapat mengundurkan diri</strong> dari seleksi ini.
+                        </span>
+                    </label>
+
+                    <label class="s-cek">
+                        <input type="checkbox" class="cek-pernyataan">
+                        <span>
+                            Saya <strong>siap menerima seluruh konsekuensinya</strong>, termasuk bersedia mengikuti
+                            Kelas Digital apabila hasil seleksi menyatakan saya diterima.
+                        </span>
+                    </label>
+
+                    <div class="s-progress"><div class="s-progress-bar" id="barPernyataan"></div></div>
+                    <p class="s-muted s-small s-center" id="infoPernyataan">0 dari 3 pernyataan dicentang</p>
+                </div>
+
                 <div class="s-actions s-actions-center">
                     <a href="/siswa/tolak" class="s-btn s-btn-outline">Tidak tertarik</a>
-                    <a href="/siswa/form" class="s-btn s-btn-primary">Ya, saya tertarik</a>
+                    <button type="button" class="s-btn s-btn-primary" id="btnSetuju" disabled>
+                        <i class="bi bi-check2-circle"></i> Ya, saya setuju
+                    </button>
                 </div>
             </section>
+
+            <!-- Konfirmasi akhir -->
+            <div class="s-modal-overlay" id="modalSetuju" role="dialog" aria-modal="true" aria-labelledby="judulModalSetuju">
+                <div class="s-modal">
+                    <div class="s-icon s-icon-orange"><i class="bi bi-question-circle-fill"></i></div>
+                    <h3 id="judulModalSetuju">Yakin ingin melanjutkan?</h3>
+                    <p class="s-muted">
+                        Anda akan menyatakan <strong>berminat</strong> mengikuti Kelas Digital.
+                        Setelah jawaban disimpan di langkah berikutnya, pilihan ini
+                        <strong>tidak dapat dibatalkan</strong> dan Anda <strong>tidak dapat mengundurkan diri</strong>.
+                    </p>
+                    <div class="s-actions s-actions-center">
+                        <button type="button" class="s-btn s-btn-outline" id="btnBatalSetuju">Periksa lagi</button>
+                        <button type="button" class="s-btn s-btn-primary" id="btnYakinSetuju">
+                            <i class="bi bi-arrow-right-circle-fill"></i> Ya, saya yakin
+                        </button>
+                    </div>
+                </div>
+            </div>
 
         <% } else if (tahap === 'menunggu') { %>
 
@@ -133,5 +195,73 @@
     </main>
 
     <footer class="siswa-footer">&copy; SMAN 12 Padang &middot; Sistem Penempatan Siswa Kelas Digital</footer>
+
+    <% if (tahap === 'minat') { %>
+    <script>
+        (function () {
+            var cekList = Array.prototype.slice.call(document.querySelectorAll('.cek-pernyataan'));
+            var btnSetuju = document.getElementById('btnSetuju');
+            var bar = document.getElementById('barPernyataan');
+            var info = document.getElementById('infoPernyataan');
+            var box = document.getElementById('boxPernyataan');
+            var modal = document.getElementById('modalSetuju');
+            var btnBatal = document.getElementById('btnBatalSetuju');
+            var btnYakin = document.getElementById('btnYakinSetuju');
+
+            function perbarui() {
+                var jumlah = cekList.filter(function (c) { return c.checked; }).length;
+                var total = cekList.length;
+
+                cekList.forEach(function (c) {
+                    c.closest('.s-cek').classList.toggle('dicentang', c.checked);
+                });
+
+                bar.style.width = ((jumlah / total) * 100) + '%';
+                bar.classList.toggle('penuh', jumlah === total);
+                box.classList.toggle('lengkap', jumlah === total);
+
+                info.textContent = jumlah === total
+                    ? 'Semua pernyataan sudah dicentang. Anda bisa melanjutkan.'
+                    : jumlah + ' dari ' + total + ' pernyataan dicentang';
+
+                btnSetuju.disabled = jumlah !== total;
+            }
+
+            function bukaModal() {
+                modal.classList.add('tampil');
+                btnBatal.focus();
+            }
+
+            function tutupModal() {
+                modal.classList.remove('tampil');
+                btnSetuju.focus();
+            }
+
+            cekList.forEach(function (c) { c.addEventListener('change', perbarui); });
+
+            btnSetuju.addEventListener('click', function () {
+                if (!btnSetuju.disabled) bukaModal();
+            });
+
+            btnBatal.addEventListener('click', tutupModal);
+
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) tutupModal();
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && modal.classList.contains('tampil')) tutupModal();
+            });
+
+            btnYakin.addEventListener('click', function () {
+                btnYakin.disabled = true;
+                btnYakin.innerHTML = '<i class="bi bi-hourglass-split"></i> Mengalihkan...';
+                window.location.href = '/siswa/form';
+            });
+
+            perbarui();
+        })();
+    </script>
+    <% } %>
 </body>
 </html>
