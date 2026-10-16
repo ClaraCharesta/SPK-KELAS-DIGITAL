@@ -409,6 +409,26 @@ const akunSiswaModel = {
         }
     },
 
+    // Siswa menekan "Ya, saya yakin": status langsung 'berminat' (belum perlu isi form).
+    // Hanya bisa jika masih belum_respon, akun aktif, dan periode aktif belum final.
+    // Return jumlah baris yang berubah (0 = tidak memenuhi syarat).
+    async setBerminat(id_siswa) {
+        const [hasil] = await pool.query(
+            `UPDATE akun_siswa a
+             INNER JOIN siswa s ON s.id_siswa = a.id_siswa
+             INNER JOIN periode_seleksi p ON p.id_periode = s.id_periode
+             SET a.status_minat = 'berminat',
+                 a.tanggal_respon_minat = COALESCE(a.tanggal_respon_minat, NOW())
+             WHERE a.id_siswa = ?
+               AND a.status_minat = 'belum_respon'
+               AND a.status_akun = 'aktif'
+               AND p.status_periode = 'aktif'
+               AND p.status_penyelesaian <> 'selesai'`,
+            [id_siswa]
+        );
+        return hasil.affectedRows;
+    },
+
     // Siswa menyatakan tidak berminat: akun dinonaktifkan, data tetap disimpan.
     // Hanya bisa jika masih belum_respon dan periode belum final.
     async setTidakBerminat(id_siswa) {

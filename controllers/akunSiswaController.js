@@ -1,7 +1,12 @@
 const akunSiswaService = require('../utils/akunSiswaService');
 const akunSiswaModel = require('../models/akunSiswaModel');
 const periodeModel = require('../models/periodeModel');
+const waspasModel = require('../models/waspasModel');
+const userModel = require('../models/userModel');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
+
+const PESAN_KARTU_TERKUNCI =
+    'Hasil seleksi sudah difinalisasi. Kartu akun siswa tidak dapat dicetak atau diunduh lagi.';
 
 function setFlashError(req, pesan) {
     req.session.akunSiswaFlash = { tipe: 'error', pesan };
@@ -39,6 +44,7 @@ const akunSiswaController = {
 
     // POST /akun-siswa/:id_siswa/reset-password
     // Setelah reset, langsung tampil kartu dengan password baru.
+    // Ditolak setelah finalisasi (dicek di service).
     async resetPassword(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -89,7 +95,17 @@ const akunSiswaController = {
                 return res.redirect('/admin/siswa');
             }
 
+            if (await waspasModel.isFinal(periode.id_periode)) {
+                setFlashError(req, PESAN_KARTU_TERKUNCI);
+                return res.redirect('/admin/siswa');
+            }
+
             const kartuList = await akunSiswaModel.getDataKartuSemua(periode.id_periode);
+
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `${req.session.user.nama} mencetak ${kartuList.length} kartu akun siswa`
+            );
 
             return res.render('admin/kartu-akun', {
                 pageTitle: 'Kartu Akun Siswa',
@@ -114,11 +130,21 @@ const akunSiswaController = {
                 return res.redirect('/admin/siswa');
             }
 
+            if (await waspasModel.isFinal(periode.id_periode)) {
+                setFlashError(req, PESAN_KARTU_TERKUNCI);
+                return res.redirect('/admin/siswa');
+            }
+
             const kartu = await akunSiswaModel.getDataKartu(req.params.id);
 
             if (!kartu || Number(kartu.id_periode) !== Number(periode.id_periode)) {
                 return res.status(404).send('Akun siswa tidak ditemukan pada periode aktif.');
             }
+
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `${req.session.user.nama} mencetak kartu akun siswa: ${kartu.nama}`
+            );
 
             return res.render('admin/kartu-akun', {
                 pageTitle: 'Kartu Akun Siswa',

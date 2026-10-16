@@ -8,6 +8,7 @@ const fs = require('fs');
 const { generateTemplateSiswa } = require('../utils/templateGenerator');
 const { cekTerkunci } = require('../utils/lockHelper');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
+const { cekBobotFinal } = require('../utils/bobotHelper');
 
 const REGEX_ANGKA_SAJA = /^[0-9]+$/;
 // Untuk nama & pekerjaan: huruf saja (boleh spasi antar kata)
@@ -16,6 +17,15 @@ const REGEX_HURUF_SAJA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$
 const REGEX_SEKOLAH = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9]+( [A-Za-zÀ-ÖØ-öø-ÿ0-9]+)*$/;
 
 const BATAS_MASSAL = 1000;
+
+const PESAN_BOBOT_BELUM_FINAL =
+    'Data siswa baru bisa diinput setelah pembobotan FUCOM selesai dan konsisten. ' +
+    'Selesaikan dulu di menu Pembobotan Kriteria.';
+
+// Pesan umum untuk aksi lain di halaman Data Siswa (edit, hapus, ubah minat, template).
+const PESAN_BOBOT_BELUM_FINAL_AKSI =
+    'Fitur Data Siswa baru bisa digunakan setelah pembobotan FUCOM selesai dan konsisten. ' +
+    'Selesaikan dulu di menu Pembobotan Kriteria.';
 
 const redirectError = (res, pesan) =>
     res.redirect('/admin/siswa?error=' + encodeURIComponent(pesan));
@@ -116,6 +126,7 @@ const siswaController = {
                     siswaList: [],
                     ringkasan: null,
                     terkunci: false,
+                    bobotFinal: false,
                     akunSiswaFlash,
                     success: null,
                     error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)
@@ -125,12 +136,14 @@ const siswaController = {
             const siswaList = await siswaModel.getAllWithAkun(periode.id_periode);
             const ringkasan = await akunSiswaModel.ringkasan(periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
+            const bobotFinal = await cekBobotFinal(periode.id_periode);
 
             return res.render('admin/siswa', {
                 ...dasar,
                 siswaList,
                 ringkasan,
                 terkunci,
+                bobotFinal,
                 akunSiswaFlash,
                 success: req.query.success || null,
                 error: req.query.error || null
@@ -142,6 +155,7 @@ const siswaController = {
     },
 
     // POST /admin/siswa/create
+    // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     // Akun siswa TIDAK dibuat otomatis; operator membuatnya lewat tombol "Buat Akun Siswa".
     async create(req, res) {
         try {
@@ -155,11 +169,8 @@ const siswaController = {
                 return redirectError(res, 'Data siswa terkunci karena hasil seleksi telah difinalisasi.');
             }
 
-            if (!(await waspasModel.checkBobotTersedia(periode.id_periode))) {
-                return redirectError(
-                    res,
-                    'Belum bisa menambah siswa. Hitung bobot kriteria (FUCOM) terlebih dahulu di menu Pembobotan Kriteria.'
-                );
+            if (!(await cekBobotFinal(periode.id_periode))) {
+                return redirectError(res, PESAN_BOBOT_BELUM_FINAL);
             }
 
             const { nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = req.body;
@@ -209,6 +220,7 @@ const siswaController = {
     },
 
     // POST /admin/siswa/update
+    // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async update(req, res) {
         try {
             const { id_siswa, nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = req.body;
@@ -221,6 +233,10 @@ const siswaController = {
 
             if (await cekTerkunci(periode.id_periode)) {
                 return redirectError(res, 'Data siswa terkunci karena hasil seleksi telah difinalisasi.');
+            }
+
+            if (!(await cekBobotFinal(periode.id_periode))) {
+                return redirectError(res, PESAN_BOBOT_BELUM_FINAL_AKSI);
             }
 
             if (!jenis_kelamin) {
@@ -277,6 +293,7 @@ const siswaController = {
 
     // POST /admin/siswa/minat
     // Operator mengubah status minat. Hanya untuk siswa yang masih "Belum merespons".
+    // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async ubahMinat(req, res) {
         try {
             const { id_siswa, status_minat } = req.body;
@@ -293,6 +310,10 @@ const siswaController = {
 
             if (await cekTerkunci(periode.id_periode)) {
                 return redirectError(res, PESAN_UBAH_MINAT.PERIODE_FINAL);
+            }
+
+            if (!(await cekBobotFinal(periode.id_periode))) {
+                return redirectError(res, PESAN_BOBOT_BELUM_FINAL_AKSI);
             }
 
             const siswa = await siswaModel.getSiswaById(id_siswa);
@@ -335,6 +356,7 @@ const siswaController = {
     // POST /admin/siswa/minat-massal
     // Operator menandai banyak siswa (checklist) sebagai "Berminat" sekaligus.
     // Hanya siswa yang punya akun dan masih "Belum merespons" yang diubah.
+    // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async ubahMinatMassal(req, res) {
         try {
             let ids = req.body.id_siswa;
@@ -367,6 +389,10 @@ const siswaController = {
 
             if (await cekTerkunci(periode.id_periode)) {
                 return redirectError(res, PESAN_UBAH_MINAT.PERIODE_FINAL);
+            }
+
+            if (!(await cekBobotFinal(periode.id_periode))) {
+                return redirectError(res, PESAN_BOBOT_BELUM_FINAL_AKSI);
             }
 
             const hasil = await siswaModel.setMinatMassal(ids.map(Number), periode.id_periode);
@@ -406,6 +432,7 @@ const siswaController = {
     },
 
     // POST /admin/siswa/delete/:id_siswa
+    // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async delete(req, res) {
         try {
             const { id_siswa } = req.params;
@@ -418,6 +445,10 @@ const siswaController = {
 
             if (await cekTerkunci(periode.id_periode)) {
                 return redirectError(res, 'Data siswa terkunci karena hasil seleksi telah difinalisasi.');
+            }
+
+            if (!(await cekBobotFinal(periode.id_periode))) {
+                return redirectError(res, PESAN_BOBOT_BELUM_FINAL_AKSI);
             }
 
             const siswa = await siswaModel.getSiswaById(id_siswa);
@@ -439,8 +470,19 @@ const siswaController = {
     },
 
     // GET /admin/siswa/template
+    // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async downloadTemplate(req, res) {
         try {
+            const periode = await periodeModel.getActivePeriode();
+
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return redirectError(res, !periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode));
+            }
+
+            if (!(await cekTerkunci(periode.id_periode)) && !(await cekBobotFinal(periode.id_periode))) {
+                return redirectError(res, PESAN_BOBOT_BELUM_FINAL_AKSI);
+            }
+
             await generateTemplateSiswa(res);
         } catch (error) {
             console.error(error);
@@ -449,6 +491,7 @@ const siswaController = {
     },
 
     // POST /admin/siswa/import
+    // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     // Akun siswa TIDAK dibuat otomatis; operator membuatnya lewat tombol "Buat Akun Siswa".
     async importExcel(req, res) {
         try {
@@ -468,12 +511,9 @@ const siswaController = {
                 return redirectError(res, 'Data siswa terkunci karena hasil seleksi telah difinalisasi.');
             }
 
-            if (!(await waspasModel.checkBobotTersedia(periode.id_periode))) {
+            if (!(await cekBobotFinal(periode.id_periode))) {
                 hapusFileUpload(req);
-                return redirectError(
-                    res,
-                    'Belum bisa mengimpor siswa. Hitung bobot kriteria (FUCOM) terlebih dahulu di menu Pembobotan Kriteria.'
-                );
+                return redirectError(res, PESAN_BOBOT_BELUM_FINAL);
             }
 
             const workbook = xlsx.readFile(req.file.path);

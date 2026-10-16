@@ -82,6 +82,27 @@ function bolehTolak(d) {
         d.status_minat === 'belum_respon';
 }
 
+// Siswa boleh menyatakan setuju hanya jika masih belum merespons.
+function bolehSetuju(d) {
+    return bolehTolak(d);
+}
+
+// Ketiga pertanyaan sudah terjawab semua?
+function jawabanLengkap(jawaban) {
+    return PERTANYAAN.every(function (p) {
+        const nilai = jawaban[p.nama_kriteria];
+        return nilai !== null && nilai !== undefined && Number(nilai) >= 1;
+    });
+}
+
+// Siswa sudah menyatakan setuju (berminat) tetapi form 3 pertanyaan belum lengkap:
+// wajib tetap berada di form.
+function wajibLengkapiForm(d, jawaban) {
+    return bolehIsiForm(d) &&
+        d.status_minat === 'berminat' &&
+        !jawabanLengkap(jawaban);
+}
+
 function tentukanTahap(d) {
     if (d.status_minat === 'tidak_berminat' || d.status_akun !== 'aktif') {
         return 'tidak_ikut';
@@ -115,6 +136,15 @@ async function ambilDetail(req) {
     return akunSiswaModel.findDetailByIdSiswa(req.akunSiswa.id_siswa);
 }
 
+// Halaman form tidak boleh disimpan di cache browser (supaya tombol back/forward tidak menampilkan halaman lama).
+function matikanCache(res) {
+    res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Controller
 // ---------------------------------------------------------------------------
@@ -129,9 +159,15 @@ const portalSiswaController = {
                 return req.session.destroy(() => res.redirect('/login'));
             }
 
+            const jawaban = await akunSiswaModel.getJawaban(d.id_siswa, d.id_periode);
+
+            // Sudah setuju tapi form belum lengkap: paksa kembali ke form.
+            if (wajibLengkapiForm(d, jawaban)) {
+                return res.redirect('/siswa/form');
+            }
+
             const flash = ambilFlash(req);
             const tahap = tentukanTahap(d);
-            const jawaban = await akunSiswaModel.getJawaban(d.id_siswa, d.id_periode);
 
             return res.render('siswa/beranda', {
                 pageTitle: 'Beranda',
@@ -149,6 +185,45 @@ const portalSiswaController = {
         }
     },
 
+    // Dipanggil dari POST /siswa/form saat body berisi aksi=setuju
+    // (siswa menekan "Ya, saya yakin"). Status langsung 'berminat' (mengikat),
+    // lalu diarahkan ke form 3 pertanyaan.
+    async setuju(req, res) {
+        try {
+            const d = await ambilDetail(req);
+
+            if (!d) {
+                return req.session.destroy(() => res.redirect('/login'));
+            }
+
+            // Sudah pernah setuju: langsung ke form (tanpa bertanya lagi).
+            if (bolehIsiForm(d) && d.status_minat === 'berminat') {
+                return res.redirect('/siswa/form');
+            }
+
+            if (!bolehSetuju(d)) {
+                setFlash(req, 'error', 'Pilihan ini tidak tersedia saat ini.');
+                return res.redirect('/siswa');
+            }
+
+            const diubah = await akunSiswaModel.setBerminat(d.id_siswa);
+
+            if (!diubah) {
+                setFlash(req, 'error', 'Perubahan gagal diproses. Silakan coba lagi.');
+                return res.redirect('/siswa');
+            }
+
+            // Peserta seleksi bertambah, hasil ranking lama tidak valid lagi.
+            await waspasModel.invalidateHasilJikaAda(d.id_periode);
+
+            return res.redirect('/siswa/form');
+        } catch (error) {
+            console.error(error);
+            setFlash(req, 'error', 'Terjadi kesalahan sistem.');
+            return res.redirect('/siswa');
+        }
+    },
+
     // GET /siswa/form : form 3 pertanyaan
     async tampilForm(req, res) {
         try {
@@ -159,14 +234,23 @@ const portalSiswaController = {
                 return res.redirect('/siswa');
             }
 
+            // Belum menyatakan setuju: form belum boleh dibuka.
+            if (d.status_minat !== 'berminat') {
+                return res.redirect('/siswa');
+            }
+
             const flash = ambilFlash(req);
             const jawaban = await akunSiswaModel.getJawaban(d.id_siswa, d.id_periode);
+
+            matikanCache(res);
 
             return res.render('siswa/form-skala', {
                 pageTitle: 'Form Minat Kelas Digital',
                 siswa: d,
                 pertanyaan: PERTANYAAN,
                 jawaban,
+                // Selama form belum lengkap, siswa terkunci di halaman ini.
+                wajibLengkap: !jawabanLengkap(jawaban),
                 error: req.query.error || flash.error || null
             });
         } catch (error) {
@@ -175,13 +259,22 @@ const portalSiswaController = {
         }
     },
 
-    // POST /siswa/form : simpan jawaban + otomatis berminat
+    // POST /siswa/form : simpan jawaban (atau proses "setuju" jika aksi=setuju)
     async submitForm(req, res) {
         try {
+            // Tombol "Ya, saya yakin" di beranda mengirim ke sini dengan aksi=setuju.
+            if (req.body && req.body.aksi === 'setuju') {
+                return portalSiswaController.setuju(req, res);
+            }
+
             const d = await ambilDetail(req);
 
             if (!d || !bolehIsiForm(d)) {
                 setFlash(req, 'error', 'Form tidak dapat diisi saat ini.');
+                return res.redirect('/siswa');
+            }
+
+            if (d.status_minat !== 'berminat') {
                 return res.redirect('/siswa');
             }
 

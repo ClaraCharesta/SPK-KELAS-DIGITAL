@@ -78,7 +78,7 @@
                     <label class="s-cek">
                         <input type="checkbox" class="cek-pernyataan">
                         <span>
-                            Saya memahami bahwa setelah jawaban saya disimpan, status <strong>Berminat tidak dapat dibatalkan</strong>
+                            Saya memahami bahwa setelah menekan tombol konfirmasi, status <strong>Berminat tidak dapat dibatalkan</strong>
                             dan saya <strong>tidak dapat mengundurkan diri</strong> dari seleksi ini.
                         </span>
                     </label>
@@ -110,15 +110,20 @@
                     <h3 id="judulModalSetuju">Yakin ingin melanjutkan?</h3>
                     <p class="s-muted">
                         Anda akan menyatakan <strong>berminat</strong> mengikuti Kelas Digital.
-                        Setelah jawaban disimpan di langkah berikutnya, pilihan ini
-                        <strong>tidak dapat dibatalkan</strong> dan Anda <strong>tidak dapat mengundurkan diri</strong>.
+                        Begitu Anda menekan <strong>&ldquo;Ya, saya yakin&rdquo;</strong>, status berminat langsung tercatat,
+                        <strong>tidak dapat dibatalkan</strong>, dan Anda <strong>tidak dapat mengundurkan diri</strong>.
+                        Setelah itu Anda wajib mengisi tiga pertanyaan singkat.
                     </p>
-                    <div class="s-actions s-actions-center">
-                        <button type="button" class="s-btn s-btn-outline" id="btnBatalSetuju">Periksa lagi</button>
-                        <button type="button" class="s-btn s-btn-primary" id="btnYakinSetuju">
-                            <i class="bi bi-arrow-right-circle-fill"></i> Ya, saya yakin
-                        </button>
-                    </div>
+
+                    <form action="/siswa/form" method="POST" id="formYakin">
+                        <input type="hidden" name="aksi" value="setuju">
+                        <div class="s-actions s-actions-center">
+                            <button type="button" class="s-btn s-btn-outline" id="btnBatalSetuju">Periksa lagi</button>
+                            <button type="submit" class="s-btn s-btn-primary" id="btnYakinSetuju">
+                                <i class="bi bi-arrow-right-circle-fill"></i> Ya, saya yakin
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -207,6 +212,7 @@
             var modal = document.getElementById('modalSetuju');
             var btnBatal = document.getElementById('btnBatalSetuju');
             var btnYakin = document.getElementById('btnYakinSetuju');
+            var formYakin = document.getElementById('formYakin');
 
             function perbarui() {
                 var jumlah = cekList.filter(function (c) { return c.checked; }).length;
@@ -253,10 +259,10 @@
                 if (e.key === 'Escape' && modal.classList.contains('tampil')) tutupModal();
             });
 
-            btnYakin.addEventListener('click', function () {
+            // Kirim POST ke /siswa/form dengan aksi=setuju (status berminat langsung tersimpan di server).
+            formYakin.addEventListener('submit', function () {
                 btnYakin.disabled = true;
                 btnYakin.innerHTML = '<i class="bi bi-hourglass-split"></i> Mengalihkan...';
-                window.location.href = '/siswa/form';
             });
 
             perbarui();

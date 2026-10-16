@@ -5,14 +5,15 @@
     <%- include('partials/siswa-head') %>
 </head>
 <body class="siswa-body">
-    <%- include('partials/siswa-topbar', { siswa: siswa, aktif: 'beranda', minimal: false }) %>
+    <%- include('partials/siswa-topbar', { siswa: siswa, aktif: 'beranda', minimal: true }) %>
 
     <main class="siswa-shell">
 
         <section class="s-card">
             <h1>Form Minat Kelas Digital</h1>
             <p class="s-muted">
-                Jawablah dengan jujur. Pilih satu angka (1 sampai 5) untuk setiap pertanyaan.
+                Anda sudah menyatakan berminat. Lengkapi ketiga pertanyaan berikut dengan jujur.
+                Pilih satu angka (1 sampai 5) untuk setiap pertanyaan.
                 Jawaban dapat diubah selama periode seleksi masih berlangsung.
             </p>
         </section>
@@ -59,14 +60,18 @@
 
     <script>
         (function () {
-            // Setelah pernyataan disetujui, tidak ada jalan kembali:
-            // tombol back browser dikunci agar siswa tetap di form ini.
+            // Tidak ada jalan kembali: tombol back browser dikunci agar siswa tetap di form ini.
             try {
                 history.pushState(null, '', window.location.href);
                 window.addEventListener('popstate', function () {
                     history.pushState(null, '', window.location.href);
                 });
             } catch (e) { /* abaikan */ }
+
+            // Jika halaman dipulihkan dari cache browser (back/forward), muat ulang dari server.
+            window.addEventListener('pageshow', function (e) {
+                if (e.persisted) window.location.reload();
+            });
 
             // Cegah klik ganda saat menyimpan.
             var form = document.getElementById('formMinat');

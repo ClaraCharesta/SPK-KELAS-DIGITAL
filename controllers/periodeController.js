@@ -1,6 +1,7 @@
 const periodeModel = require('../models/periodeModel');
 const kriteriaModel = require('../models/kriteriaModel');
 const userModel = require('../models/userModel');
+const waspasModel = require('../models/waspasModel');
 
 function computeDisplayStatus(p) {
     if (p.status_periode !== 'aktif') {
@@ -40,40 +41,64 @@ const periodeController = {
         }
     },
 
-async create(req, res) {
-    try {
-        const { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = req.body;
+    async create(req, res) {
+        try {
+            const { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = req.body;
 
-        if (!tahun_ajaran || !kuota_kelas_digital) {
-            return res.redirect('/superadmin/periode?error=Tahun ajaran dan kuota wajib diisi.');
+            if (!tahun_ajaran || !kuota_kelas_digital) {
+                return res.redirect('/superadmin/periode?error=Tahun ajaran dan kuota wajib diisi.');
+            }
+            if (parseInt(kuota_kelas_digital) < 30) {
+                return res.redirect('/superadmin/periode?error=Kuota minimal 30 siswa.');
+            }
+
+            const sudahAda = await periodeModel.existsByTahunAjaran(tahun_ajaran);
+            if (sudahAda) {
+                return res.redirect(`/superadmin/periode?error=Tahun ajaran "${tahun_ajaran}" sudah pernah dibuat sebelumnya. Gunakan nama lain, atau edit periode yang sudah ada.`);
+            }
+
+            const id_periode_baru = await periodeModel.create({ tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai });
+
+            await kriteriaModel.createDefault(id_periode_baru);
+            await userModel.logActivity(req.session.user.id_user, `Super Admin membuka periode seleksi baru: ${tahun_ajaran}`);
+
+            // Periode lama otomatis ditutup, jadi akun siswanya ikut dinonaktifkan.
+            const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
+            if (dinonaktifkan > 0) {
+                await userModel.logActivity(
+                    req.session.user.id_user,
+                    `Sistem menonaktifkan ${dinonaktifkan} akun siswa dari periode yang ditutup`
+                );
+            }
+
+            res.redirect('/superadmin/periode?success=Periode seleksi berhasil dibuat dan diaktifkan beserta 6 kriteria default.');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
         }
-        if (parseInt(kuota_kelas_digital) < 30) {
-            return res.redirect('/superadmin/periode?error=Kuota minimal 30 siswa.');
-        }
-
-        const sudahAda = await periodeModel.existsByTahunAjaran(tahun_ajaran);
-        if (sudahAda) {
-            return res.redirect(`/superadmin/periode?error=Tahun ajaran "${tahun_ajaran}" sudah pernah dibuat sebelumnya. Gunakan nama lain, atau edit periode yang sudah ada.`);
-        }
-
-        const id_periode_baru = await periodeModel.create({ tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai });
-
-        await kriteriaModel.createDefault(id_periode_baru);
-        await userModel.logActivity(req.session.user.id_user, `Super Admin membuka periode seleksi baru: ${tahun_ajaran}`);
-
-        res.redirect('/superadmin/periode?success=Periode seleksi berhasil dibuat dan diaktifkan beserta 6 kriteria default.');
-    } catch (error) {
-        console.error(error);
-        res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
-    }
     },
 
     async updateKuota(req, res) {
         try {
             const { id_periode, kuota_kelas_digital } = req.body;
+
+            if (parseInt(kuota_kelas_digital) < 30) {
+                return res.redirect('/superadmin/periode?error=Kuota minimal 30 siswa.');
+            }
+
+            // Status Masuk/Tidak Masuk dihitung dari ranking dan kuota,
+            // jadi kuota tidak boleh diubah setelah hasil difinalisasi.
+            if (await waspasModel.isFinal(id_periode)) {
+                return res.redirect('/superadmin/periode?error=Kuota tidak dapat diubah karena hasil seleksi sudah difinalisasi.');
+            }
+
             await periodeModel.updateKuota(id_periode, kuota_kelas_digital);
+
+            // Perubahan kuota membuat hasil ranking lama tidak valid.
+            await waspasModel.invalidateHasilJikaAda(id_periode);
+
             await userModel.logActivity(req.session.user.id_user, `Super Admin mengubah kuota periode ID ${id_periode} menjadi ${kuota_kelas_digital}`);
-            res.redirect('/superadmin/periode?success=Kuota berhasil diperbarui. Jika sudah ada hasil WASPAS, hitung ulang untuk memperbarui status Diterima/Cadangan.');
+            res.redirect('/superadmin/periode?success=Kuota berhasil diperbarui. Hasil ranking sebelumnya dikosongkan, silakan hitung ulang WASPAS.');
         } catch (error) {
             console.error(error);
             res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
@@ -84,7 +109,15 @@ async create(req, res) {
         try {
             const { id_periode } = req.params;
             await periodeModel.setActive(id_periode);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin mengaktifkan periode ID ${id_periode}`);
+
+            // Periode lain ditutup (akunnya dinonaktifkan), periode ini dibuka kembali (akunnya diaktifkan).
+            const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
+            const diaktifkan = await periodeModel.aktifkanKembaliAkunPeriode(id_periode);
+
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `Super Admin mengaktifkan periode ID ${id_periode} (${diaktifkan} akun siswa diaktifkan, ${dinonaktifkan} akun periode lain dinonaktifkan)`
+            );
             res.redirect('/superadmin/periode?success=Periode berhasil diaktifkan.');
         } catch (error) {
             console.error(error);
@@ -103,7 +136,7 @@ async create(req, res) {
 
             const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
             if (statusPenyelesaian === 'selesai') {
-                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat diedit karena sudah dinyatakan selesai (kuota terpenuhi).');
+                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat diedit karena hasil seleksinya sudah difinalisasi.');
             }
 
             if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
@@ -120,6 +153,10 @@ async create(req, res) {
             }
 
             await periodeModel.update(id_periode, { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai });
+
+            // Kuota bisa ikut berubah, jadi hasil ranking lama dikosongkan.
+            await waspasModel.invalidateHasilJikaAda(id_periode);
+
             await userModel.logActivity(req.session.user.id_user, `Super Admin memperbarui periode: ${tahun_ajaran}`);
             res.redirect('/superadmin/periode?success=Periode berhasil diperbarui.');
         } catch (error) {
@@ -139,7 +176,7 @@ async create(req, res) {
 
             const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
             if (statusPenyelesaian === 'selesai') {
-                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat dihapus karena sudah dinyatakan selesai dan tersimpan sebagai data historis.');
+                return res.redirect('/superadmin/periode?error=Periode ini tidak dapat dihapus karena sudah difinalisasi dan tersimpan sebagai data historis.');
             }
 
             if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
@@ -159,8 +196,15 @@ async create(req, res) {
         try {
             const { id_periode } = req.params;
             await periodeModel.tutupManual(id_periode);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin menutup periode ID ${id_periode} secara manual`);
-            res.redirect('/superadmin/periode?success=Periode berhasil ditutup.');
+
+            // Periode ditutup, akun siswanya ikut dinonaktifkan.
+            const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
+
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `Super Admin menutup periode ID ${id_periode} secara manual (${dinonaktifkan} akun siswa dinonaktifkan)`
+            );
+            res.redirect('/superadmin/periode?success=Periode berhasil ditutup. Akun siswa pada periode ini dinonaktifkan.');
         } catch (error) {
             console.error(error);
             res.redirect('/superadmin/periode?error=Terjadi kesalahan sistem.');
