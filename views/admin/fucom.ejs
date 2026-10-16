@@ -4,149 +4,8 @@
     <title>Perhitungan FUCOM</title>
     <%- include('../partials/head') %>
     <link rel="stylesheet" href="/css/fucom.css">
-    <style>
-        /* ===== Kartu perbandingan ===== */
-        .skala-group {
-            background:#f7f9fc; border:1px solid #e6eaf2; border-radius:12px;
-            padding:12px 14px; margin-bottom:14px;
-        }
-        .pair-label { display:block; font-weight:600; color:#0b2545; margin-bottom:8px; }
-
-        /* ===== Stepper (input angka) ===== */
-        .skala-stepper {
-            display:inline-flex; align-items:center; background:#fff;
-            border:1.5px solid #dcdfe6; border-radius:12px; overflow:hidden;
-            transition:border-color .15s, box-shadow .15s;
-        }
-        .skala-stepper:focus-within { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-        .skala-stepper.valid { border-color:#22a559; }
-        .skala-stepper.valid:focus-within { box-shadow:0 0 0 3px rgba(34,165,89,.14); }
-        .skala-stepper.tidak-valid { border-color:#e74c3c; box-shadow:0 0 0 3px rgba(231,76,60,.12); }
-        .input-skala {
-            width:90px; padding:10px 8px; border:none; border-radius:0;
-            font-size:18px; font-weight:600; text-align:center; letter-spacing:1px;
-            background:transparent; color:#0b2545;
-        }
-        .input-skala:focus { outline:none; box-shadow:none; }
-        .btn-skala {
-            width:42px; height:42px; border:none; background:#eef3ff; color:#2563eb;
-            font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
-            transition:background .15s, color .15s; user-select:none; touch-action:manipulation;
-        }
-        .btn-skala:hover { background:#2563eb; color:#fff; }
-        .btn-skala:active { transform:scale(.96); }
-
-        /* ===== Nilai cepat ===== */
-        .skala-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-        .chip-nilai {
-            border:1px solid #d5dbe7; background:#fff; color:#334155; border-radius:999px;
-            padding:3px 12px; font-size:12px; cursor:pointer; transition:all .15s;
-        }
-        .chip-nilai:hover { border-color:#2563eb; color:#2563eb; }
-        .chip-nilai.aktif { background:#2563eb; border-color:#2563eb; color:#fff; }
-
-        .skala-hint { font-size:11px; color:#888; margin-top:6px; }
-        .skala-warn { font-size:12px; color:#b35c00; background:#fdf1de; border-radius:6px; padding:5px 8px; margin-top:6px; display:none; }
-        .skala-error { font-size:12px; color:#e74c3c; margin-top:4px; display:none; }
-
-        /* ===== Dropdown urutan ===== */
-        .urutan-select {
-            width:100%; padding:10px 12px; border:1.5px solid #dcdfe6; border-radius:10px;
-            background:#fff; font-size:14px; transition:border-color .15s, box-shadow .15s; margin-bottom:8px;
-        }
-        .urutan-select:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-        .urutan-select option:disabled { color:#aaa; }
-
-        /* ===== Pratinjau urutan ===== */
-        .urutan-preview { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 12px; }
-        .chip-urutan {
-            font-size:12px; padding:4px 10px; border-radius:999px; background:#eef0f4; color:#8a93a3;
-            border:1px dashed #cdd3de;
-        }
-        .chip-urutan.terisi { background:#e8f0ff; color:#1e40af; border:1px solid #bcd0ff; }
-
-        /* ===== Progres isian ===== */
-        .progres-wrap { margin-top:14px; }
-        .progres-track { height:6px; background:#e6eaf2; border-radius:999px; overflow:hidden; }
-        .progres-bar { height:100%; width:0; background:#2563eb; transition:width .2s, background .2s; }
-        .progres-bar.penuh { background:#22a559; }
-        .progres-teks { font-size:12px; color:#666; margin-top:4px; }
-
-        .peringatan-nama, .peringatan-form { color:#e74c3c; font-size:12px; margin-top:4px; display:none; }
-        .peringatan-form { background:#fdecea; border-radius:8px; padding:8px 10px; margin-top:12px; }
-        .btn-teks { background:none; border:none; color:#2563eb; font-size:12px; cursor:pointer; padding:0; text-decoration:underline; }
-
-        /* ===================== STEPPER STICKY (navigasi langkah) ===================== */
-        .stepper {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            display: flex;
-            align-items: center;
-            background: #fff;
-            border: 1px solid #e5e5e5;
-            border-radius: 12px;
-            padding: 8px 12px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 10px rgba(15, 23, 42, .07);
-        }
-        .stepper-item {
-            display: flex; align-items: center; gap: 10px;
-            flex: 0 0 auto;
-            background: none; border: none; border-radius: 10px;
-            padding: 8px 14px; cursor: pointer;
-            font-family: inherit; text-align: left;
-            transition: background .15s;
-        }
-        .stepper-item:hover:not(:disabled) { background: #f1f5fd; }
-        .stepper-item.active { background: #eaf1ff; }
-        .stepper-item:disabled { cursor: not-allowed; opacity: .45; }
-        .stepper-item:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-
-        .stepper-num {
-            width: 32px; height: 32px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 14px; font-weight: 700;
-            background: #eef1f6; color: #6b7685; border: 2px solid #d7dde7;
-            transition: all .2s;
-        }
-        .stepper-label { display: flex; flex-direction: column; line-height: 1.25; }
-        .stepper-label small { font-size: 11px; color: #8a94a3; }
-        .stepper-label strong { font-size: 13px; color: #44505f; }
-
-        .stepper-line {
-            flex: 1 1 auto; height: 3px; border-radius: 3px;
-            background: #e1e6ee; margin: 0 6px; min-width: 20px;
-            transition: background .25s;
-        }
-        .stepper-line.terisi { background: #2563eb; }
-
-        .stepper-item.active .stepper-num { background: #2563eb; color: #fff; border-color: #2563eb; }
-        .stepper-item.active .stepper-label strong { color: #1d4ed8; }
-        .stepper-item.selesai .stepper-num { background: #e2f8ea; color: #1e8449; border-color: #9bd8b3; }
-
-        .step-pane { display: none; }
-        .step-pane.active { display: block; animation: stepFade .25s ease; }
-        @keyframes stepFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-
-        .step-hint {
-            font-size: 13px; color: #6b7685; background: #f4f8ff; border: 1px dashed #bcd0f5;
-            border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;
-        }
-
-        @media (max-width: 820px) {
-            .stepper { padding: 6px; }
-            .stepper-item { padding: 6px 8px; gap: 6px; }
-            .stepper-label small { display: none; }
-            .stepper-label strong { font-size: 12px; }
-            .stepper-num { width: 28px; height: 28px; font-size: 13px; }
-            .stepper-line { margin: 0 2px; min-width: 8px; }
-        }
-        @media (max-width: 520px) {
-            .stepper-item.active .stepper-label { display: flex; }
-            .stepper-item:not(.active) .stepper-label { display: none; }
-        }
-    </style>
+    <%# Semua style halaman ini ada di /css/layout.css. Jika partials/head belum memuat layout.css, aktifkan baris di bawah. %>
+    <%# <link rel="stylesheet" href="/css/layout.css"> %>
 </head>
 <body>
 <%
@@ -178,7 +37,7 @@
     if (bolehInput) {
         daftarModal.push({
             id: 'modalInput', mode: 'input', icon: 'bi-clipboard-data',
-            judul: 'Input Data Perbandingan Kriteria (Hasil Musyawarah)',
+            judul: 'Input Data Perbandingan Kriteria',
             action: '/admin/fucom/input', tombol: 'Simpan Data'
         });
     }
@@ -193,6 +52,25 @@
     // Untuk stepper: langkah 2 baru terbuka kalau data responden sudah ada
     const adaData = respondenList.length >= 1;
     const tipTerkunci = 'Isi data responden dulu untuk membuka langkah ini';
+
+    // ===== Bantuan tampilan saat hasil inkonsisten (hanya tampilan, tidak mengubah logika) =====
+    const inkonsisten = bobotFinal.length > 0 && !dfcKonsisten;
+    const AMBANG_BESAR_VIEW = 4;
+    const nilaiDfcTampil = bobotFinal.length > 0 ? parseFloat(bobotFinal[0].nilai_dfc).toFixed(3).replace('.', ',') : '';
+
+    // Daftar perbandingan bernilai besar (di atas 4), kandidat penyebab inkonsistensi.
+    const daftarBesar = [];
+    if (respondenList.length >= 1) {
+        (dataResponden[respondenList[0]] || []).forEach(function (p) {
+            const v = parseFloat(p.nilai_perbandingan);
+            if (v > AMBANG_BESAR_VIEW) {
+                daftarBesar.push({
+                    label: p.nama_kriteria_asal + ' vs ' + p.nama_kriteria_pembanding,
+                    nilai: String(v).replace('.', ',')
+                });
+            }
+        });
+    }
 %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
@@ -243,12 +121,13 @@
 
                         <ol start="4" style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
                             <li>Gunakan nilai yang <strong>moderat</strong> (misalnya 1 sampai 4, boleh desimal). Semakin besar lompatan nilai antar kriteria, semakin besar risiko hasil pembobotan menjadi tidak konsisten. Sistem akan memberi peringatan jika nilai melebihi 4.</li>
-                            <li>Data hanya diinput <strong>satu kali</strong> (1 responden). Selama bobot belum dihitung, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
+                            <li>Data hanya diinput <strong>satu kali</strong> (1 responden). Selama bobot belum final, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
                             <li>
                                 Setelah dihitung, sistem akan menampilkan nilai <strong>DFC (Deviation from Full Consistency)</strong> — semacam skor yang menunjukkan seberapa konsisten urutan dan nilai yang diinput tadi secara matematis.
                                 <ul style="margin-top:6px;">
                                     <li><strong>DFC di bawah 0,1</strong> → hasil dianggap <strong>konsisten</strong>. Bobot otomatis menjadi final dan terkunci, Admin dapat melanjutkan ke pengelolaan data siswa.</li>
-                                    <li><strong>DFC di atas atau sama dengan 0,1</strong> → hasil dianggap <strong>belum konsisten</strong>. Ini bukan berarti sistem error — artinya urutan atau nilai perbandingan yang diinput tadi kurang logis secara matematis (misalnya lompatan nilai terlalu ekstrem). Bobot <strong>tidak</strong> dikunci, dan Admin perlu mengedit atau menghapus data responden lalu menginput ulang dengan urutan/nilai yang lebih moderat.</li>
+                                    <li><strong>DFC di atas atau sama dengan 0,1</strong> → hasil dianggap <strong>belum konsisten</strong>. Ini bukan berarti sistem error — artinya urutan atau nilai perbandingan yang diinput tadi kurang logis secara matematis (misalnya lompatan nilai terlalu ekstrem). Bobot <strong>tidak</strong> dikunci. Halaman otomatis menampilkan panduan perbaikan, lalu klik <strong>"Perbaiki Data Perbandingan"</strong> untuk mengubah nilai yang bermasalah.</li>
+                                    <li><strong>Distribusi bobot terlalu timpang</strong> (ada kriteria dengan bobot di bawah 3%) → bobot <strong>tidak disimpan dan tidak dikunci</strong>, walaupun DFC sudah di bawah 0,1. Sistem menyebutkan kriteria mana yang bobotnya terlalu kecil. Ubah nilai perbandingan agar lebih seimbang, lalu hitung ulang.</li>
                                 </ul>
                             </li>
                         </ol>
@@ -279,6 +158,24 @@
                         <div class="step-hint">
                             <i class="bi bi-info-circle-fill"></i>
                             Klik <strong>"Input Data Responden"</strong> dulu untuk membuka langkah 2 (perhitungan bobot).
+                        </div>
+                    <% } %>
+
+                    <% if (inkonsisten && bolehEdit) { %>
+                        <div class="banner-inkonsisten">
+                            <span>
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                Hasil perhitungan terakhir <strong>belum konsisten</strong> (DFC <%= nilaiDfcTampil %>, batas 0,1).
+                                Perbaiki nilai perbandingan di bawah ini, terutama yang bertanda kuning.
+                            </span>
+                            <span class="aksi">
+                                <button type="button" class="btn-primary" onclick="bukaModalEdit()">
+                                    <i class="bi bi-pencil-fill"></i> Perbaiki Data
+                                </button>
+                                <button type="button" class="btn-secondary" onclick="goStep(2)">
+                                    Lihat penjelasan
+                                </button>
+                            </span>
                         </div>
                     <% } %>
 
@@ -321,10 +218,20 @@
                                     <table class="data-table">
                                         <thead><tr><th>Perbandingan</th><th>Nilai</th></tr></thead>
                                         <tbody>
-                                            <% dataResponden[nama].forEach(function(p) { %>
-                                                <tr>
+                                            <% dataResponden[nama].forEach(function(p) {
+                                                const nilaiBaris = parseFloat(p.nilai_perbandingan);
+                                                const besar = nilaiBaris > AMBANG_BESAR_VIEW;
+                                            %>
+                                                <tr class="<%= besar ? 'baris-besar' : '' %>">
                                                     <td><%= p.nama_kriteria_asal %> vs <%= p.nama_kriteria_pembanding %></td>
-                                                    <td><strong><%= String(parseFloat(p.nilai_perbandingan)).replace('.', ',') %></strong></td>
+                                                    <td>
+                                                        <strong><%= String(nilaiBaris).replace('.', ',') %></strong>
+                                                        <% if (besar) { %>
+                                                            <span class="tag-besar" title="Nilai di atas 4 berisiko membuat hasil tidak konsisten">
+                                                                <i class="bi bi-exclamation-triangle-fill"></i> Cukup besar
+                                                            </span>
+                                                        <% } %>
+                                                    </td>
                                                 </tr>
                                             <% }); %>
                                         </tbody>
@@ -368,19 +275,65 @@
                         <% } else { %>
 
                             <% if (!dfcKonsisten) { %>
-                                <div class="alert alert-danger" style="margin-bottom:15px;">
-                                    <i class="bi bi-exclamation-triangle-fill"></i>
-                                    <strong>Hasil belum konsisten (DFC melebihi ambang batas 0,1).</strong>
-                                    Urutan atau nilai perbandingan kriteria yang diinput perlu ditinjau ulang. Silakan edit atau hapus data responden pada panel di atas dengan urutan/nilai yang lebih moderat, kemudian hitung ulang.
-                                </div>
-                            <% } %>
+                                <!-- ===== PANDUAN PERBAIKAN (tampilan saja) ===== -->
+                                <div class="panduan-inkonsisten">
+                                    <h4><i class="bi bi-compass-fill"></i> Hasil belum konsisten. Apa yang perlu dilakukan sekarang?</h4>
+                                    <p>
+                                        Tenang, ini bukan error sistem. Nilai yang diinput belum cukup selaras secara matematis,
+                                        jadi bobot yang keluar belum boleh dipakai. Data lama Anda <strong>tidak hilang</strong>:
+                                        form edit akan terisi otomatis, tinggal ubah bagian yang bermasalah.
+                                    </p>
 
-                            <%
-                                const bobotTerkecil = Math.min(...bobotFinal.map(b => parseFloat(b.nilai_bobot)));
-                            %>
-                            <% if (bobotTerkecil < 0.03) { %>
-                                <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
-                                    <i class="bi bi-exclamation-triangle-fill"></i> Distribusi bobot sangat timpang, salah satu kriteria memiliki bobot sangat kecil. Pertimbangkan untuk meninjau ulang perbandingan.
+                                    <div class="skor-dfc">
+                                        <div class="kotak">
+                                            <small>Skor DFC Anda</small>
+                                            <strong><%= nilaiDfcTampil %></strong>
+                                        </div>
+                                        <div class="kotak target">
+                                            <small>Syarat konsisten</small>
+                                            <strong>&lt; 0,1</strong>
+                                        </div>
+                                    </div>
+
+                                    <% if (daftarBesar.length > 0) { %>
+                                        <div class="daftar-besar">
+                                            <strong><i class="bi bi-search"></i> Kemungkinan penyebab: nilai perbandingan terlalu besar (di atas 4)</strong>
+                                            <ul>
+                                                <% daftarBesar.forEach(function(d) { %>
+                                                    <li><%= d.label %> bernilai <strong><%= d.nilai %></strong></li>
+                                                <% }); %>
+                                            </ul>
+                                        </div>
+                                    <% } else { %>
+                                        <div class="daftar-besar">
+                                            <strong><i class="bi bi-search"></i> Tidak ada nilai di atas 4.</strong>
+                                            Coba periksa <strong>urutan kriteria</strong> dan pastikan lompatan nilai antar pasangan tidak terlalu berbeda jauh.
+                                        </div>
+                                    <% } %>
+
+                                    <ol class="langkah-perbaikan">
+                                        <li>Klik tombol <strong>"Perbaiki Data Perbandingan"</strong> di bawah.</li>
+                                        <li>Periksa lagi <strong>urutan kriteria</strong> hasil musyawarah (dari paling penting ke paling kurang penting).</li>
+                                        <li>Turunkan nilai yang besar ke kisaran <strong>1 sampai 3</strong>, dan usahakan lompatan antar pasangan tidak terlalu jauh.</li>
+                                        <li>Klik <strong>"Simpan Perubahan"</strong>, lalu klik <strong>"Hitung Bobot FUCOM"</strong> lagi.</li>
+                                    </ol>
+
+                                    <% if (bolehEdit) { %>
+                                        <div class="aksi-perbaikan">
+                                            <button type="button" class="btn-primary" onclick="bukaModalEdit()">
+                                                <i class="bi bi-pencil-fill"></i> Perbaiki Data Perbandingan
+                                            </button>
+                                            <button type="button" class="btn-secondary" onclick="goStep(1)">
+                                                <i class="bi bi-arrow-left"></i> Lihat data saat ini
+                                            </button>
+                                        </div>
+                                    <% } %>
+
+                                    <div class="alasan-tidak-dipakai">
+                                        <i class="bi bi-info-circle-fill"></i>
+                                        Kenapa bobot ini tidak bisa dipakai? Bobot yang tidak konsisten membuat hasil ranking WASPAS
+                                        tidak dapat dipertanggungjawabkan, sehingga menu Data Siswa dan Input Nilai tetap tertutup sampai bobot konsisten.
+                                    </div>
                                 </div>
                             <% } %>
 
@@ -430,7 +383,7 @@
 
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
                     Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>.
-                    Kriteria yang sudah dipilih tidak bisa dipilih lagi di urutan lain.
+                    Kriteria yang sudah dipilih akan otomatis hilang dari pilihan urutan lain.
                 </p>
 
                 <div class="urutan-preview"></div>
@@ -545,21 +498,48 @@
             var submitBtn = form.querySelector('button[type="submit"]');
             var totalIsian = selects.length + groups.length + 1;
 
+            // Daftar lengkap kriteria (master), diambil sekali dari dropdown pertama saat halaman dimuat.
+            var semuaOpsi = Array.prototype.slice.call(selects[0].options)
+                .filter(function (o) { return o.value; })
+                .map(function (o) { return { value: o.value, text: o.textContent }; });
+
             function inputDari(g) { return g.querySelector('.input-skala'); }
             function namaKriteria(sel) { return sel.value ? kriteriaMap[sel.value] : null; }
 
-            function bukaSemuaOpsi() {
-                Array.prototype.forEach.call(form.querySelectorAll('option'), function (o) { o.disabled = false; });
+            // Bangun ulang isi satu dropdown.
+            // Kriteria yang sudah dipilih di dropdown lain (daftar "dikecualikan") DIHAPUS dari pilihan.
+            function bangunOpsi(sel, dikecualikan) {
+                var nilaiSekarang = sel.value;
+                sel.innerHTML = '';
+
+                var placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = '-- Pilih Kriteria --';
+                sel.appendChild(placeholder);
+
+                semuaOpsi.forEach(function (o) {
+                    if (dikecualikan.indexOf(o.value) !== -1) return;
+                    var el = document.createElement('option');
+                    el.value = o.value;
+                    el.textContent = o.text;
+                    sel.appendChild(el);
+                });
+
+                sel.value = nilaiSekarang;
             }
 
-            // Kriteria yang sudah dipilih di urutan lain dinonaktifkan.
+            // Kembalikan semua dropdown ke daftar lengkap (dipakai saat kosongkan / prefill).
+            function bukaSemuaOpsi() {
+                selects.forEach(function (s) { bangunOpsi(s, []); });
+            }
+
+            // Sinkronkan: tiap dropdown hanya menampilkan kriteria yang belum dipakai dropdown lain.
             function sinkronOpsi() {
-                var terpakai = selects.map(function (s) { return s.value; }).filter(Boolean);
                 selects.forEach(function (s) {
-                    Array.prototype.forEach.call(s.options, function (o) {
-                        if (!o.value) return;
-                        o.disabled = (o.value !== s.value) && terpakai.indexOf(o.value) !== -1;
-                    });
+                    var dipakaiLain = selects
+                        .filter(function (x) { return x !== s && x.value; })
+                        .map(function (x) { return x.value; });
+                    bangunOpsi(s, dipakaiLain);
                 });
             }
 
@@ -759,6 +739,8 @@
             }
 
             function isi(data) {
+                // Penting: kembalikan daftar lengkap dulu, baru set nilai,
+                // supaya semua kriteria bisa dipilih sebelum disaring ulang.
                 bukaSemuaOpsi();
                 namaInput.value = data.nama || '';
                 selects.forEach(function (s, i) { s.value = data.urutan[i] || ''; });
@@ -872,6 +854,7 @@
     <!-- ===================== STEPPER (navigasi langkah) ===================== -->
     <script>
         const ADA_DATA = <%- adaData ? 'true' : 'false' %>;
+        const INKONSISTEN = <%- inkonsisten ? 'true' : 'false' %>;
         const JUMLAH_STEP = 2;
         const STEP_KEY = 'fucomStep';
 
@@ -907,10 +890,12 @@
             }
         }
 
-        // Pulihkan langkah terakhir saat halaman dimuat
+        // Pulihkan langkah terakhir saat halaman dimuat.
+        // Jika hasil terakhir inkonsisten, langsung tampilkan Langkah 2 agar panduan perbaikan terlihat.
         (function() {
             let awal = 1;
             try { awal = parseInt(sessionStorage.getItem(STEP_KEY), 10) || 1; } catch (e) {}
+            if (INKONSISTEN) awal = 2;
             goStep(awal, { tanpaScroll: true });
         })();
     </script>

@@ -8,6 +8,10 @@ const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper
 
 const DFC_THRESHOLD = 0.1;
 
+// Bobot terkecil yang masih diterima (3%). Di bawah ini distribusi dianggap terlalu timpang:
+// bobot TIDAK disimpan dan TIDAK dikunci, user diminta memperbaiki nilai perbandingan.
+const BOBOT_MINIMAL = 0.03;
+
 // Skala perbandingan: angka lebih dari 0 sampai 9, maksimal 2 desimal.
 // Contoh valid: 1, 1,5, 2.25, 0,5, 9. Tidak valid: 0, 0,0, 0,00, 10, 9,5, -1, huruf.
 const REGEX_SKALA = /^[0-9]([.,][0-9]{1,2})?$/;
@@ -23,6 +27,11 @@ function normalisasiSkala(raw) {
     if (!Number.isFinite(angka) || angka <= 0 || angka > SKALA_MAKS) return null;
 
     return String(angka);
+}
+
+// Format angka desimal ke gaya Indonesia (koma), contoh 0.0234 -> "2,34%"
+function persenIndo(desimal) {
+    return (parseFloat(desimal) * 100).toFixed(2).replace('.', ',') + '%';
 }
 
 // Helper: cek apakah bobot yang tersimpan sudah final (dihitung DAN konsisten)
@@ -321,7 +330,39 @@ const fucomController = {
                 parseFloat(row.nilai_perbandingan)
             );
 
+            // Hitung di memori dulu. Belum ada yang ditulis ke database.
             const hasil = hitungFUCOM(kriteriaOrder, comparisonValues);
+            const dfc = parseFloat(hasil.dfc);
+            const dfcLolos = dfc < DFC_THRESHOLD;
+
+            // ====== TAHAN JIKA DISTRIBUSI BOBOT TERLALU TIMPANG ======
+            // Hanya dicek kalau DFC sudah lolos. Kalau DFC belum lolos, alur perbaikan inkonsistensi
+            // yang jalan lebih dulu (bobot disimpan agar skor DFC bisa ditampilkan di Langkah 2).
+            // Kalau timpang, bobot TIDAK disimpan sehingga TIDAK terkunci dan data masih bisa diedit.
+            if (dfcLolos) {
+                const terkecil = hasil.bobot.reduce(function (min, b) {
+                    return parseFloat(b.bobot) < parseFloat(min.bobot) ? b : min;
+                }, hasil.bobot[0]);
+
+                if (parseFloat(terkecil.bobot) < BOBOT_MINIMAL) {
+                    const kriteriaTerkecil = kriteriaOrder.find(
+                        k => String(k.id_kriteria) === String(terkecil.id_kriteria)
+                    );
+                    const namaTerkecil = kriteriaTerkecil ? kriteriaTerkecil.nama : 'salah satu kriteria';
+
+                    const pesan =
+                        `Bobot belum disimpan karena distribusinya terlalu timpang: kriteria "${namaTerkecil}" hanya mendapat bobot ` +
+                        `${persenIndo(terkecil.bobot)} (minimal ${persenIndo(BOBOT_MINIMAL)}). ` +
+                        `Klik Edit pada data responden, turunkan nilai perbandingan yang besar agar lebih seimbang, lalu hitung ulang.`;
+
+                    await userModel.logActivity(
+                        req.session.user.id_user,
+                        `Perhitungan bobot FUCOM ditahan karena bobot timpang (${namaTerkecil}: ${persenIndo(terkecil.bobot)}, DFC: ${hasil.dfc})`
+                    );
+
+                    return res.redirect('/admin/fucom?error=' + encodeURIComponent(pesan));
+                }
+            }
 
             await fucomModel.saveBobotFinal(
                 periode.id_periode,
@@ -335,14 +376,16 @@ const fucomController = {
             );
 
             // Pesan berbeda tergantung apakah hasil konsisten atau tidak
-            if (parseFloat(hasil.dfc) < DFC_THRESHOLD) {
+            if (dfcLolos) {
                 res.redirect(`/admin/fucom?success=Bobot kriteria berhasil dihitung dan konsisten. Bobot telah dikunci sebagai bobot final.`);
             } else {
-                res.redirect(`/admin/fucom?error=Bobot berhasil dihitung, namun hasil belum konsisten (DFC di atas ambang batas 0,1). Silakan edit atau hapus data responden dan input ulang.`);
+                const dfcTampil = dfc.toFixed(3).replace('.', ',');
+                const pesan = `Hasil belum konsisten (DFC ${dfcTampil}, syarat di bawah 0,1). Ikuti panduan perbaikan di bawah, lalu hitung ulang.`;
+                res.redirect('/admin/fucom?error=' + encodeURIComponent(pesan));
             }
         } catch (error) {
             console.error(error);
-            res.redirect('/admin/fucom?error=Terjadi kesalahan dalam perhitungan: ' + error.message);
+            res.redirect('/admin/fucom?error=' + encodeURIComponent('Terjadi kesalahan dalam perhitungan: ' + error.message));
         }
     }
 };
