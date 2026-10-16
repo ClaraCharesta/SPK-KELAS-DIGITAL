@@ -20,7 +20,14 @@
 <body>
 <%
     const belumRespon = Number(typeof jumlahBelumRespon !== 'undefined' ? jumlahBelumRespon : 0);
-    const terblokir = !terkunci && belumRespon > 0;
+
+    // Input nilai TIDAK berhubungan dengan FUCOM.
+    // Aktif jika sudah ada data siswa DAN tidak ada lagi siswa yang belum merespons.
+    const adaSiswa = Array.isArray(siswaList) && siswaList.length > 0;
+    const terblokir = !terkunci && (!adaSiswa || belumRespon > 0);
+    const alasanBlokir = !adaSiswa
+        ? 'Nonaktif: belum ada data siswa'
+        : 'Nonaktif: masih ada ' + belumRespon + ' siswa yang belum merespons';
 
     const daftarKriteria = (typeof kriteriaList !== 'undefined' && Array.isArray(kriteriaList)) ? kriteriaList : [];
     const petaNilai = (typeof nilaiMap !== 'undefined' && nilaiMap) ? nilaiMap : {};
@@ -32,7 +39,6 @@
     const labelMinat = { berminat:'Berminat', belum_respon:'Belum merespons', tidak_berminat:'Tidak berminat', tanpa_akun:'Belum ada akun' };
     const kunciMinat = function(s) { return !s.punya_akun ? 'tanpa_akun' : (s.status_minat || 'belum_respon'); };
 
-    // Aksi aktif hanya jika belum final, siswa tidak menolak, dan tidak ada siswa yang belum merespons.
     const bisaIsi = function(s) {
         return !terkunci && !terblokir && s.status_minat !== 'tidak_berminat';
     };
@@ -71,6 +77,7 @@
                     </div>
                     <div id="tutorialNilai" class="tutorial-content">
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
+                            <li>Pastikan <strong>data siswa sudah ada</strong> di menu Data Siswa.</li>
                             <li>Pastikan <strong>tidak ada siswa yang Belum merespons</strong>. Selesaikan di menu Data Siswa (operator dapat mengubah statusnya menjadi Berminat atau Tidak berminat).</li>
                             <li>Klik <strong>Unduh Template</strong>, isi nilai sesuai NISN, lalu <strong>Import Nilai (Excel)</strong>. Atau klik ikon pensil untuk mengisi satu per satu.</li>
                             <li>Siswa yang berstatus <strong>tidak berminat</strong> tidak bisa dinilai dan tidak ikut perankingan.</li>
@@ -84,7 +91,13 @@
                     <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
                         <i class="bi bi-lock-fill"></i> Hasil seleksi sudah difinalisasi. Seluruh nilai terkunci dan hanya bisa dilihat di tabel.
                     </div>
-                <% } else if (terblokir) { %>
+                <% } else if (!adaSiswa) { %>
+                    <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Import nilai dan input nilai dinonaktifkan karena <strong>belum ada data siswa</strong>.
+                        Tambahkan di menu <a href="/admin/siswa" style="font-weight:600;">Data Siswa</a>.
+                    </div>
+                <% } else if (belumRespon > 0) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
                         <i class="bi bi-exclamation-triangle-fill"></i>
                         Import nilai dan input nilai dinonaktifkan karena masih ada
@@ -122,7 +135,7 @@
                                             <% if (bisaIsi(s)) { %>
                                                 <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Lengkapi"><i class="bi bi-pencil-square"></i></a>
                                             <% } else if (terblokir) { %>
-                                                <span class="btn-icon btn-nonaktif" title="Nonaktif: masih ada siswa yang belum merespons"><i class="bi bi-pencil-square"></i></span>
+                                                <span class="btn-icon btn-nonaktif" title="<%= alasanBlokir %>"><i class="bi bi-pencil-square"></i></span>
                                             <% } else { %>
                                                 <span class="teks-kunci"><i class="bi bi-lock-fill"></i> Terkunci</span>
                                             <% } %>
@@ -149,7 +162,7 @@
                                 <% if (terblokir) { %>
                                     <button type="button" class="btn-primary" disabled
                                             style="opacity:.5; cursor:not-allowed;"
-                                            title="Nonaktif: masih ada <%= belumRespon %> siswa yang belum merespons">
+                                            title="<%= alasanBlokir %>">
                                         <i class="bi bi-file-earmark-excel-fill"></i> Import Nilai (Excel)
                                     </button>
                                 <% } else { %>
@@ -213,7 +226,7 @@
                                             <% } else if (s.status_minat === 'tidak_berminat') { %>
                                                 <span style="color:#999; font-size:12px;">Tidak ikut</span>
                                             <% } else if (terblokir) { %>
-                                                <span class="btn-icon btn-nonaktif" title="Nonaktif: masih ada siswa yang belum merespons">
+                                                <span class="btn-icon btn-nonaktif" title="<%= alasanBlokir %>">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </span>
                                             <% } else { %>

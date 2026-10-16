@@ -45,6 +45,11 @@
         .btn-kartu { background:#f3f0ff; border-color:#d9d0ff; color:#5b3fc4; }
         .btn-kartu:hover { background:#e8e2ff; }
 
+        /* Tombol mati */
+        .btn-mati { opacity:.45; cursor:not-allowed !important; pointer-events:none; background:#f1f3f6 !important; border-color:#d9dde4 !important; color:#7b8494 !important; }
+        .btn-off { opacity:.5; cursor:not-allowed !important; }
+        .teks-kunci { color:#8a6d3b; font-size:12px; white-space:nowrap; }
+
         .minat-aksi { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
         .minat-aksi form { margin:0; }
         .btn-minat-ya { background:#e2f8ea; border-color:#b7e6c9; color:#1e8449; }
@@ -92,8 +97,26 @@
     const adaKartu = (Number(R.aktif) + Number(R.nonaktif)) > 0;
     const sudahTerkunci = typeof terkunci !== 'undefined' && Boolean(terkunci);
 
+    // Bobot FUCOM final dan konsisten?
+    const bobotOk = (typeof bobotFinal !== 'undefined') ? Boolean(bobotFinal) : false;
+
+    // SELURUH tombol di halaman Data Siswa mati jika bobot FUCOM belum final.
+    const blokirSiswa = !sudahTerkunci && !bobotOk;
+    const alasanBlokirSiswa = 'Nonaktif: pembobotan FUCOM belum selesai atau belum konsisten';
+
+    // Tombol input nilai TIDAK berhubungan dengan FUCOM.
+    // Aktif jika sudah ada data siswa DAN tidak ada lagi siswa yang belum merespons.
+    const jumlahSiswaTotal = Number(R.total || daftarSiswa.length || 0);
+    const adaSiswa = jumlahSiswaTotal > 0 || daftarSiswa.length > 0;
+    const adaBelumRespon = Number(R.belumKonfirmasi || 0) > 0;
+    const blokirNilai = !sudahTerkunci && (!adaSiswa || adaBelumRespon);
+    const alasanBlokirNilai = !adaSiswa
+        ? 'Nonaktif: belum ada data siswa'
+        : 'Nonaktif: masih ada siswa yang belum merespons';
+
     // Ada minimal satu siswa yang bisa dicentang (punya akun + belum merespons)?
-    const adaYangBisaDicentang = !sudahTerkunci && daftarSiswa.some(function(x) {
+    // Checklist massal ikut mati jika bobot belum final.
+    const adaYangBisaDicentang = !sudahTerkunci && !blokirSiswa && daftarSiswa.some(function(x) {
         return Boolean(x.punya_akun) && (x.status_minat || 'belum_respon') === 'belum_respon';
     });
 %>
@@ -118,9 +141,10 @@
 
                 <div id="tutorialSiswa" class="tutorial-content">
                     <ol class="info-alur" style="padding-left:20px;">
+                        <li><strong>Selesaikan pembobotan FUCOM</strong> (hasil konsisten) lebih dulu. Selama belum selesai, <strong>seluruh tombol</strong> di halaman Data Siswa nonaktif.</li>
                         <li>Unduh template, isi data siswa, lalu <strong>Import Excel</strong> atau gunakan <strong>Tambah Siswa</strong>.</li>
                         <li>Klik <strong>Buat Akun Siswa</strong> satu kali, akun dibuat untuk semua siswa yang belum punya akun.</li>
-                        <li>Cetak kartu (semua atau per siswa) lalu bagikan kepada siswa melalui saluran yang aman.</li>
+                        <li>Cetak kartu (semua atau per siswa) lalu bagikan kepada siswa melalui saluran yang aman. <strong>Kartu hanya bisa dicetak sebelum hasil difinalisasi.</strong></li>
                         <li>Siswa login, mengganti password awal, lalu menjawab minat dan 3 pertanyaan sendiri.</li>
                         <li>
                             Siswa yang masih <strong>Belum merespons</strong> dapat diubah statusnya oleh operator
@@ -133,11 +157,12 @@
                             <strong>Konfirmasi Berminat</strong>. Gunakan filter "Belum merespons" agar pilihan lebih mudah.
                         </li>
                         <li>
-                            Pengisian nilai oleh operator (Input/Edit Nilai dan Import Nilai) baru aktif setelah
-                            <strong>tidak ada lagi siswa yang Belum merespons</strong>.
+                            Pengisian nilai oleh operator (Input/Edit Nilai dan Import Nilai) <strong>tidak berkaitan dengan FUCOM</strong>.
+                            Tombolnya baru aktif setelah <strong>data siswa sudah ada</strong> dan <strong>tidak ada lagi siswa yang Belum merespons</strong>.
                         </li>
                         <li>Nilai dapat diubah selama hasil belum difinalisasi. Setiap perubahan mengosongkan hasil ranking dan perlu dihitung ulang.</li>
-                        <li>Setelah finalisasi, seluruh data terkunci dan siswa hanya melihat pengumuman hasil seleksi.</li>
+                        <li>Setelah finalisasi, seluruh data terkunci, kartu tidak bisa dicetak lagi, dan siswa hanya melihat pengumuman hasil seleksi.</li>
+                        <li>Akun siswa dinonaktifkan otomatis ketika periode seleksinya ditutup (misalnya saat periode baru dibuat).</li>
                     </ol>
                 </div>
             </div>
@@ -171,7 +196,7 @@
                             </ul>
                         <% } %>
 
-                        <% if (akunSiswaFlash.dibuat > 0) { %>
+                        <% if (akunSiswaFlash.dibuat > 0 && !sudahTerkunci && !blokirSiswa) { %>
                             <div style="margin-top:6px;">
                                 <a href="/akun-siswa/kartu" target="_blank" rel="noopener" class="btn-kecil btn-kartu">
                                     <i class="bi bi-printer-fill"></i> Cetak Semua Kartu
@@ -185,8 +210,27 @@
             <% if (sudahTerkunci) { %>
                 <div class="alert" style="background:#fdf1de;color:#b35c00;">
                     <i class="bi bi-lock-fill"></i>
-                    Hasil seleksi sudah difinalisasi. Seluruh data siswa, akun, dan nilai terkunci.
+                    Hasil seleksi sudah difinalisasi. Seluruh data siswa, akun, nilai, dan pencetakan kartu terkunci.
                 </div>
+            <% } else { %>
+                <% if (blokirSiswa) { %>
+                    <div class="alert" style="background:#fdf1de;color:#b35c00;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Seluruh tombol di halaman Data Siswa <strong>dinonaktifkan</strong> karena pembobotan FUCOM belum selesai atau belum konsisten.
+                        Selesaikan di menu <a href="/admin/fucom" style="font-weight:600;">Pembobotan Kriteria</a>.
+                    </div>
+                <% } %>
+                <% if (blokirNilai) { %>
+                    <div class="alert" style="background:#fdf1de;color:#b35c00;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <% if (!adaSiswa) { %>
+                            Input nilai <strong>dinonaktifkan</strong> karena belum ada data siswa.
+                        <% } else { %>
+                            Input nilai <strong>dinonaktifkan</strong> karena masih ada <strong><%= R.belumKonfirmasi %> siswa</strong> yang belum merespons.
+                            Ubah statusnya di tabel di bawah atau tunggu siswa menjawab.
+                        <% } %>
+                    </div>
+                <% } %>
             <% } %>
 
             <!-- Ringkasan -->
@@ -230,17 +274,35 @@
                     </div>
 
                     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <a href="/admin/siswa/template" class="btn-secondary" style="text-decoration:none;display:flex;align-items:center;gap:6px;">
-                            <i class="bi bi-download"></i> Unduh Template
-                        </a>
+                        <% if (blokirSiswa) { %>
+                            <span class="btn-secondary btn-mati" style="text-decoration:none;display:flex;align-items:center;gap:6px;"
+                                  title="<%= alasanBlokirSiswa %>">
+                                <i class="bi bi-download"></i> Unduh Template
+                            </span>
+                        <% } else { %>
+                            <a href="/admin/siswa/template" class="btn-secondary" style="text-decoration:none;display:flex;align-items:center;gap:6px;">
+                                <i class="bi bi-download"></i> Unduh Template
+                            </a>
+                        <% } %>
 
                         <% if (!sudahTerkunci) { %>
-                            <button type="button" class="btn-secondary" onclick="bukaModal('modalImport')">
-                                <i class="bi bi-file-earmark-excel-fill"></i> Import Excel
-                            </button>
-                            <button type="button" class="btn-primary" onclick="bukaModal('modalTambah')">
-                                <i class="bi bi-plus-lg"></i> Tambah Siswa
-                            </button>
+                            <% if (blokirSiswa) { %>
+                                <button type="button" class="btn-secondary btn-off" disabled
+                                        title="<%= alasanBlokirSiswa %>">
+                                    <i class="bi bi-file-earmark-excel-fill"></i> Import Excel
+                                </button>
+                                <button type="button" class="btn-primary btn-off" disabled
+                                        title="<%= alasanBlokirSiswa %>">
+                                    <i class="bi bi-plus-lg"></i> Tambah Siswa
+                                </button>
+                            <% } else { %>
+                                <button type="button" class="btn-secondary" onclick="bukaModal('modalImport')">
+                                    <i class="bi bi-file-earmark-excel-fill"></i> Import Excel
+                                </button>
+                                <button type="button" class="btn-primary" onclick="bukaModal('modalTambah')">
+                                    <i class="bi bi-plus-lg"></i> Tambah Siswa
+                                </button>
+                            <% } %>
                         <% } %>
                     </div>
                 </div>
@@ -266,17 +328,33 @@
                     <span class="spacer"></span>
 
                     <% if (adaKartu) { %>
-                        <a href="/akun-siswa/kartu" target="_blank" rel="noopener" class="btn-kecil btn-kartu" style="padding:9px 12px;">
-                            <i class="bi bi-printer-fill"></i> Cetak Semua Kartu
-                        </a>
+                        <% if (sudahTerkunci) { %>
+                            <span class="btn-kecil btn-kartu btn-mati" style="padding:9px 12px;" title="Kartu tidak dapat dicetak setelah finalisasi">
+                                <i class="bi bi-lock-fill"></i> Cetak Semua Kartu
+                            </span>
+                        <% } else if (blokirSiswa) { %>
+                            <span class="btn-kecil btn-kartu btn-mati" style="padding:9px 12px;" title="<%= alasanBlokirSiswa %>">
+                                <i class="bi bi-printer-fill"></i> Cetak Semua Kartu
+                            </span>
+                        <% } else { %>
+                            <a href="/akun-siswa/kartu" target="_blank" rel="noopener" class="btn-kecil btn-kartu" style="padding:9px 12px;">
+                                <i class="bi bi-printer-fill"></i> Cetak Semua Kartu
+                            </a>
+                        <% } %>
                     <% } %>
 
                     <% if (R.tanpaAkun > 0 && !sudahTerkunci) { %>
-                        <form action="/akun-siswa/generate" method="POST" style="margin:0;" onsubmit="return prosesGenerate(this)">
-                            <button type="submit" class="btn-primary">
+                        <% if (blokirSiswa) { %>
+                            <button type="button" class="btn-primary btn-off" disabled title="<%= alasanBlokirSiswa %>">
                                 <i class="bi bi-person-plus-fill"></i> Buat Akun Siswa (<%= R.tanpaAkun %>)
                             </button>
-                        </form>
+                        <% } else { %>
+                            <form action="/akun-siswa/generate" method="POST" style="margin:0;" onsubmit="return prosesGenerate(this)">
+                                <button type="submit" class="btn-primary">
+                                    <i class="bi bi-person-plus-fill"></i> Buat Akun Siswa (<%= R.tanpaAkun %>)
+                                </button>
+                            </form>
+                        <% } %>
                     <% } else if (R.total > 0) { %>
                         <span class="badge-akun aktif"><i class="bi bi-check-circle-fill"></i> Semua siswa sudah punya akun</span>
                     <% } %>
@@ -353,7 +431,7 @@
                                     data-minat="<%= minat %>">
 
                                     <td class="col-cek">
-                                        <% if (bisaUbahMinat) { %>
+                                        <% if (bisaUbahMinat && !blokirSiswa) { %>
                                             <input type="checkbox" class="cek-siswa" value="<%= s.id_siswa %>"
                                                    aria-label="Pilih <%= s.nama %>">
                                         <% } %>
@@ -384,70 +462,112 @@
                                         <span class="badge-akun <%= kelasMinat %>"><%= labelMinat %></span>
 
                                         <% if (bisaUbahMinat) { %>
-                                            <div class="minat-aksi">
-                                                <form action="/admin/siswa/minat" method="POST"
-                                                      onsubmit="return confirmDelete(this, 'Ubah status minat siswa ini menjadi Berminat? Siswa akan ikut perankingan dan status ini tidak dapat diubah lagi.')">
-                                                    <input type="hidden" name="id_siswa" value="<%= s.id_siswa %>">
-                                                    <input type="hidden" name="status_minat" value="berminat">
-                                                    <button type="submit" class="btn-kecil btn-minat-ya" title="Tandai siswa berminat">
+                                            <% if (blokirSiswa) { %>
+                                                <div class="minat-aksi">
+                                                    <button type="button" class="btn-kecil btn-minat-ya btn-off" disabled title="<%= alasanBlokirSiswa %>">
                                                         <i class="bi bi-check-lg"></i> Berminat
                                                     </button>
-                                                </form>
-
-                                                <form action="/admin/siswa/minat" method="POST"
-                                                      onsubmit="return confirmDelete(this, 'Ubah status minat siswa ini menjadi Tidak berminat? Akun siswa akan dinonaktifkan dan status ini tidak dapat diubah lagi.')">
-                                                    <input type="hidden" name="id_siswa" value="<%= s.id_siswa %>">
-                                                    <input type="hidden" name="status_minat" value="tidak_berminat">
-                                                    <button type="submit" class="btn-kecil btn-minat-tidak" title="Tandai siswa tidak berminat">
+                                                    <button type="button" class="btn-kecil btn-minat-tidak btn-off" disabled title="<%= alasanBlokirSiswa %>">
                                                         <i class="bi bi-x-lg"></i> Tidak
                                                     </button>
-                                                </form>
-                                            </div>
+                                                </div>
+                                            <% } else { %>
+                                                <div class="minat-aksi">
+                                                    <form action="/admin/siswa/minat" method="POST"
+                                                          onsubmit="return confirmDelete(this, 'Ubah status minat siswa ini menjadi Berminat? Siswa akan ikut perankingan dan status ini tidak dapat diubah lagi.')">
+                                                        <input type="hidden" name="id_siswa" value="<%= s.id_siswa %>">
+                                                        <input type="hidden" name="status_minat" value="berminat">
+                                                        <button type="submit" class="btn-kecil btn-minat-ya" title="Tandai siswa berminat">
+                                                            <i class="bi bi-check-lg"></i> Berminat
+                                                        </button>
+                                                    </form>
+
+                                                    <form action="/admin/siswa/minat" method="POST"
+                                                          onsubmit="return confirmDelete(this, 'Ubah status minat siswa ini menjadi Tidak berminat? Akun siswa akan dinonaktifkan dan status ini tidak dapat diubah lagi.')">
+                                                        <input type="hidden" name="id_siswa" value="<%= s.id_siswa %>">
+                                                        <input type="hidden" name="status_minat" value="tidak_berminat">
+                                                        <button type="submit" class="btn-kecil btn-minat-tidak" title="Tandai siswa tidak berminat">
+                                                            <i class="bi bi-x-lg"></i> Tidak
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            <% } %>
                                         <% } else if (!punyaAkun && !sudahTerkunci) { %>
                                             <span class="sub-info">Buat akun dulu untuk mengubah status</span>
                                         <% } %>
                                     </td>
 
                                     <td>
-                                        <% if (bisaNilai) { %>
-                                            <a class="btn-kecil btn-nilai" href="/admin/nilai/<%= s.id_siswa %>" title="Input atau edit nilai siswa">
-                                                <i class="bi bi-pencil-square"></i>
-                                                <%= sudahTerkunci ? 'Lihat' : 'Input/Edit' %>
-                                            </a>
-                                        <% } else { %>
+                                        <% if (!bisaNilai) { %>
                                             <span style="color:#999;font-size:12px;">Tidak ikut</span>
+                                        <% } else if (sudahTerkunci) { %>
+                                            <span class="teks-kunci"><i class="bi bi-lock-fill"></i> Terkunci</span>
+                                        <% } else if (blokirNilai) { %>
+                                            <span class="btn-kecil btn-nilai btn-mati" title="<%= alasanBlokirNilai %>">
+                                                <i class="bi bi-pencil-square"></i> Input/Edit
+                                            </span>
+                                        <% } else { %>
+                                            <a class="btn-kecil btn-nilai" href="/admin/nilai/<%= s.id_siswa %>" title="Input atau edit nilai siswa">
+                                                <i class="bi bi-pencil-square"></i> Input/Edit
+                                            </a>
                                         <% } %>
                                     </td>
 
                                     <td class="action-cell">
                                         <% if (punyaAkun) { %>
-                                            <a class="btn-kecil btn-kartu" href="/akun-siswa/<%= s.id_siswa %>/kartu" target="_blank" rel="noopener" title="Cetak kartu akun">
-                                                <i class="bi bi-printer-fill"></i> Kartu
-                                            </a>
+                                            <% if (sudahTerkunci) { %>
+                                                <span class="btn-kecil btn-kartu btn-mati" title="Kartu tidak dapat dicetak setelah finalisasi">
+                                                    <i class="bi bi-lock-fill"></i> Kartu
+                                                </span>
+                                            <% } else if (blokirSiswa) { %>
+                                                <span class="btn-kecil btn-kartu btn-mati" title="<%= alasanBlokirSiswa %>">
+                                                    <i class="bi bi-printer-fill"></i> Kartu
+                                                </span>
+                                            <% } else { %>
+                                                <a class="btn-kecil btn-kartu" href="/akun-siswa/<%= s.id_siswa %>/kartu" target="_blank" rel="noopener" title="Cetak kartu akun">
+                                                    <i class="bi bi-printer-fill"></i> Kartu
+                                                </a>
+                                            <% } %>
                                         <% } %>
 
                                         <% if (punyaAkun && st === 'aktif' && !sudahTerkunci) { %>
-                                            <form action="/akun-siswa/<%= s.id_siswa %>/reset-password" method="POST"
-                                                  onsubmit="return confirmDelete(this, 'Reset password akun siswa ini? Password lama tidak akan berlaku lagi.')">
-                                                <button type="submit" class="btn-kecil"><i class="bi bi-key-fill"></i> Reset</button>
-                                            </form>
+                                            <% if (blokirSiswa) { %>
+                                                <button type="button" class="btn-kecil btn-off" disabled title="<%= alasanBlokirSiswa %>">
+                                                    <i class="bi bi-key-fill"></i> Reset
+                                                </button>
+                                            <% } else { %>
+                                                <form action="/akun-siswa/<%= s.id_siswa %>/reset-password" method="POST"
+                                                      onsubmit="return confirmDelete(this, 'Reset password akun siswa ini? Password lama tidak akan berlaku lagi.')">
+                                                    <button type="submit" class="btn-kecil"><i class="bi bi-key-fill"></i> Reset</button>
+                                                </form>
+                                            <% } %>
                                         <% } %>
 
                                         <% if (!sudahTerkunci) { %>
-                                            <button type="button" class="btn-icon" title="Edit data siswa"
-                                                    onclick="bukaModalEdit(this)"
-                                                    data-siswa="<%= encodeURIComponent(JSON.stringify(s)) %>">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </button>
+                                            <% if (blokirSiswa) { %>
+                                                <button type="button" class="btn-icon btn-off" disabled title="<%= alasanBlokirSiswa %>">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
 
-                                            <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST"
-                                                  onsubmit="return confirmDelete(this, 'Hapus data siswa ini beserta akun dan nilainya?')">
-                                                <button type="submit" class="btn-icon btn-icon-danger" title="Hapus data siswa">
+                                                <button type="button" class="btn-icon btn-icon-danger btn-off" disabled title="<%= alasanBlokirSiswa %>">
                                                     <i class="bi bi-trash-fill"></i>
                                                 </button>
-                                            </form>
+                                            <% } else { %>
+                                                <button type="button" class="btn-icon" title="Edit data siswa"
+                                                        onclick="bukaModalEdit(this)"
+                                                        data-siswa="<%= encodeURIComponent(JSON.stringify(s)) %>">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+
+                                                <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST"
+                                                      onsubmit="return confirmDelete(this, 'Hapus data siswa ini beserta akun dan nilainya?')">
+                                                    <button type="submit" class="btn-icon btn-icon-danger" title="Hapus data siswa">
+                                                        <i class="bi bi-trash-fill"></i>
+                                                    </button>
+                                                </form>
+                                            <% } %>
                                         <% } else { %>
-                                            <span style="color:#999;font-size:12px;">Terkunci</span>
+                                            <span class="teks-kunci"><i class="bi bi-lock-fill"></i> Terkunci</span>
                                         <% } %>
                                     </td>
                                 </tr>
@@ -466,6 +586,7 @@
     </div>
 </div>
 
+<% if (!blokirSiswa && !sudahTerkunci) { %>
 <!-- Modal Tambah -->
 <div class="modal-overlay" id="modalTambah">
     <div class="modal-box">
@@ -512,6 +633,33 @@
     </div>
 </div>
 
+<!-- Modal Import -->
+<div class="modal-overlay" id="modalImport">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3><i class="bi bi-file-earmark-excel-fill"></i> Import Data dari Excel</h3>
+            <button type="button" class="modal-close" onclick="tutupModal('modalImport')">&times;</button>
+        </div>
+
+        <form action="/admin/siswa/import" method="POST" enctype="multipart/form-data">
+            <p style="font-size:13px;color:#777;margin-bottom:15px;">
+                Pastikan file Excel memiliki kolom NISN, NAMA SISWA, JENIS KELAMIN SISWA, ASAL SEKOLAH,
+                PEKERJAAN AYAH, PEKERJAAN IBU, dan status penerima PIP/PKH sesuai template yang disediakan sistem.
+            </p>
+
+            <label>Pilih File Excel (.xlsx / .xls)</label>
+            <input type="file" name="fileExcel" accept=".xlsx,.xls" required>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="tutupModal('modalImport')">Batal</button>
+                <button type="submit" class="btn-primary">Import Sekarang</button>
+            </div>
+        </form>
+    </div>
+</div>
+<% } %>
+
+<% if (!sudahTerkunci && !blokirSiswa) { %>
 <!-- Modal Edit -->
 <div class="modal-overlay" id="modalEdit">
     <div class="modal-box">
@@ -559,31 +707,7 @@
         </form>
     </div>
 </div>
-
-<!-- Modal Import -->
-<div class="modal-overlay" id="modalImport">
-    <div class="modal-box">
-        <div class="modal-header">
-            <h3><i class="bi bi-file-earmark-excel-fill"></i> Import Data dari Excel</h3>
-            <button type="button" class="modal-close" onclick="tutupModal('modalImport')">&times;</button>
-        </div>
-
-        <form action="/admin/siswa/import" method="POST" enctype="multipart/form-data">
-            <p style="font-size:13px;color:#777;margin-bottom:15px;">
-                Pastikan file Excel memiliki kolom NISN, NAMA SISWA, JENIS KELAMIN SISWA, ASAL SEKOLAH,
-                PEKERJAAN AYAH, PEKERJAAN IBU, dan status penerima PIP/PKH sesuai template yang disediakan sistem.
-            </p>
-
-            <label>Pilih File Excel (.xlsx / .xls)</label>
-            <input type="file" name="fileExcel" accept=".xlsx,.xls" required>
-
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="tutupModal('modalImport')">Batal</button>
-                <button type="submit" class="btn-primary">Import Sekarang</button>
-            </div>
-        </form>
-    </div>
-</div>
+<% } %>
 
 <script>
     // ===== MODAL =====

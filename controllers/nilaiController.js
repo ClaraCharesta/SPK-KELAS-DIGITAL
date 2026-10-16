@@ -10,6 +10,13 @@ const xlsx = require('xlsx');
 const fs = require('fs');
 const { cekTerkunci } = require('../utils/lockHelper');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
+const { cekBobotFinal } = require('../utils/bobotHelper');
+
+// Input nilai TIDAK berhubungan dengan FUCOM.
+// Syaratnya: sudah ada data siswa dan tidak ada siswa yang masih "Belum merespons".
+const PESAN_BELUM_ADA_SISWA =
+    'Input nilai belum dapat dilakukan karena belum ada data siswa. ' +
+    'Tambahkan data siswa terlebih dahulu di menu Data Siswa.';
 
 function hapusFileUpload(req) {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
@@ -27,6 +34,15 @@ function skalaKriteria(nama) {
 async function hitungBelumRespon(id_periode) {
     const ringkasan = await akunSiswaModel.ringkasan(id_periode);
     return Number(ringkasan.belumKonfirmasi || 0);
+}
+
+// Jumlah seluruh siswa pada periode.
+async function hitungTotalSiswa(id_periode) {
+    const [[r]] = await db.query(
+        'SELECT COUNT(*) AS jumlah FROM siswa WHERE id_periode = ?',
+        [id_periode]
+    );
+    return Number((r && r.jumlah) || 0);
 }
 
 function pesanBelumRespon(jumlah) {
@@ -109,6 +125,7 @@ const nilaiController = {
                     kriteriaList: [],
                     nilaiMap: {},
                     terkunci: false,
+                    bobotFinal: false,
                     jumlahBelumRespon: 0,
                     activePage: 'nilai',
                     pageTitle: 'Input Nilai Siswa',
@@ -152,6 +169,7 @@ const nilaiController = {
             });
 
             const terkunci = await cekTerkunci(periode.id_periode);
+            const bobotFinal = await cekBobotFinal(periode.id_periode);
             const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
 
             return res.render('admin/nilai', {
@@ -160,6 +178,7 @@ const nilaiController = {
                 kriteriaList,
                 nilaiMap,
                 terkunci,
+                bobotFinal,
                 jumlahBelumRespon,
                 activePage: 'nilai',
                 pageTitle: 'Input Nilai Siswa',
@@ -197,7 +216,9 @@ const nilaiController = {
             // Dibaca langsung dari database agar nilai selalu tampil, juga setelah finalisasi.
             const kriteriaList = await ambilKriteriaDenganNilai(id_siswa, periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
+            const bobotFinal = await cekBobotFinal(periode.id_periode);
             const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
+            const totalSiswa = await hitungTotalSiswa(periode.id_periode);
 
             const [akunRows] = await db.query(
                 'SELECT status_minat FROM akun_siswa WHERE id_siswa = ? LIMIT 1',
@@ -206,10 +227,12 @@ const nilaiController = {
             const akun = akunRows[0] || null;
             const statusMinat = akun ? akun.status_minat : null;
 
-            // Nilai hanya bisa diisi jika belum final, siswa tidak menolak,
-            // dan tidak ada lagi siswa yang belum merespons.
+            // Nilai hanya bisa diisi jika: belum final, sudah ada data siswa,
+            // siswa tidak menolak, dan tidak ada lagi siswa yang belum merespons.
+            // (Tidak ada hubungannya dengan pembobotan FUCOM.)
             const bolehIsi =
                 !terkunci &&
+                totalSiswa > 0 &&
                 statusMinat !== 'tidak_berminat' &&
                 jumlahBelumRespon === 0;
 
@@ -218,6 +241,7 @@ const nilaiController = {
                 siswa,
                 kriteriaList,
                 terkunci,
+                bobotFinal,
                 statusMinat,
                 jumlahBelumRespon,
                 bolehIsi,
@@ -234,7 +258,7 @@ const nilaiController = {
 
     // =========================================================
     // POST /admin/nilai/:id_siswa/save
-    // Hanya bisa jika tidak ada siswa yang masih "Belum merespons".
+    // Syarat: sudah ada data siswa + tidak ada siswa "Belum merespons".
     // =========================================================
     async saveNilai(req, res) {
         let conn;
@@ -260,16 +284,14 @@ const nilaiController = {
                 return redirectError('Nilai tidak dapat diubah karena hasil seleksi telah difinalisasi.');
             }
 
+            if ((await hitungTotalSiswa(periode.id_periode)) === 0) {
+                return redirectError(PESAN_BELUM_ADA_SISWA);
+            }
+
             const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
 
             if (jumlahBelumRespon > 0) {
                 return redirectError(pesanBelumRespon(jumlahBelumRespon));
-            }
-
-            if (!(await waspasModel.checkBobotTersedia(periode.id_periode))) {
-                return redirectError(
-                    'Belum bisa menginput nilai. Hitung bobot kriteria (FUCOM) terlebih dahulu di menu Pembobotan Kriteria.'
-                );
             }
 
             // Ambil data form.
@@ -490,7 +512,7 @@ const nilaiController = {
 
     // =========================================================
     // POST /admin/nilai/import
-    // Hanya bisa jika tidak ada siswa yang masih "Belum merespons".
+    // Syarat: sudah ada data siswa + tidak ada siswa "Belum merespons".
     // Siswa tidak berminat dilewati.
     // =========================================================
     async importNilai(req, res) {
@@ -514,16 +536,16 @@ const nilaiController = {
                 return kembaliError('Nilai tidak dapat diubah karena hasil seleksi telah difinalisasi.');
             }
 
+            if ((await hitungTotalSiswa(periode.id_periode)) === 0) {
+                hapusFileUpload(req);
+                return kembaliError(PESAN_BELUM_ADA_SISWA);
+            }
+
             const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
 
             if (jumlahBelumRespon > 0) {
                 hapusFileUpload(req);
                 return kembaliError(pesanBelumRespon(jumlahBelumRespon));
-            }
-
-            if (!(await waspasModel.checkBobotTersedia(periode.id_periode))) {
-                hapusFileUpload(req);
-                return kembaliError('Belum bisa mengimpor nilai. Hitung bobot kriteria (FUCOM) terlebih dahulu.');
             }
 
             const kriteriaList = await kriteriaModel.getAll(periode.id_periode);

@@ -10,6 +10,8 @@
 </head>
 <body>
 <%
+    const bobotOk = (typeof bobotFinal !== 'undefined') ? Boolean(bobotFinal) : false;
+
     const formatNilai = function(v) {
         if (v === null || v === undefined || v === '') return null;
         const n = Number(v);
@@ -31,6 +33,12 @@
                 <% } else if (statusMinat === 'tidak_berminat') { %>
                     <div class="alert alert-danger">
                         <i class="bi bi-x-circle-fill"></i> Siswa ini menyatakan tidak berminat mengikuti Kelas Digital. Nilai tidak dapat diisi.
+                    </div>
+                <% } else if (!bobotOk) { %>
+                    <div class="alert" style="background:#fdf1de; color:#b35c00;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Input nilai dinonaktifkan karena <strong>pembobotan FUCOM belum selesai atau belum konsisten</strong>.
+                        Selesaikan di menu <a href="/admin/fucom" style="font-weight:600;">Pembobotan Kriteria</a>.
                     </div>
                 <% } else if (jumlahBelumRespon > 0) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00;">
@@ -140,6 +148,12 @@
                             <% if (bolehIsi) { %>
                                 <div class="modal-footer" style="margin-top:20px;">
                                     <button type="submit" class="btn-primary"><i class="bi bi-save-fill"></i> Simpan Semua Nilai</button>
+                                </div>
+                            <% } else { %>
+                                <div class="modal-footer" style="margin-top:20px;">
+                                    <button type="button" class="btn-primary" disabled style="opacity:.5; cursor:not-allowed;">
+                                        <i class="bi bi-lock-fill"></i> Simpan Semua Nilai
+                                    </button>
                                 </div>
                             <% } %>
                         </form>
