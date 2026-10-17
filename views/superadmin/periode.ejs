@@ -20,6 +20,17 @@
         }
         .ta-field input::placeholder { color: #c3cad8; letter-spacing: 5px; font-weight: 400; }
         .ta-slash { font-size: 28px; color: #9aa5b8; font-weight: 300; line-height: 1; user-select: none; }
+        .ta-bantuan { font-size: 12px; color: #6b7685; margin-top: 6px; }
+        .ta-bantuan strong { color: #1d4ed8; }
+        /* badge kedaluwarsa */
+        .badge-orange { background: #fdf1de; color: #b35c00; }
+        /* teks bantuan aturan tanggal */
+        .tgl-bantuan { font-size: 12px; color: #6b7685; margin-top: 4px; }
+        /* tombol aksi terkunci (abu-abu, tidak bisa diklik) */
+        .btn-icon.terkunci, .btn-icon:disabled {
+            opacity: .35; cursor: not-allowed; pointer-events: none;
+        }
+        .aksi-wrap { display: inline-block; }
     </style>
 </head>
 <body>
@@ -30,6 +41,9 @@
         const [y, m, d] = iso.split('T')[0].split('-');
         return `${d}/${m}/${y}`;
     }
+
+    const saranTahun = (typeof tahunSaran !== 'undefined' && tahunSaran) ? tahunSaran : '';
+    const terakhirTahun = (typeof tahunTerakhir !== 'undefined' && tahunTerakhir) ? tahunTerakhir : '';
     %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
@@ -42,13 +56,19 @@
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
+                <% if (typeof periodeKedaluwarsa !== 'undefined' && periodeKedaluwarsa) { %>
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Periode <strong><%= periodeKedaluwarsa.tahun_ajaran %></strong> sudah kedaluwarsa. Klik tombol Perpanjang untuk mengubah tanggal dan mengaktifkannya kembali.
+                    </div>
+                <% } %>
                 <div class="panel">
                     <div class="panel-header-row">
                         <div class="panel-header">
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-calendar-range"></i></div>
                             <h3>Daftar Periode Seleksi</h3>
                         </div>
-                        <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
+                        <button class="btn-primary" onclick="bukaModalTambah()">
                             <i class="bi bi-plus-lg"></i> Buka Periode Baru
                         </button>
                     </div>
@@ -74,35 +94,69 @@
                                     <td><%= p.tanggal_mulai ? formatTgl(p.tanggal_mulai) : '-' %></td>
                                     <td><%= p.tanggal_selesai ? formatTgl(p.tanggal_selesai) : '-' %></td>
                                     <td>
-    <span class="badge <%= p.display_status.badgeClass %>">
-        <%= p.display_status.label %>
-    </span>
+                                        <span class="badge <%= p.display_status.badgeClass %>">
+                                            <%= p.display_status.label %>
+                                        </span>
+                                    </td>
                                     <td class="action-cell">
-    <% if (p.id_periode === latestId && p.status_penyelesaian !== 'selesai' && !p.bobot_final) { %>
-        <button class="btn-icon" title="Edit Periode" onclick='bukaModalEdit(<%- JSON.stringify(p) %>)'>
-            <i class="bi bi-pencil-square"></i>
-        </button>
-        <form action="/superadmin/periode/delete/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Menghapus periode ini akan menghapus SELURUH data terkait (siswa, nilai, kriteria, bobot FUCOM, dan hasil perankingan) secara permanen. Tindakan ini tidak dapat dibatalkan. Lanjutkan?');">
-            <button type="submit" class="btn-icon btn-icon-danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
-        </form>
-    <% } else if (p.id_periode === latestId && p.status_penyelesaian !== 'selesai' && p.bobot_final) { %>
-        <span style="color:#999; font-size:12px;" title="Pembobotan FUCOM sudah final, periode tidak dapat diedit atau dihapus."><i class="bi bi-lock-fill"></i> Terkunci</span>
-    <% } %>
+                                        <%
+                                            const isLatest = p.id_periode === latestId;
+                                            const selesai = p.status_penyelesaian === 'selesai';
 
-    <% if (p.status_periode === 'aktif') { %>
-        <form action="/superadmin/periode/tutup/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Tutup periode ini sekarang? Anda perlu mengaktifkan periode baru untuk melanjutkan proses seleksi berikutnya.');">
-            <button type="submit" class="btn-icon" title="Tutup Periode"><i class="bi bi-lock-fill"></i></button>
-        </form>
-    <% } else { %>
-        <form action="/superadmin/periode/set-active/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Aktifkan periode ini?');">
-            <button type="submit" class="btn-icon" title="Aktifkan"><i class="bi bi-toggle-off"></i></button>
-        </form>
-    <% } %>
+                                            // Alasan Edit/Hapus terkunci (null = boleh)
+                                            let alasanKunci = null;
+                                            if (p.kedaluwarsa) {
+                                                alasanKunci = 'Periode kedaluwarsa. Gunakan tombol Perpanjang untuk mengubah tanggal.';
+                                            } else if (!isLatest) {
+                                                alasanKunci = 'Hanya periode terbaru yang dapat diedit atau dihapus.';
+                                            } else if (selesai) {
+                                                alasanKunci = 'Hasil seleksi sudah difinalisasi.';
+                                            } else if (p.bobot_final) {
+                                                alasanKunci = 'Pembobotan FUCOM sudah final, periode tidak dapat diedit atau dihapus.';
+                                            }
+                                        %>
 
-    <% if (p.status_penyelesaian === 'selesai') { %>
-        <span class="badge badge-lulus" style="margin-left:4px;">Selesai</span>
-    <% } %>
-</td>
+                                        <% if (!alasanKunci) { %>
+                                            <button class="btn-icon" title="Edit Periode" onclick='bukaModalEdit(<%- JSON.stringify(p) %>)'>
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <form action="/superadmin/periode/delete/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Menghapus periode ini akan menghapus SELURUH data terkait (siswa, nilai, kriteria, bobot FUCOM, dan hasil perankingan) secara permanen. Tindakan ini tidak dapat dibatalkan. Lanjutkan?');">
+                                                <button type="submit" class="btn-icon btn-icon-danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
+                                            </form>
+                                        <% } else { %>
+                                            <span class="aksi-wrap" title="<%= alasanKunci %>">
+                                                <button type="button" class="btn-icon terkunci" disabled><i class="bi bi-pencil-square"></i></button>
+                                            </span>
+                                            <span class="aksi-wrap" title="<%= alasanKunci %>">
+                                                <button type="button" class="btn-icon btn-icon-danger terkunci" disabled><i class="bi bi-trash-fill"></i></button>
+                                            </span>
+                                        <% } %>
+
+                                        <% if (p.kedaluwarsa && p.bisa_perpanjang) { %>
+                                            <%# Periode terbaru yang kedaluwarsa: tombol Aktifkan diganti Perpanjang %>
+                                            <button type="button" class="btn-icon" title="Perpanjang / Ubah Tanggal Periode" onclick='bukaModalPerpanjang(<%- JSON.stringify(p) %>)'>
+                                                <i class="bi bi-calendar-plus"></i>
+                                            </button>
+                                        <% } else if (p.kedaluwarsa) { %>
+                                            <%# Periode lama yang kedaluwarsa: tombol mati + label Arsip %>
+                                            <span class="aksi-wrap" title="Periode ini sudah kedaluwarsa dan bukan periode terbaru, sehingga tidak dapat diaktifkan kembali.">
+                                                <button type="button" class="btn-icon terkunci" disabled><i class="bi bi-toggle-off"></i></button>
+                                            </span>
+                                            <span style="color:#999; font-size:12px;"><i class="bi bi-archive-fill"></i> Arsip</span>
+                                        <% } else if (p.status_periode === 'aktif') { %>
+                                            <form action="/superadmin/periode/tutup/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Tutup periode ini sekarang? Akun siswa pada periode ini akan dinonaktifkan. Anda perlu mengaktifkan periode baru untuk melanjutkan proses seleksi berikutnya.');">
+                                                <button type="submit" class="btn-icon" title="Tutup Periode"><i class="bi bi-lock-fill"></i></button>
+                                            </form>
+                                        <% } else { %>
+                                            <form action="/superadmin/periode/set-active/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Aktifkan periode ini?');">
+                                                <button type="submit" class="btn-icon" title="Aktifkan"><i class="bi bi-toggle-off"></i></button>
+                                            </form>
+                                        <% } %>
+
+                                        <% if (selesai) { %>
+                                            <span class="badge badge-lulus" style="margin-left:4px;">Selesai</span>
+                                        <% } %>
+                                    </td>
                                 </tr>
                             <% }); %>
                         </tbody>
@@ -121,7 +175,7 @@
             </div>
             <form action="/superadmin/periode/create" method="POST" onsubmit="return handleTambahSubmit(this)">
                 <p style="font-size:13px; color:#e67e22; margin-bottom:15px; background:#fdf1de; padding:10px; border-radius:8px;">
-                    <i class="bi bi-info-circle-fill"></i> Membuat periode baru akan otomatis menutup periode yang sedang aktif.
+                    <i class="bi bi-info-circle-fill"></i> Membuat periode baru akan otomatis menutup periode yang sedang aktif dan menonaktifkan akun siswa pada periode tersebut.
                 </p>
                 <label>Tahun Ajaran</label>
                 <input type="hidden" name="tahun_ajaran" id="tahun_ajaran_tambah">
@@ -130,13 +184,19 @@
                     <span class="ta-slash">/</span>
                     <input type="text" id="ta_akhir_tambah" inputmode="numeric" maxlength="4" placeholder="____" autocomplete="off" aria-label="Tahun akhir">
                 </div>
+                <% if (terakhirTahun) { %>
+                    <p class="ta-bantuan">Periode terakhir: <strong><%= terakhirTahun %></strong>. Tahun ajaran baru harus lebih baru dari ini.</p>
+                <% } %>
                 <p id="peringatan_tahun_tambah" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;">Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.</p>
                 <label>Kuota Kelas Digital (Minimal 30)</label>
                 <input type="number" name="kuota_kelas_digital" min="30" required placeholder="Minimal 30">
                 <label>Tanggal Mulai</label>
-                <input type="date" name="tanggal_mulai">
+                <input type="date" name="tanggal_mulai" id="tambah_tgl_mulai">
+                <p class="tgl-bantuan">Minimal hari ini.</p>
                 <label>Tanggal Selesai</label>
-                <input type="date" name="tanggal_selesai">
+                <input type="date" name="tanggal_selesai" id="tambah_tgl_selesai">
+                <p class="tgl-bantuan">Minimal 7 hari dari hari ini.</p>
+                <p id="peringatan_tanggal_tambah" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Buka Periode</button>
@@ -165,8 +225,11 @@
                 <input type="number" name="kuota_kelas_digital" id="edit_kuota" min="30" required>
                 <label>Tanggal Mulai</label>
                 <input type="date" name="tanggal_mulai" id="edit_tgl_mulai">
+                <p class="tgl-bantuan">Jika diubah, minimal hari ini.</p>
                 <label>Tanggal Selesai</label>
                 <input type="date" name="tanggal_selesai" id="edit_tgl_selesai">
+                <p class="tgl-bantuan">Jika diubah, minimal 7 hari dari hari ini.</p>
+                <p id="peringatan_tanggal_edit" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -174,14 +237,48 @@
             </form>
         </div>
     </div>
+    <!-- Modal Perpanjang Periode Kedaluwarsa -->
+    <div class="modal-overlay" id="modalPerpanjang">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="bi bi-calendar-plus"></i> Perpanjang Periode Seleksi</h3>
+                <button class="modal-close" onclick="document.getElementById('modalPerpanjang').style.display='none'">&times;</button>
+            </div>
+            <form action="/superadmin/periode/perpanjang" method="POST" onsubmit="return handlePerpanjangSubmit(this)">
+                <input type="hidden" name="id_periode" id="perpanjang_id_periode">
+                <p style="font-size:13px; color:#b35c00; margin-bottom:15px; background:#fdf1de; padding:10px; border-radius:8px;">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    Anda harus mengubah tanggal rentang karena tanggal periode ini telah kedaluwarsa.
+                    Setelah disimpan, periode otomatis diaktifkan kembali beserta akun siswanya.
+                    Data siswa, nilai, bobot FUCOM, dan hasil ranking tidak berubah.
+                </p>
+                <label>Tahun Ajaran</label>
+                <p style="font-size:18px; font-weight:600; color:#0b2545; margin: 4px 0 12px;" id="perpanjang_tahun_label">-</p>
+                <label>Tanggal Mulai</label>
+                <input type="date" name="tanggal_mulai" id="perpanjang_tgl_mulai">
+                <p class="tgl-bantuan">Jika diubah, minimal hari ini.</p>
+                <label>Tanggal Selesai Baru</label>
+                <input type="date" name="tanggal_selesai" id="perpanjang_tgl_selesai" required>
+                <p class="tgl-bantuan">Minimal 7 hari dari hari ini.</p>
+                <p id="peringatan_perpanjang" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalPerpanjang').style.display='none'">Batal</button>
+                    <button type="submit" class="btn-primary">Perpanjang &amp; Aktifkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
  <script>
-    function bukaModalEdit(p) {
-        document.getElementById('edit_id_periode').value = p.id_periode;
-        tahunFields.edit.set(p.tahun_ajaran);
-        document.getElementById('edit_kuota').value = p.kuota_kelas_digital;
-        document.getElementById('edit_tgl_mulai').value = p.tanggal_mulai || '';
-        document.getElementById('edit_tgl_selesai').value = p.tanggal_selesai || '';
-        document.getElementById('modalEdit').style.display = 'flex';
+    // Data dari server: tahun awal periode terbesar (null jika belum ada periode).
+    const TAHUN_SARAN = <%- JSON.stringify(saranTahun) %>;
+    const TAHUN_TERAKHIR = <%- JSON.stringify(terakhirTahun) %>;
+
+    // Jarak minimal (hari) antara hari ini dan tanggal selesai. Harus sama dengan di controller.
+    const MIN_JARAK_HARI_SELESAI = 7;
+
+    function tahunAwalDari(teks) {
+        const m = String(teks || '').match(/^(\d{4})\/(\d{4})$/);
+        return m ? Number(m[1]) : null;
     }
 
     function getTodayStr() {
@@ -192,10 +289,119 @@
         return `${y}-${m}-${day}`;
     }
 
+    // Tambah n hari ke string 'YYYY-MM-DD'
+    function tambahHariStr(str, n) {
+        const [y, m, d] = str.split('-').map(Number);
+        const dt = new Date(y, m - 1, d + n);
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    }
+
     function formatTanggalIndo(str) {
         const [y, m, d] = str.split('-');
         const bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
         return `${parseInt(d)} ${bulan[parseInt(m) - 1]} ${y}`;
+    }
+
+    // Validasi rentang tanggal di sisi browser. Mengembalikan pesan error atau null.
+    // mulaiLama/selesaiLama: tanggal yang tidak diubah tidak divalidasi ulang (dipakai saat edit/perpanjang).
+    function validasiTanggal(mulai, selesai, mulaiLama, selesaiLama) {
+        const today = getTodayStr();
+        const minSelesai = tambahHariStr(today, MIN_JARAK_HARI_SELESAI);
+        const mulaiBerubah = (mulai || '') !== (mulaiLama || '');
+        const selesaiBerubah = (selesai || '') !== (selesaiLama || '');
+
+        if (mulai && mulaiBerubah && mulai < today) {
+            return 'Tanggal mulai tidak boleh sebelum hari ini (' + formatTanggalIndo(today) + ').';
+        }
+        if (selesai && selesaiBerubah && selesai < minSelesai) {
+            return 'Tanggal selesai minimal ' + MIN_JARAK_HARI_SELESAI + ' hari dari hari ini, yaitu ' + formatTanggalIndo(minSelesai) + ' atau setelahnya.';
+        }
+        if (mulai && selesai && selesai < mulai) {
+            return 'Tanggal selesai tidak boleh sebelum tanggal mulai.';
+        }
+        return null;
+    }
+
+    function tampilPeringatan(idElemen, pesan) {
+        const el = document.getElementById(idElemen);
+        if (!el) return;
+        if (pesan) {
+            el.textContent = pesan;
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'none';
+        }
+    }
+
+    function bukaModalTambah() {
+        // Isi otomatis dengan tahun ajaran berikutnya (bisa diubah operator).
+        if (TAHUN_SARAN) tahunFields.tambah.set(TAHUN_SARAN);
+
+        // Batas minimal pemilih tanggal + bersihkan peringatan lama
+        const today = getTodayStr();
+        document.getElementById('tambah_tgl_mulai').min = today;
+        document.getElementById('tambah_tgl_selesai').min = tambahHariStr(today, MIN_JARAK_HARI_SELESAI);
+        tampilPeringatan('peringatan_tanggal_tambah', null);
+
+        document.getElementById('modalTambah').style.display = 'flex';
+    }
+
+    function bukaModalEdit(p) {
+        document.getElementById('edit_id_periode').value = p.id_periode;
+        tahunFields.edit.set(p.tahun_ajaran);
+        document.getElementById('edit_kuota').value = p.kuota_kelas_digital;
+        document.getElementById('edit_tgl_mulai').value = p.tanggal_mulai || '';
+        document.getElementById('edit_tgl_selesai').value = p.tanggal_selesai || '';
+
+        // Simpan nilai awal supaya validasi hanya berlaku untuk tanggal yang diubah
+        document.getElementById('edit_tgl_mulai').dataset.awal = document.getElementById('edit_tgl_mulai').value;
+        document.getElementById('edit_tgl_selesai').dataset.awal = document.getElementById('edit_tgl_selesai').value;
+        tampilPeringatan('peringatan_tanggal_edit', null);
+
+        document.getElementById('modalEdit').style.display = 'flex';
+    }
+
+    // ==== MODAL PERPANJANG PERIODE KEDALUWARSA ====
+    function bukaModalPerpanjang(p) {
+        const today = getTodayStr();
+        document.getElementById('perpanjang_id_periode').value = p.id_periode;
+        document.getElementById('perpanjang_tahun_label').textContent = p.tahun_ajaran;
+
+        const inputMulai = document.getElementById('perpanjang_tgl_mulai');
+        inputMulai.value = p.tanggal_mulai ? String(p.tanggal_mulai).split('T')[0] : '';
+        inputMulai.dataset.awal = inputMulai.value; // tanggal mulai lama boleh dibiarkan
+
+        const inputSelesai = document.getElementById('perpanjang_tgl_selesai');
+        inputSelesai.value = '';                                         // dikosongkan supaya admin wajib memilih tanggal baru
+        inputSelesai.min = tambahHariStr(today, MIN_JARAK_HARI_SELESAI); // minimal 7 hari dari hari ini
+
+        document.getElementById('peringatan_perpanjang').style.display = 'none';
+        document.getElementById('modalPerpanjang').style.display = 'flex';
+    }
+
+    function handlePerpanjangSubmit(form) {
+        const warn = document.getElementById('peringatan_perpanjang');
+        const mulai = form.tanggal_mulai.value;
+        const selesai = form.tanggal_selesai.value;
+
+        function tampilkan(pesan) {
+            warn.textContent = pesan;
+            warn.style.display = 'block';
+            return false;
+        }
+
+        if (!selesai) {
+            return tampilkan('Tanggal selesai baru wajib diisi.');
+        }
+
+        // Tanggal selesai selalu divalidasi (selesaiLama = null), tanggal mulai hanya jika diubah
+        const pesan = validasiTanggal(mulai, selesai, form.tanggal_mulai.dataset.awal || '', null);
+        if (pesan) {
+            return tampilkan(pesan);
+        }
+
+        warn.style.display = 'none';
+        return true;
     }
 
     // ==== VALIDASI FORMAT TAHUN AJARAN (STRICT) ====
@@ -214,6 +420,7 @@
         const field = document.getElementById('ta_field_' + prefix);
         const hidden = document.getElementById(prefix === 'tambah' ? 'tahun_ajaran_tambah' : 'edit_tahun_ajaran');
         const warn = document.getElementById('peringatan_tahun_' + prefix);
+        const teksAwal = warn.textContent;
 
         function sync() {
             hidden.value = (awal.value || akhir.value) ? (awal.value + '/' + akhir.value) : '';
@@ -222,6 +429,7 @@
         function reset() {
             field.classList.remove('tidak-valid');
             warn.style.display = 'none';
+            warn.textContent = teksAwal;
         }
 
         function bersihkan(input) {
@@ -268,8 +476,9 @@
                 akhir.value = (parts[1] || '').replace(/\D/g, '').slice(0, 4);
                 sync(); reset();
             },
-            tandaiSalah: function() {
+            tandaiSalah: function(pesan) {
                 field.classList.add('tidak-valid');
+                if (pesan) warn.textContent = pesan;
                 warn.style.display = 'block';
                 awal.focus();
             }
@@ -284,10 +493,30 @@
     function handleTambahSubmit(form) {
         tahunFields.tambah.sync();
         const tahunVal = form.tahun_ajaran.value.trim();
+
         if (!isTahunAjaranValid(tahunVal)) {
-            tahunFields.tambah.tandaiSalah();
+            tahunFields.tambah.tandaiSalah('Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.');
             return false;
         }
+
+        // Tahun ajaran baru harus lebih baru dari periode terakhir.
+        const awalBaru = tahunAwalDari(tahunVal);
+        const awalTerakhir = tahunAwalDari(TAHUN_TERAKHIR);
+
+        if (awalTerakhir !== null && awalBaru <= awalTerakhir) {
+            tahunFields.tambah.tandaiSalah(
+                'Tahun ajaran harus lebih baru dari periode terakhir (' + TAHUN_TERAKHIR + '). Gunakan ' + TAHUN_SARAN + ' atau yang lebih besar.'
+            );
+            return false;
+        }
+
+        // Validasi rentang tanggal: mulai minimal hari ini, selesai minimal 7 hari dari hari ini
+        const pesanTanggal = validasiTanggal(form.tanggal_mulai.value, form.tanggal_selesai.value, '', '');
+        if (pesanTanggal) {
+            tampilPeringatan('peringatan_tanggal_tambah', pesanTanggal);
+            return false;
+        }
+        tampilPeringatan('peringatan_tanggal_tambah', null);
 
         const tanggalMulai = form.tanggal_mulai.value;
         if (tanggalMulai) {
@@ -305,9 +534,23 @@
         tahunFields.edit.sync();
         const tahunVal = form.tahun_ajaran.value.trim();
         if (!isTahunAjaranValid(tahunVal)) {
-            tahunFields.edit.tandaiSalah();
+            tahunFields.edit.tandaiSalah('Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.');
             return false;
         }
+
+        // Validasi rentang tanggal; tanggal yang tidak diubah tidak divalidasi ulang
+        const pesanTanggal = validasiTanggal(
+            form.tanggal_mulai.value,
+            form.tanggal_selesai.value,
+            form.tanggal_mulai.dataset.awal || '',
+            form.tanggal_selesai.dataset.awal || ''
+        );
+        if (pesanTanggal) {
+            tampilPeringatan('peringatan_tanggal_edit', pesanTanggal);
+            return false;
+        }
+        tampilPeringatan('peringatan_tanggal_edit', null);
+
         return true;
     }
 </script>

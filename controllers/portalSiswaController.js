@@ -45,15 +45,6 @@ const PERTANYAAN = [
     }
 ];
 
-const LABEL_TAHAP = {
-    minat: 'Belum menjawab minat',
-    menunggu: 'Menunggu pengumuman',
-    diterima: 'Diterima di Kelas Digital',
-    belum_lolos: 'Belum lolos seleksi',
-    tidak_ikut: 'Tidak mengikuti seleksi',
-    periode_tutup: 'Periode ditutup tanpa respons'
-};
-
 const PESAN_ERROR_SIMPAN = {
     SISWA_TIDAK_DITEMUKAN: 'Data siswa tidak ditemukan.',
     PERIODE_TERKUNCI: 'Periode seleksi sudah ditutup atau difinalisasi. Jawaban tidak dapat diubah.',
@@ -131,9 +122,14 @@ function ambilFlash(req) {
     return flash;
 }
 
-// Selalu ambil data segar dari database.
+// Selalu ambil data segar dari database (tanpa hash password).
 async function ambilDetail(req) {
-    return akunSiswaModel.findDetailByIdSiswa(req.akunSiswa.id_siswa);
+    const detail = await akunSiswaModel.findDetailByIdSiswa(req.akunSiswa.id_siswa);
+
+    if (!detail) return null;
+
+    const { password, ...aman } = detail;
+    return aman;
 }
 
 // Halaman form tidak boleh disimpan di cache browser (supaya tombol back/forward tidak menampilkan halaman lama).
@@ -383,30 +379,36 @@ const portalSiswaController = {
         }
     },
 
-    // GET /siswa/profil
-    async profil(req, res) {
-        const d = await ambilDetail(req);
-        const flash = ambilFlash(req);
-
-        return res.render('siswa/profil', {
-            pageTitle: 'Profil Saya',
-            tahapLabel: LABEL_TAHAP[tentukanTahap(d || req.akunSiswa)] || '-',
-            success: flash.success,
-            error: flash.error
-        });
-    },
-
     // GET /siswa/ganti-password
-    tampilGantiPassword(req, res) {
-        const d = req.akunSiswa;
-        const flash = ambilFlash(req);
+    // Hanya untuk alur wajib ganti password (login pertama / setelah reset operator).
+    async tampilGantiPassword(req, res) {
+        try {
+            const d = await ambilDetail(req);
 
-        return res.render('siswa/ganti-password', {
-            pageTitle: 'Ganti Password',
-            wajib: !!d.wajib_ganti_password,
-            success: flash.success,
-            error: flash.error
-        });
+            if (!d) {
+                return req.session.destroy(() => res.redirect('/login'));
+            }
+
+            // Tidak sedang wajib ganti password: halaman ini tidak tersedia.
+            if (!d.wajib_ganti_password) {
+                return res.redirect('/siswa');
+            }
+
+            const flash = ambilFlash(req);
+
+            matikanCache(res);
+
+            return res.render('siswa/ganti-password', {
+                pageTitle: 'Ganti Password',
+                siswa: d,
+                wajib: true,
+                success: flash.success,
+                error: flash.error
+            });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).send('Terjadi kesalahan.');
+        }
     },
 
     // POST /siswa/ganti-password
@@ -415,6 +417,13 @@ const portalSiswaController = {
             const d = req.akunSiswa;
             const { password_lama, password_baru, konfirmasi_password } = req.body;
             const kembali = '/siswa/ganti-password';
+
+            // Ganti password mandiri tidak disediakan. Hanya alur wajib yang diizinkan.
+            // Jika lupa password, siswa meminta reset ke operator.
+            if (!d || !d.wajib_ganti_password) {
+                setFlash(req, 'error', 'Ganti password mandiri tidak tersedia. Hubungi operator jika perlu mereset akun.');
+                return res.redirect('/siswa');
+            }
 
             if (!password_lama || !password_baru || !konfirmasi_password) {
                 setFlash(req, 'error', 'Semua kolom wajib diisi.');
@@ -452,7 +461,7 @@ const portalSiswaController = {
             await akunSiswaModel.updatePasswordSendiri(d.id_akun_siswa, hash);
 
             setFlash(req, 'success', 'Password berhasil diganti.');
-            return res.redirect(d.wajib_ganti_password ? '/siswa' : '/siswa/profil');
+            return res.redirect('/siswa');
         } catch (error) {
             console.error(error);
             setFlash(req, 'error', 'Terjadi kesalahan sistem saat mengganti password.');

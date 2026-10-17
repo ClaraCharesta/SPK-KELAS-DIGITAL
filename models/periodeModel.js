@@ -136,6 +136,30 @@ const periodeModel = {
             [id_periode]
         );
         return hasil.affectedRows;
+    },
+        // Tahun awal terbesar dari semua periode (mis. 2026 untuk "2026/2027"). null jika belum ada.
+    // Jika excludeId diisi, periode itu diabaikan (dipakai saat Edit).
+    async getTahunAwalTerbesar(excludeId = null) {
+        let query = 'SELECT tahun_ajaran FROM periode_seleksi';
+        const params = [];
+
+        if (excludeId) {
+            query += ' WHERE id_periode != ?';
+            params.push(excludeId);
+        }
+
+        const [rows] = await db.query(query, params);
+
+        let maks = null;
+
+        rows.forEach(r => {
+            const m = String(r.tahun_ajaran || '').match(/^(\d{4})\/(\d{4})$/);
+            if (!m) return;
+            const awal = Number(m[1]);
+            if (maks === null || awal > maks) maks = awal;
+        });
+
+        return maks;
     }
 };
 

@@ -93,6 +93,8 @@ app.use('/superadmin', superadminRoutes);
 app.use('/admin', adminRoutes);
 app.use('/kepsek', kepsekRoutes);
 app.use('/', profileRoutes);
+const pengingatService = require('./services/pengingatService');
+pengingatService.mulaiJadwal();
 
 const PORT = process.env.PORT || 3000;
 

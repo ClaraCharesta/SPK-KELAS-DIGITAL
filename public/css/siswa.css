@@ -171,19 +171,7 @@
 }
 .s-scale-text { font-size: 14px; }
 
-/* ----- Profil ----- */
-.s-profile-cover {
-    display: flex; align-items: center; gap: 18px;
-    background: linear-gradient(135deg, #1d5fd6, #4f8bf0);
-    color: #fff; padding: 26px; border-radius: 14px; margin-bottom: 16px;
-}
-.s-profile-avatar {
-    width: 76px; height: 76px; border-radius: 50%; background: rgba(255, 255, 255, 0.2);
-    display: flex; align-items: center; justify-content: center; font-size: 38px;
-}
-.s-profile-text h2 { margin: 0 0 6px; font-size: 22px; }
-.s-badge { background: rgba(255, 255, 255, 0.25); padding: 4px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
-.s-profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+/* ----- Panel header (dipakai halaman ganti password) ----- */
 .s-panel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .s-panel-header h3 { margin: 0; }
 
@@ -326,7 +314,6 @@
 @keyframes s-naik { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 @media (max-width: 720px) {
-    .s-profile-grid { grid-template-columns: 1fr; }
     .siswa-topbar { padding: 10px 14px; }
     .s-steps li em { font-size: 10px; }
     .s-actions { justify-content: stretch; }
