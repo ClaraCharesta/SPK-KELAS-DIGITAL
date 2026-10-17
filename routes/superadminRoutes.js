@@ -31,6 +31,7 @@ router.get('/kriteria', kriteriaController.index);
 router.post('/kriteria/create', cekLock, kriteriaController.create);
 router.post('/kriteria/update', cekLock, kriteriaController.update);
 router.post('/kriteria/delete/:id_kriteria', cekLock, kriteriaController.delete);
+router.post('/periode/perpanjang', periodeController.perpanjang);
 
 router.post('/periode/update-kuota', periodeController.updateKuota);
 router.get('/log', logController.index);
