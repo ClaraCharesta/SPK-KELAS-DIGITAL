@@ -24,6 +24,15 @@ async function prosesLoginSiswa(req, res, usernameInput, password) {
 
     // status 401 dipakai oleh pembatas percobaan login (loginLimiter)
     if (!passwordCocok) {
+        // Diagnosis saja (password TIDAK dicatat): membantu melihat apakah input
+        // salah ketik, ada spasi ikut ter-copy, atau terisi otomatis oleh browser.
+        const teksPassword = String(password || '');
+        console.warn(
+            `[LOGIN SISWA] Password salah untuk NISN ${nisn}. ` +
+            `Panjang input: ${teksPassword.length}, ` +
+            `ada spasi di awal/akhir: ${teksPassword !== teksPassword.trim()}`
+        );
+
         return res.status(401).render('login', { error: 'Password salah.' });
     }
 
@@ -57,6 +66,14 @@ const authController = {
         if (req.session.siswa) {
             return res.redirect('/siswa');
         }
+
+        // Halaman login tidak boleh disimpan di cache browser.
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+
         res.render('login', { error: null });
     },
     async processLogin(req, res) {

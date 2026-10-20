@@ -5,6 +5,70 @@
 <head>
     <title>Log Aktivitas</title>
     <%- include('../partials/head') %>
+    <style>
+        /* ===== Hanya tabel yang bisa discroll (atas-bawah & kanan-kiri) ===== */
+        .log-scroll {
+            max-height: calc(100vh - 270px);
+            min-height: 220px;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid #eceff4;
+            border-radius: 10px;
+            background: #fff;
+        }
+        .log-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .log-scroll::-webkit-scrollbar-track {
+            background: #f1f3f7;
+            border-radius: 8px;
+        }
+        .log-scroll::-webkit-scrollbar-thumb {
+            background: #c5cbd6;
+            border-radius: 8px;
+        }
+        .log-scroll::-webkit-scrollbar-thumb:hover {
+            background: #a9b1bf;
+        }
+        .log-scroll .data-table {
+            width: 100%;
+            min-width: 700px;
+            margin: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        /* Header menempel di atas saat tabel discroll ke bawah */
+        .log-scroll .data-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f7f9fc;
+            color: #5b6577;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 13px 16px;
+            text-align: left;
+            white-space: nowrap;
+            border-bottom: 1px solid #e6eaf0;
+            box-shadow: 0 1px 0 #e6eaf0;
+        }
+        .log-scroll .data-table tbody td {
+            padding: 12px 16px;
+            font-size: 14px;
+            vertical-align: middle;
+            border-bottom: 1px solid #f0f2f6;
+            background: #fff;
+        }
+        .log-scroll .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .log-scroll .data-table tbody tr:hover td {
+            background: #f8faff;
+        }
+    </style>
 </head>
 <body>
     <div class="app-layout">
@@ -31,7 +95,7 @@
                             <% } %>
                         </form>
                     </div>
-                    <div class="table-scroll">
+                    <div class="log-scroll">
                         <table class="data-table" style="min-width:700px;">
                             <thead>
                                 <tr><th style="white-space:nowrap;">Waktu</th><th style="white-space:nowrap;">Nama</th><th style="white-space:nowrap;">Role</th><th>Aktivitas</th></tr>

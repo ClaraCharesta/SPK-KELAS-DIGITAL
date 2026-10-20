@@ -9,15 +9,107 @@
             white-space: nowrap;
             display: inline-block;
         }
-        .data-table th,
-        .data-table td {
+
+        /* ===== TABEL: bisa digeser kanan-kiri ===== */
+        .table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid #eceff4;
+            border-radius: 10px;
+            background: #fff;
+        }
+        .table-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-scroll::-webkit-scrollbar-track {
+            background: #f1f3f7;
+            border-radius: 8px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: #c5cbd6;
+            border-radius: 8px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb:hover {
+            background: #a9b1bf;
+        }
+        .table-scroll .data-table {
+            width: 100%;
+            min-width: 1050px;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 0;
+        }
+        .table-scroll .data-table thead th {
+            background: #f7f9fc;
+            color: #5b6577;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 13px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e6eaf0;
             white-space: nowrap;
         }
-        .data-table td.email-cell {
-            white-space: normal;
-            word-break: break-all;
-            max-width: 220px;
+        .table-scroll .data-table tbody td {
+            padding: 13px 16px;
+            font-size: 14px;
+            vertical-align: middle;
+            white-space: nowrap;
+            border-bottom: 1px solid #f0f2f6;
+            background: #fff;
         }
+        .table-scroll .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .table-scroll .data-table tbody tr:hover td {
+            background: #f8faff;
+        }
+        .data-table td.no-cell {
+            width: 50px;
+            color: #8a93a3;
+            text-align: center;
+        }
+        .data-table th.no-head {
+            text-align: center;
+        }
+        .data-table td.nama-cell {
+            font-weight: 600;
+            color: #2b3445;
+        }
+        .data-table td.email-cell {
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #4a5568;
+        }
+        /* Kolom Aksi menempel di kanan saat tabel digeser */
+        .table-scroll .data-table th.aksi-head,
+        .table-scroll .data-table td.action-cell {
+            position: sticky;
+            right: 0;
+            box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.12);
+        }
+        .table-scroll .data-table th.aksi-head {
+            background: #f7f9fc;
+            z-index: 2;
+        }
+        .table-scroll .data-table td.action-cell {
+            background: #fff;
+            z-index: 1;
+        }
+        .table-scroll .data-table tbody tr:hover td.action-cell {
+            background: #f8faff;
+        }
+        .data-table td.action-cell {
+            white-space: nowrap;
+        }
+        .data-table td.action-cell form {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
         .pwd-input-wrap {
             position: relative;
         }
@@ -54,6 +146,60 @@
         input.pwd-invalid {
             border-color: #e74c3c;
         }
+        .nip-hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .nip-hint.bad {
+            color: #e74c3c;
+        }
+        .field-hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .field-hint.bad {
+            color: #e74c3c;
+        }
+        input.field-invalid {
+            border-color: #e74c3c;
+        }
+        .tag-wajib {
+            color: #e74c3c;
+            font-weight: 700;
+        }
+        .tag-opsional {
+            color: #999;
+            font-weight: 400;
+            font-size: 11px;
+        }
+        .role-hint {
+            font-size: 11px;
+            color: #b35c00;
+            background: #fdf1de;
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin-top: 6px;
+            display: none;
+        }
+        .role-hint.tampil {
+            display: block;
+        }
+        .info-kepsek {
+            font-size: 13px;
+            color: #444;
+            background: #f4f8ff;
+            border: 1px solid #d6e4ff;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+        }
+        .info-kepsek.kosong {
+            background: #fdf1de;
+            border-color: #f5d9a8;
+            color: #b35c00;
+        }
     </style>
 </head>
 <body>
@@ -74,38 +220,62 @@
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-people-fill"></i></div>
                             <h3>Daftar Akun Admin & Kepala Sekolah</h3>
                         </div>
-                        <button class="btn-primary" onclick="document.getElementById('modalTambah').style.display='flex'">
+                        <button class="btn-primary" onclick="bukaModalTambah()">
                             <i class="bi bi-plus-lg"></i> Tambah Akun
                         </button>
                     </div>
-                    <div style="overflow-x:auto;">
+
+                    <% if (typeof kepsekAktif !== 'undefined' && kepsekAktif) { %>
+                        <div class="info-kepsek">
+                            <i class="bi bi-person-badge-fill"></i>
+                            Kepala Sekolah aktif saat ini: <strong><%= kepsekAktif.nama %></strong> (<%= kepsekAktif.username %>).
+                            Kepala Sekolah hanya boleh 1 akun aktif. Untuk menggantinya, hapus atau nonaktifkan akun ini terlebih dahulu.
+                        </div>
+                    <% } else { %>
+                        <div class="info-kepsek kosong">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            Belum ada Kepala Sekolah aktif. Tanpa akun Kepala Sekolah, nama dan NIP di laporan PDF akan kosong.
+                        </div>
+                    <% } %>
+
+                    <div class="table-scroll">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>No</th>
+                                <th class="no-head">No</th>
                                 <th>Nama</th>
                                 <th>Username</th>
                                 <th>Email</th>
+                                <th>NIP</th>
                                 <th>Role</th>
                                 <th>Status</th>
-                                <th>Aksi</th>
+                                <th class="aksi-head">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             <% if (users.length === 0) { %>
-                                <tr><td colspan="7" class="empty-state">Belum ada akun Admin/Kepala Sekolah.</td></tr>
+                                <tr><td colspan="8" class="empty-state">Belum ada akun Admin/Kepala Sekolah.</td></tr>
                             <% } %>
                             <% users.forEach(function(u, index) { %>
                                 <tr>
-                                    <td><%= index + 1 %></td>
-                                    <td><%= u.nama %></td>
+                                    <td class="no-cell"><%= index + 1 %></td>
+                                    <td class="nama-cell"><%= u.nama %></td>
                                     <td><%= u.username %></td>
-                                    <td class="email-cell"><%= u.email %></td>
-                                        <td>
-                                            <span class="badge badge-<%= u.role === 'admin' ? 'blue' : (u.role === 'operator' ? 'green' : 'purple') %>">
-                                                <%= u.role === 'admin' ? 'Admin' : (u.role === 'operator' ? 'Operator' : 'Kepala Sekolah') %>
-                                            </span>
-                                        </td>
+                                    <td class="email-cell" title="<%= u.email %>"><%= u.email %></td>
+                                    <td>
+                                        <% if (u.nip) { %>
+                                            <%= u.nip %>
+                                        <% } else if (u.role === 'kepsek') { %>
+                                            <span class="tag-wajib" title="NIP Kepala Sekolah wajib diisi (klik Edit)">Belum diisi</span>
+                                        <% } else { %>
+                                            -
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-<%= u.role === 'admin' ? 'blue' : (u.role === 'operator' ? 'green' : 'purple') %>">
+                                            <%= u.role === 'admin' ? 'Admin' : (u.role === 'operator' ? 'Operator' : 'Kepala Sekolah') %>
+                                        </span>
+                                    </td>
                                     <td>
                                         <span class="badge badge-<%= u.status_aktif ? 'green' : 'red' %>">
                                             <%= u.status_aktif ? 'Aktif' : 'Nonaktif' %>
@@ -146,36 +316,52 @@
                 <h3><i class="bi bi-person-plus-fill"></i> Tambah Akun Baru</h3>
                 <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/akun-admin/create" method="POST" id="formTambah" onsubmit="return validasiPasswordForm(this, false)">
+            <form action="/superadmin/akun-admin/create" method="POST" id="formTambah" autocomplete="off" novalidate onsubmit="return validasiPasswordForm(this, false)">
                 <label>Nama Lengkap</label>
-                <input type="text" name="nama" required placeholder="Contoh: Desi Wahyuni, S.Pd">
+                <input type="text" name="nama" id="tambah_nama" required maxlength="100" autocomplete="off"
+                    placeholder="Contoh: Desi Wahyuni, S.Pd">
+                <p class="field-hint" id="tambah_nama_hint">Hanya huruf, spasi, koma, dan titik (untuk gelar). Tanpa angka.</p>
+
                 <label>Username</label>
-                <input type="text" name="username" required placeholder="Contoh: admin_desi">
+                <input type="text" name="username" id="tambah_username" required autocomplete="off"
+                    readonly onfocus="this.removeAttribute('readonly')"
+                    placeholder="Isi username">
+                <p class="field-hint" id="tambah_username_hint"></p>
+
                 <label>Email</label>
-                <input type="email" name="email" required
-                    placeholder="Contoh: admindesi@gmail.com"
-                    pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$"
-                    title="Email harus menggunakan domain @gmail.com">
+                <input type="text" name="email" id="tambah_email" required inputmode="email" autocomplete="off"
+                    readonly onfocus="this.removeAttribute('readonly')"
+                    placeholder="Contoh: nama@email.com">
+                <p class="field-hint" id="tambah_email_hint">Gunakan format email yang valid, tanpa spasi atau koma.</p>
+
+                <label>Role</label>
+                <select name="role" id="tambah_role" required>
+                    <option value="">-- Pilih Role --</option>
+                    <option value="admin">Admin</option>
+                    <option value="kepsek">Kepala Sekolah</option>
+                </select>
+                <p class="role-hint" id="tambah_role_hint"></p>
+
+                <label id="tambah_nip_label">NIP <span class="tag-opsional">(opsional)</span></label>
+                <input type="text" name="nip" id="tambah_nip" maxlength="18" inputmode="numeric" autocomplete="off"
+                    placeholder="18 digit angka (wajib untuk Kepala Sekolah)">
+                <p class="nip-hint" id="tambah_nip_hint">NIP wajib diisi jika role Kepala Sekolah.</p>
 
                 <label>Password</label>
                 <div class="pwd-input-wrap">
-                    <input type="password" name="password" id="tambah_password" required placeholder="Minimal 6 karakter" minlength="6">
+                    <input type="password" name="password" id="tambah_password" required placeholder="Minimal 6 karakter" minlength="6"
+                        autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
                     <span class="pwd-toggle-eye" data-target="tambah_password"><i class="bi bi-eye-fill"></i></span>
                 </div>
 
                 <label>Konfirmasi Password</label>
                 <div class="pwd-input-wrap">
-                    <input type="password" name="confirmPassword" id="tambah_confirmPassword" required placeholder="Ulangi password di atas" minlength="6">
+                    <input type="password" name="confirmPassword" id="tambah_confirmPassword" required placeholder="Ulangi password di atas" minlength="6"
+                        autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
                     <span class="pwd-toggle-eye" data-target="tambah_confirmPassword"><i class="bi bi-eye-fill"></i></span>
                 </div>
                 <p class="pwd-hint" id="tambah_pwd_hint"></p>
 
-                <label>Role</label>
-                <select name="role" required>
-                    <option value="">-- Pilih Role --</option>
-                    <option value="admin">Admin</option>
-                    <option value="kepsek">Kepala Sekolah</option>
-                </select>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan</button>
@@ -190,37 +376,47 @@
                 <h3><i class="bi bi-pencil-square"></i> Edit Akun</h3>
                 <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/akun-admin/update" method="POST" id="formEdit" onsubmit="return validasiPasswordForm(this, true)">
+            <form action="/superadmin/akun-admin/update" method="POST" id="formEdit" autocomplete="off" novalidate onsubmit="return validasiPasswordForm(this, true)">
                 <input type="hidden" name="id_user" id="edit_id_user">
                 <label>Nama Lengkap</label>
-                <input type="text" name="nama" id="edit_nama" required>
+                <input type="text" name="nama" id="edit_nama" required maxlength="100" autocomplete="off">
+                <p class="field-hint" id="edit_nama_hint">Hanya huruf, spasi, koma, dan titik (untuk gelar). Tanpa angka.</p>
+
                 <label>Username</label>
-                <input type="text" name="username" id="edit_username" required>
+                <input type="text" name="username" id="edit_username" required autocomplete="off">
+                <p class="field-hint" id="edit_username_hint"></p>
+
                 <label>Email</label>
-                <input type="email" name="email" id="edit_email" required
-                    placeholder="Contoh: admindesi@gmail.com"
-                    pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$"
-                    title="Email harus menggunakan domain @gmail.com">
-
-                <label>Password Baru</label>
-                <div class="pwd-input-wrap">
-                    <input type="password" name="password" id="edit_password" placeholder="Kosongkan jika tidak ingin mengubah password" minlength="6">
-                    <span class="pwd-toggle-eye" data-target="edit_password"><i class="bi bi-eye-fill"></i></span>
-                </div>
-                <p class="pwd-hint">Kosongkan kedua kolom ini kalau tidak ingin mengubah password.</p>
-
-                <label>Konfirmasi Password Baru</label>
-                <div class="pwd-input-wrap">
-                    <input type="password" name="confirmPassword" id="edit_confirmPassword" placeholder="Ulangi password baru di atas" minlength="6">
-                    <span class="pwd-toggle-eye" data-target="edit_confirmPassword"><i class="bi bi-eye-fill"></i></span>
-                </div>
-                <p class="pwd-hint" id="edit_pwd_hint"></p>
+                <input type="text" name="email" id="edit_email" required inputmode="email" autocomplete="off"
+                    placeholder="Contoh: nama@email.com">
+                <p class="field-hint" id="edit_email_hint">Gunakan format email yang valid, tanpa spasi atau koma.</p>
 
                 <label>Role</label>
                 <select name="role" id="edit_role" required>
                     <option value="admin">Admin</option>
                     <option value="kepsek">Kepala Sekolah</option>
                 </select>
+                <p class="role-hint" id="edit_role_hint"></p>
+
+                <label id="edit_nip_label">NIP <span class="tag-opsional">(opsional)</span></label>
+                <input type="text" name="nip" id="edit_nip" maxlength="18" inputmode="numeric" autocomplete="off"
+                    placeholder="18 digit angka (wajib untuk Kepala Sekolah)">
+                <p class="nip-hint" id="edit_nip_hint">NIP wajib diisi jika role Kepala Sekolah.</p>
+
+                <label>Password Baru</label>
+                <div class="pwd-input-wrap">
+                    <input type="password" name="password" id="edit_password" placeholder="Kosongkan jika tidak ingin mengubah password" minlength="6" autocomplete="new-password">
+                    <span class="pwd-toggle-eye" data-target="edit_password"><i class="bi bi-eye-fill"></i></span>
+                </div>
+                <p class="pwd-hint">Kosongkan kedua kolom ini kalau tidak ingin mengubah password.</p>
+
+                <label>Konfirmasi Password Baru</label>
+                <div class="pwd-input-wrap">
+                    <input type="password" name="confirmPassword" id="edit_confirmPassword" placeholder="Ulangi password baru di atas" minlength="6" autocomplete="new-password">
+                    <span class="pwd-toggle-eye" data-target="edit_confirmPassword"><i class="bi bi-eye-fill"></i></span>
+                </div>
+                <p class="pwd-hint" id="edit_pwd_hint"></p>
+
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -235,12 +431,12 @@
                 <h3><i class="bi bi-key-fill"></i> Reset Password</h3>
                 <button class="modal-close" onclick="document.getElementById('modalReset').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/akun-admin/reset-password" method="POST">
+            <form action="/superadmin/akun-admin/reset-password" method="POST" autocomplete="off">
                 <input type="hidden" name="id_user" id="reset_id_user">
                 <p style="margin-bottom:15px; color:#666; font-size:14px;">Reset password untuk: <strong id="reset_nama"></strong></p>
                 <label>Password Baru</label>
                 <div class="pwd-input-wrap">
-                    <input type="password" name="newPassword" id="reset_newPassword" required placeholder="Minimal 6 karakter" minlength="6">
+                    <input type="password" name="newPassword" id="reset_newPassword" required placeholder="Minimal 6 karakter" minlength="6" autocomplete="new-password">
                     <span class="pwd-toggle-eye" data-target="reset_newPassword"><i class="bi bi-eye-fill"></i></span>
                 </div>
                 <div class="modal-footer">
@@ -251,22 +447,317 @@
         </div>
     </div>
     <script>
+        // Kepala Sekolah yang sedang aktif (null jika belum ada). Dipakai untuk peringatan di sisi browser.
+        // Validasi yang sebenarnya tetap dilakukan di server.
+        const KEPSEK_AKTIF = <%- JSON.stringify(typeof kepsekAktif !== 'undefined' ? kepsekAktif : null).replace(/</g, '\\u003c') %>;
+
+        // Data akun yang sudah ada, dipakai untuk cek duplikat di sisi browser.
+        // Validasi duplikat yang sebenarnya tetap harus ada di server / database.
+        const DATA_AKUN = <%- JSON.stringify(users.map(function(x) {
+            return { id: x.id_user, nama: x.nama, username: x.username, email: x.email };
+        })).replace(/</g, '\\u003c') %>;
+
+        // Role akun yang sedang diedit sebelum diubah di form.
+        let editRoleAsal = '';
+
+        // ===== Aturan format =====
+        // Nama: harus diawali huruf, hanya huruf, spasi, koma, titik (untuk gelar).
+        const REGEX_NAMA = /^[A-Za-z][A-Za-z .,]*$/;
+        // Email: format umum, tanpa spasi/koma/simbol aneh.
+        const REGEX_EMAIL = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
+        const REGEX_NIP = /^[0-9]{18}$/;
+
+        function rapikanNama(s) {
+            return s.replace(/\s+/g, ' ').trim();
+        }
+
+        function setHint(el, teks, bad) {
+            el.textContent = teks;
+            el.className = 'field-hint' + (bad ? ' bad' : '');
+        }
+
+        // Cari akun lain yang punya nilai sama. Saat edit, akun itu sendiri diabaikan.
+        function adaDuplikat(field, nilai, idSendiri) {
+            const target = nilai.trim().toLowerCase();
+            if (target === '') return false;
+            return DATA_AKUN.some(function(a) {
+                if (idSendiri !== null && Number(a.id) === Number(idSendiri)) return false;
+                return String(a[field] || '').trim().toLowerCase() === target;
+            });
+        }
+
+        function idSendiriDari(prefix) {
+            if (prefix !== 'edit') return null;
+            const v = document.getElementById('edit_id_user').value;
+            return v === '' ? null : Number(v);
+        }
+
+        // ===== Cek per field (mengembalikan true jika valid) =====
+        function cekNama(prefix, tampilkanKosong) {
+            const el = document.getElementById(prefix + '_nama');
+            const hint = document.getElementById(prefix + '_nama_hint');
+            const nilai = rapikanNama(el.value);
+
+            if (nilai === '') {
+                if (tampilkanKosong) {
+                    setHint(hint, 'Nama lengkap wajib diisi.', true);
+                    el.classList.add('field-invalid');
+                } else {
+                    setHint(hint, 'Hanya huruf, spasi, koma, dan titik (untuk gelar). Tanpa angka.', false);
+                    el.classList.remove('field-invalid');
+                }
+                return false;
+            }
+            if (!REGEX_NAMA.test(nilai)) {
+                setHint(hint, 'Nama harus diawali huruf dan hanya boleh berisi huruf, spasi, koma, dan titik.', true);
+                el.classList.add('field-invalid');
+                return false;
+            }
+            if (adaDuplikat('nama', nilai, idSendiriDari(prefix))) {
+                setHint(hint, 'Nama ini sudah dipakai akun lain.', true);
+                el.classList.add('field-invalid');
+                return false;
+            }
+            setHint(hint, 'Hanya huruf, spasi, koma, dan titik (untuk gelar). Tanpa angka.', false);
+            el.classList.remove('field-invalid');
+            return true;
+        }
+
+        function cekUsername(prefix, tampilkanKosong) {
+            const el = document.getElementById(prefix + '_username');
+            const hint = document.getElementById(prefix + '_username_hint');
+            const nilai = el.value.trim();
+
+            if (nilai === '') {
+                if (tampilkanKosong) {
+                    setHint(hint, 'Username wajib diisi.', true);
+                    el.classList.add('field-invalid');
+                } else {
+                    setHint(hint, '', false);
+                    el.classList.remove('field-invalid');
+                }
+                return false;
+            }
+            if (/\s/.test(nilai)) {
+                setHint(hint, 'Username tidak boleh mengandung spasi.', true);
+                el.classList.add('field-invalid');
+                return false;
+            }
+            if (adaDuplikat('username', nilai, idSendiriDari(prefix))) {
+                setHint(hint, 'Username ini sudah dipakai akun lain.', true);
+                el.classList.add('field-invalid');
+                return false;
+            }
+            setHint(hint, '', false);
+            el.classList.remove('field-invalid');
+            return true;
+        }
+
+        function cekEmail(prefix, tampilkanKosong) {
+            const el = document.getElementById(prefix + '_email');
+            const hint = document.getElementById(prefix + '_email_hint');
+            const nilai = el.value.trim();
+            const hintNormal = 'Gunakan format email yang valid, tanpa spasi atau koma.';
+
+            if (nilai === '') {
+                if (tampilkanKosong) {
+                    setHint(hint, 'Email wajib diisi.', true);
+                    el.classList.add('field-invalid');
+                } else {
+                    setHint(hint, hintNormal, false);
+                    el.classList.remove('field-invalid');
+                }
+                return false;
+            }
+            if (!REGEX_EMAIL.test(nilai) || nilai.indexOf('..') !== -1 || nilai.split('@')[0].charAt(0) === '.' || nilai.split('@')[0].slice(-1) === '.') {
+                setHint(hint, 'Format email tidak valid. Contoh: nama@email.com', true);
+                el.classList.add('field-invalid');
+                return false;
+            }
+            if (adaDuplikat('email', nilai, idSendiriDari(prefix))) {
+                setHint(hint, 'Email ini sudah dipakai akun lain.', true);
+                el.classList.add('field-invalid');
+                return false;
+            }
+            setHint(hint, hintNormal, false);
+            el.classList.remove('field-invalid');
+            return true;
+        }
+
+        function resetTampilanField(prefix) {
+            ['nama', 'username', 'email'].forEach(function(f) {
+                document.getElementById(prefix + '_' + f).classList.remove('field-invalid');
+            });
+            setHint(document.getElementById(prefix + '_nama_hint'), 'Hanya huruf, spasi, koma, dan titik (untuk gelar). Tanpa angka.', false);
+            setHint(document.getElementById(prefix + '_username_hint'), '', false);
+            setHint(document.getElementById(prefix + '_email_hint'), 'Gunakan format email yang valid, tanpa spasi atau koma.', false);
+
+            const pwdHint = document.getElementById(prefix + '_pwd_hint');
+            pwdHint.textContent = '';
+            pwdHint.className = 'pwd-hint';
+
+            ['password', 'confirmPassword'].forEach(function(f) {
+                const el = document.getElementById(prefix + '_' + f);
+                el.classList.remove('pwd-valid', 'pwd-invalid');
+            });
+        }
+
+        function bukaModalTambah() {
+            const form = document.getElementById('formTambah');
+            form.reset();
+
+            // Kosongkan lagi setelah jeda singkat, untuk berjaga-jaga dari autofill browser
+            const kosongkan = function() {
+                ['tambah_nama', 'tambah_username', 'tambah_email', 'tambah_nip', 'tambah_password', 'tambah_confirmPassword'].forEach(function(id) {
+                    document.getElementById(id).value = '';
+                });
+            };
+            kosongkan();
+            setTimeout(kosongkan, 100);
+            setTimeout(kosongkan, 400);
+
+            // Pasang kembali readonly (dilepas saat fokus) supaya autofill tidak mengisi
+            ['tambah_username', 'tambah_email', 'tambah_password', 'tambah_confirmPassword'].forEach(function(id) {
+                document.getElementById(id).setAttribute('readonly', 'readonly');
+            });
+
+            resetTampilanField('tambah');
+            terapkanAturanNip('tambah');
+            terapkanPeringatanKepsek('tambah');
+            document.getElementById('modalTambah').style.display = 'flex';
+        }
+
         function bukaModalEdit(u) {
             document.getElementById('edit_id_user').value = u.id_user;
             document.getElementById('edit_nama').value = u.nama;
             document.getElementById('edit_username').value = u.username;
             document.getElementById('edit_email').value = u.email;
             document.getElementById('edit_role').value = u.role;
+            document.getElementById('edit_nip').value = u.nip || '';
             document.getElementById('edit_password').value = '';
             document.getElementById('edit_confirmPassword').value = '';
-            document.getElementById('edit_pwd_hint').textContent = '';
-            document.getElementById('edit_pwd_hint').className = 'pwd-hint';
+            resetTampilanField('edit');
+            editRoleAsal = u.role;
+            terapkanAturanNip('edit');
+            terapkanPeringatanKepsek('edit');
             document.getElementById('modalEdit').style.display = 'flex';
         }
         function bukaModalReset(id, nama) {
             document.getElementById('reset_id_user').value = id;
             document.getElementById('reset_nama').innerText = nama;
+            document.getElementById('reset_newPassword').value = '';
             document.getElementById('modalReset').style.display = 'flex';
+        }
+
+        // ===== KEPSEK HANYA BOLEH 1 YANG AKTIF =====
+        // Return true jika memilih role kepsek akan bentrok dengan kepsek aktif yang sudah ada.
+        function kepsekBentrok(prefix) {
+            if (!KEPSEK_AKTIF) return false;
+
+            const role = document.getElementById(prefix + '_role').value;
+            if (role !== 'kepsek') return false;
+
+            // Saat edit: akun yang SUDAH kepsek aktif tidak dianggap bentrok dengan dirinya sendiri.
+            if (prefix === 'edit' && editRoleAsal === 'kepsek') return false;
+
+            return true;
+        }
+
+        function terapkanPeringatanKepsek(prefix) {
+            const hintEl = document.getElementById(prefix + '_role_hint');
+
+            if (kepsekBentrok(prefix)) {
+                hintEl.textContent = 'Sudah ada Kepala Sekolah aktif: ' + KEPSEK_AKTIF.nama +
+                    '. Kepala Sekolah hanya boleh 1 akun aktif. Hapus atau nonaktifkan akun tersebut terlebih dahulu.';
+                hintEl.className = 'role-hint tampil';
+            } else {
+                hintEl.textContent = '';
+                hintEl.className = 'role-hint';
+            }
+        }
+
+        // ===== NIP: wajib untuk Kepala Sekolah, opsional untuk role lain =====
+        function terapkanAturanNip(prefix) {
+            const role = document.getElementById(prefix + '_role').value;
+            const nipEl = document.getElementById(prefix + '_nip');
+            const labelEl = document.getElementById(prefix + '_nip_label');
+            const hintEl = document.getElementById(prefix + '_nip_hint');
+            const wajib = role === 'kepsek';
+
+            nipEl.required = wajib;
+            labelEl.innerHTML = wajib
+                ? 'NIP <span class="tag-wajib">*</span>'
+                : 'NIP <span class="tag-opsional">(opsional)</span>';
+
+            hintEl.textContent = wajib
+                ? 'NIP wajib diisi untuk Kepala Sekolah (18 digit angka). NIP ini tampil di laporan PDF.'
+                : 'NIP boleh dikosongkan. Jika diisi harus 18 digit angka.';
+            hintEl.className = 'nip-hint';
+        }
+
+        ['tambah', 'edit'].forEach(function(prefix) {
+            const roleEl = document.getElementById(prefix + '_role');
+            const nipEl = document.getElementById(prefix + '_nip');
+            const namaEl = document.getElementById(prefix + '_nama');
+            const usernameEl = document.getElementById(prefix + '_username');
+            const emailEl = document.getElementById(prefix + '_email');
+
+            roleEl.addEventListener('change', function() {
+                terapkanAturanNip(prefix);
+                terapkanPeringatanKepsek(prefix);
+            });
+
+            // Hanya angka, tanpa spasi
+            nipEl.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+
+            // Nama: hanya huruf, spasi, koma, titik (angka & simbol lain otomatis dibuang)
+            namaEl.addEventListener('input', function() {
+                this.value = this.value.replace(/[^A-Za-z .,]/g, '').replace(/^[^A-Za-z]+/, '');
+                cekNama(prefix, false);
+            });
+
+            // Username: tanpa spasi
+            usernameEl.addEventListener('input', function() {
+                this.value = this.value.replace(/\s/g, '');
+                cekUsername(prefix, false);
+            });
+
+            // Email: hanya karakter email yang wajar (koma, spasi, dll otomatis dibuang)
+            emailEl.addEventListener('input', function() {
+                this.value = this.value.replace(/[^A-Za-z0-9._%+\-@]/g, '');
+                // Hanya boleh satu tanda @
+                const bagian = this.value.split('@');
+                if (bagian.length > 2) {
+                    this.value = bagian[0] + '@' + bagian.slice(1).join('');
+                }
+                cekEmail(prefix, false);
+            });
+
+            terapkanAturanNip(prefix);
+            terapkanPeringatanKepsek(prefix);
+        });
+
+        // Validasi NIP sebelum form dikirim. Return true jika valid.
+        function validasiNipForm(form, prefix) {
+            const role = form.role.value;
+            const nip = form.nip.value.trim();
+            const hintEl = document.getElementById(prefix + '_nip_hint');
+
+            if (role === 'kepsek' && nip === '') {
+                hintEl.textContent = 'NIP wajib diisi untuk Kepala Sekolah.';
+                hintEl.className = 'nip-hint bad';
+                form.nip.focus();
+                return false;
+            }
+            if (nip !== '' && !REGEX_NIP.test(nip)) {
+                hintEl.textContent = 'NIP harus berupa 18 digit angka.';
+                hintEl.className = 'nip-hint bad';
+                form.nip.focus();
+                return false;
+            }
+            return true;
         }
 
         // Toggle show/hide untuk semua field password yang punya ikon mata
@@ -286,9 +777,47 @@
             });
         });
 
-        // Validasi kecocokan password + konfirmasi sebelum form dikirim.
+        // Validasi nama + username + email + kepsek 1 aktif + NIP + kecocokan password sebelum form dikirim.
         // isEdit = true berarti password boleh dikosongkan (artinya tidak diubah).
         function validasiPasswordForm(form, isEdit) {
+            const prefix = isEdit ? 'edit' : 'tambah';
+
+            // Rapikan nama (spasi ganda dihapus) sebelum dikirim
+            form.nama.value = rapikanNama(form.nama.value);
+            form.username.value = form.username.value.trim();
+            form.email.value = form.email.value.trim();
+
+            if (!cekNama(prefix, true)) {
+                form.nama.focus();
+                return false;
+            }
+            if (!cekUsername(prefix, true)) {
+                form.username.focus();
+                return false;
+            }
+            if (!cekEmail(prefix, true)) {
+                form.email.focus();
+                return false;
+            }
+
+            if (!form.role.value) {
+                const roleHint = document.getElementById(prefix + '_role_hint');
+                roleHint.textContent = 'Silakan pilih role terlebih dahulu.';
+                roleHint.className = 'role-hint tampil';
+                form.role.focus();
+                return false;
+            }
+
+            if (kepsekBentrok(prefix)) {
+                terapkanPeringatanKepsek(prefix);
+                form.role.focus();
+                return false;
+            }
+
+            if (!validasiNipForm(form, prefix)) {
+                return false;
+            }
+
             const password = form.password.value;
             const confirmPassword = form.confirmPassword.value;
             const hintEl = isEdit ? document.getElementById('edit_pwd_hint') : document.getElementById('tambah_pwd_hint');

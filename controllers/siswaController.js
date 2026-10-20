@@ -16,6 +16,67 @@ const REGEX_HURUF_SAJA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$
 // Untuk sekolah asal: huruf DAN angka (contoh: "SMPN 1 Padang")
 const REGEX_SEKOLAH = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9]+( [A-Za-zÀ-ÖØ-öø-ÿ0-9]+)*$/;
 
+// NISN resmi terdiri dari 10 digit. Isi null jika ingin tidak membatasi panjang.
+const PANJANG_NISN = 10;
+
+// Nilai bawaan jika pekerjaan orang tua tidak diisi.
+const PEKERJAAN_DEFAULT = 'Tidak bekerja';
+
+const PESAN_SEKOLAH_TIDAK_VALID =
+    'Sekolah asal hanya boleh SMP / MTs / SMPLB / Paket B (contoh: SMPN 1 Padang). Data SMA/SMK/MA tidak diterima.';
+
+// ===== Jenjang sekolah asal =====
+// Kata jenjang PERTAMA yang ditemukan di teks menentukan hasilnya,
+// jadi "SMA Negeri 1" ditolak sedangkan "SMPN 3 Padang" diterima.
+const JENJANG_DIIZINKAN = new Set([
+    'SMP', 'SMPN', 'SMPS', 'SMPIT', 'SMPLB',
+    'MTS', 'MTSN', 'MTSS',
+    'PAKETB'
+]);
+
+const JENJANG_DITOLAK = new Set([
+    'SMA', 'SMAN', 'SMAS', 'SMAIT', 'SMALB',
+    'SMK', 'SMKN', 'SMKS',
+    'MA', 'MAN', 'MAS', 'MAK',
+    'SD', 'SDN', 'SDS', 'SDIT', 'SDLB',
+    'MI', 'MIN', 'MIS',
+    'PAKETA', 'PAKETC',
+    'TK', 'PAUD'
+]);
+
+function sekolahAsalValid(teks) {
+    let s = String(teks || '').toUpperCase().replace(/\s+/g, ' ').trim();
+
+    // Gabungkan penulisan terpisah: "PAKET B" -> "PAKETB", "SMP LB" -> "SMPLB", dst.
+    s = s
+        .replace(/\bPAKET\s+([ABC])\b/g, 'PAKET$1')
+        .replace(/\bSMP\s+LB\b/g, 'SMPLB')
+        .replace(/\bSMA\s+LB\b/g, 'SMALB')
+        .replace(/\bSD\s+LB\b/g, 'SDLB');
+
+    for (const kata of s.split(' ')) {
+        // Angka di belakang kata diabaikan: "SMPN1" -> "SMPN"
+        const m = kata.match(/^([A-Z]+)\d*$/);
+        if (!m) continue;
+
+        if (JENJANG_DIIZINKAN.has(m[1])) return true;
+        if (JENJANG_DITOLAK.has(m[1])) return false;
+    }
+
+    // Tidak ada kata jenjang yang dikenali -> tolak.
+    return false;
+}
+
+// Rapikan spasi berlebih dan ubah null/undefined menjadi string kosong.
+function rapikan(nilai) {
+    return String(nilai === undefined || nilai === null ? '' : nilai).replace(/\s+/g, ' ').trim();
+}
+
+// Pekerjaan opsional: kosong -> "Tidak bekerja".
+function pekerjaanAtauDefault(nilai) {
+    return rapikan(nilai) || PEKERJAAN_DEFAULT;
+}
+
 const BATAS_MASSAL = 1000;
 
 const PESAN_BOBOT_BELUM_FINAL =
@@ -39,14 +100,25 @@ function hapusFileUpload(req) {
     }
 }
 
+// Validasi input manual (tambah / edit). Pekerjaan orang tua OPSIONAL.
 function validasiDataSiswa(data) {
     const { nisn, nama, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu } = data;
 
-    if (!nisn || !REGEX_ANGKA_SAJA.test(String(nisn).trim())) return 'NISN wajib diisi dan hanya boleh berisi angka.';
-    if (!nama || !REGEX_HURUF_SAJA.test(String(nama).trim())) return 'Nama wajib diisi dan hanya boleh berisi huruf.';
-    if (!sekolah_asal || !REGEX_SEKOLAH.test(String(sekolah_asal).trim())) return 'Sekolah asal wajib diisi (huruf dan angka diperbolehkan, contoh: SMPN 1 Padang).';
-    if (!pekerjaan_ayah || !REGEX_HURUF_SAJA.test(String(pekerjaan_ayah).trim())) return 'Pekerjaan ayah wajib diisi dan hanya boleh berisi huruf.';
-    if (!pekerjaan_ibu || !REGEX_HURUF_SAJA.test(String(pekerjaan_ibu).trim())) return 'Pekerjaan ibu wajib diisi dan hanya boleh berisi huruf.';
+    const nisnBersih = rapikan(nisn);
+    const namaBersih = rapikan(nama);
+    const sekolahBersih = rapikan(sekolah_asal);
+    const ayahBersih = rapikan(pekerjaan_ayah);
+    const ibuBersih = rapikan(pekerjaan_ibu);
+
+    if (!nisnBersih || !REGEX_ANGKA_SAJA.test(nisnBersih)) return 'NISN wajib diisi dan hanya boleh berisi angka.';
+    if (PANJANG_NISN && nisnBersih.length !== PANJANG_NISN) return `NISN harus tepat ${PANJANG_NISN} digit angka.`;
+    if (!namaBersih || !REGEX_HURUF_SAJA.test(namaBersih)) return 'Nama wajib diisi dan hanya boleh berisi huruf.';
+    if (!sekolahBersih || !REGEX_SEKOLAH.test(sekolahBersih)) return 'Sekolah asal wajib diisi (huruf dan angka diperbolehkan, contoh: SMPN 1 Padang).';
+    if (!sekolahAsalValid(sekolahBersih)) return PESAN_SEKOLAH_TIDAK_VALID;
+
+    // Pekerjaan opsional: hanya dicek formatnya jika diisi.
+    if (ayahBersih && !REGEX_HURUF_SAJA.test(ayahBersih)) return 'Pekerjaan ayah hanya boleh berisi huruf (boleh dikosongkan).';
+    if (ibuBersih && !REGEX_HURUF_SAJA.test(ibuBersih)) return 'Pekerjaan ibu hanya boleh berisi huruf (boleh dikosongkan).';
 
     return null;
 }
@@ -60,6 +132,8 @@ function getAlasanGagalBarisSiswa(row) {
         alasan.push('kolom NISN kosong');
     } else if (!REGEX_ANGKA_SAJA.test(row.nisn)) {
         alasan.push(`kolom NISN "${row.nisn}" harus berupa angka`);
+    } else if (PANJANG_NISN && row.nisn.length !== PANJANG_NISN) {
+        alasan.push(`kolom NISN "${row.nisn}" harus ${PANJANG_NISN} digit (jika diawali angka 0, pastikan sel Excel berformat teks)`);
     }
 
     if (!row.nama) {
@@ -72,17 +146,16 @@ function getAlasanGagalBarisSiswa(row) {
         alasan.push('kolom ASAL SEKOLAH kosong');
     } else if (!REGEX_SEKOLAH.test(row.sekolah_asal)) {
         alasan.push(`kolom ASAL SEKOLAH "${row.sekolah_asal}" formatnya tidak valid`);
+    } else if (!sekolahAsalValid(row.sekolah_asal)) {
+        alasan.push(`kolom ASAL SEKOLAH "${row.sekolah_asal}" bukan SMP / MTs / SMPLB / Paket B`);
     }
 
-    if (!row.pekerjaan_ayah) {
-        alasan.push('kolom PEKERJAAN AYAH kosong');
-    } else if (!REGEX_HURUF_SAJA.test(row.pekerjaan_ayah)) {
+    // Pekerjaan orang tua OPSIONAL: kosong diperbolehkan (otomatis "Tidak bekerja").
+    if (row.pekerjaan_ayah && !REGEX_HURUF_SAJA.test(row.pekerjaan_ayah)) {
         alasan.push(`kolom PEKERJAAN AYAH "${row.pekerjaan_ayah}" harus berupa huruf`);
     }
 
-    if (!row.pekerjaan_ibu) {
-        alasan.push('kolom PEKERJAAN IBU kosong');
-    } else if (!REGEX_HURUF_SAJA.test(row.pekerjaan_ibu)) {
+    if (row.pekerjaan_ibu && !REGEX_HURUF_SAJA.test(row.pekerjaan_ibu)) {
         alasan.push(`kolom PEKERJAAN IBU "${row.pekerjaan_ibu}" harus berupa huruf`);
     }
 
@@ -178,28 +251,29 @@ const siswaController = {
             if (!jenis_kelamin) {
                 return redirectError(
                     res,
-                    'Semua data siswa wajib diisi lengkap (NISN, nama, jenis kelamin, sekolah asal, pekerjaan ayah, pekerjaan ibu).'
+                    'Data wajib belum lengkap (NISN, nama, jenis kelamin, sekolah asal). Pekerjaan orang tua boleh dikosongkan.'
                 );
             }
 
             const pesanValidasi = validasiDataSiswa({ nisn, nama, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu });
             if (pesanValidasi) return redirectError(res, pesanValidasi);
 
-            const nisnBersih = String(nisn).trim();
+            const nisnBersih = rapikan(nisn);
+            const namaBersih = rapikan(nama);
 
             if (await siswaModel.checkNisnExists(nisnBersih, periode.id_periode)) {
-                return redirectError(res, 'NISN sudah terdaftar di periode ini.');
+                return redirectError(res, `NISN ${nisnBersih} sudah terdaftar di periode ini. Data tidak boleh duplikat.`);
             }
 
             try {
                 await siswaModel.createSiswa({
                     id_periode: periode.id_periode,
                     nisn: nisnBersih,
-                    nama: String(nama).trim(),
+                    nama: namaBersih,
                     jenis_kelamin,
-                    sekolah_asal: String(sekolah_asal).trim(),
-                    pekerjaan_ayah: String(pekerjaan_ayah).trim(),
-                    pekerjaan_ibu: String(pekerjaan_ibu).trim(),
+                    sekolah_asal: rapikan(sekolah_asal),
+                    pekerjaan_ayah: pekerjaanAtauDefault(pekerjaan_ayah),
+                    pekerjaan_ibu: pekerjaanAtauDefault(pekerjaan_ibu),
                     status_pip_pkh: status_pip_pkh === 'ya'
                 });
             } catch (dupErr) {
@@ -209,7 +283,7 @@ const siswaController = {
                 throw dupErr;
             }
 
-            await userModel.logActivity(req.session.user.id_user, `Admin menambahkan data siswa: ${nama}`);
+            await userModel.logActivity(req.session.user.id_user, `Admin menambahkan data siswa: ${namaBersih}`);
             await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
             return redirectSuccess(res, 'Data siswa berhasil ditambahkan. Klik "Buat Akun Siswa" untuk membuat akunnya.');
@@ -242,7 +316,7 @@ const siswaController = {
             if (!jenis_kelamin) {
                 return redirectError(
                     res,
-                    'Semua data siswa wajib diisi lengkap (NISN, nama, jenis kelamin, sekolah asal, pekerjaan ayah, pekerjaan ibu).'
+                    'Data wajib belum lengkap (NISN, nama, jenis kelamin, sekolah asal). Pekerjaan orang tua boleh dikosongkan.'
                 );
             }
 
@@ -256,7 +330,8 @@ const siswaController = {
                 return redirectError(res, 'Siswa tidak ditemukan pada periode aktif.');
             }
 
-            const nisnBersih = String(nisn).trim();
+            const nisnBersih = rapikan(nisn);
+            const namaBersih = rapikan(nama);
 
             if (await siswaModel.checkNisnExists(nisnBersih, periode.id_periode, id_siswa)) {
                 return redirectError(res, 'NISN tersebut sudah digunakan oleh siswa lain. Periksa kembali data yang diinput.');
@@ -264,11 +339,11 @@ const siswaController = {
 
             await siswaModel.updateSiswa(id_siswa, {
                 nisn: nisnBersih,
-                nama: String(nama).trim(),
+                nama: namaBersih,
                 jenis_kelamin,
-                sekolah_asal: String(sekolah_asal).trim(),
-                pekerjaan_ayah: String(pekerjaan_ayah).trim(),
-                pekerjaan_ibu: String(pekerjaan_ibu).trim(),
+                sekolah_asal: rapikan(sekolah_asal),
+                pekerjaan_ayah: pekerjaanAtauDefault(pekerjaan_ayah),
+                pekerjaan_ibu: pekerjaanAtauDefault(pekerjaan_ibu),
                 status_pip_pkh: status_pip_pkh === 'ya'
             });
 
@@ -281,7 +356,7 @@ const siswaController = {
                 );
             }
 
-            await userModel.logActivity(req.session.user.id_user, `Admin memperbarui data siswa: ${nama}`);
+            await userModel.logActivity(req.session.user.id_user, `Admin memperbarui data siswa: ${namaBersih}`);
             await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
             return redirectSuccess(res, 'Data siswa berhasil diperbarui.');
@@ -354,12 +429,18 @@ const siswaController = {
     },
 
     // POST /admin/siswa/minat-massal
-    // Operator menandai banyak siswa (checklist) sebagai "Berminat" sekaligus.
-    // Hanya siswa yang punya akun dan masih "Belum merespons" yang diubah.
+    // Operator menandai banyak siswa (checklist) sebagai "Berminat" ATAU "Tidak berminat" sekaligus.
+    // Status dikirim lewat field status_minat. Hanya siswa yang punya akun dan masih
+    // "Belum merespons" yang diubah. Untuk "Tidak berminat", akun siswa ikut dinonaktifkan.
     // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async ubahMinatMassal(req, res) {
         try {
             let ids = req.body.id_siswa;
+            const statusMinat = req.body.status_minat;
+
+            if (!['berminat', 'tidak_berminat'].includes(statusMinat)) {
+                return redirectError(res, PESAN_UBAH_MINAT.STATUS_TIDAK_VALID);
+            }
 
             if (ids === undefined || ids === null || ids === '') {
                 return redirectError(res, PESAN_UBAH_MINAT.TIDAK_ADA_PILIHAN);
@@ -395,16 +476,18 @@ const siswaController = {
                 return redirectError(res, PESAN_BOBOT_BELUM_FINAL_AKSI);
             }
 
-            const hasil = await siswaModel.setMinatMassal(ids.map(Number), periode.id_periode);
+            const hasil = await siswaModel.setMinatMassal(ids.map(Number), periode.id_periode, statusMinat);
 
             if (!hasil.ok) {
                 return redirectError(res, PESAN_UBAH_MINAT[hasil.alasan] || 'Status minat gagal diubah.');
             }
 
+            const labelStatus = statusMinat === 'berminat' ? 'Berminat' : 'Tidak berminat';
+
             if (hasil.diubah > 0) {
                 await userModel.logActivity(
                     req.session.user.id_user,
-                    `Operator menandai ${hasil.diubah} siswa sebagai Berminat (checklist massal)`
+                    `Operator menandai ${hasil.diubah} siswa sebagai ${labelStatus} (checklist massal)`
                 );
 
                 // Mengubah peserta seleksi mempengaruhi ranking.
@@ -418,7 +501,11 @@ const siswaController = {
                 );
             }
 
-            let pesan = `${hasil.diubah} siswa berhasil diubah menjadi "Berminat".`;
+            let pesan = `${hasil.diubah} siswa berhasil diubah menjadi "${labelStatus}".`;
+
+            if (statusMinat === 'tidak_berminat') {
+                pesan += ' Akun siswa tersebut dinonaktifkan.';
+            }
 
             if (hasil.dilewati > 0) {
                 pesan += ` ${hasil.dilewati} siswa dilewati karena sudah merespons atau tidak memenuhi syarat.`;
@@ -525,16 +612,16 @@ const siswaController = {
             // Baris Excel = index + 2 (baris 1 = header).
             const dataSiswaRaw = jsonData.map((row, idx) => ({
                 baris: idx + 2,
-                nisn: String(row['NISN'] || row['nisn'] || '').trim(),
-                nama: String(row['NAMA SISWA'] || row['nama'] || '').trim(),
+                nisn: rapikan(row['NISN'] || row['nisn'] || ''),
+                nama: rapikan(row['NAMA SISWA'] || row['nama'] || ''),
                 jenis_kelamin: String(row['JENIS KELAMIN SISWA'] || row['jenis_kelamin'] || '')
                     .toUpperCase()
                     .startsWith('L') ? 'L' : 'P',
-                sekolah_asal: String(row['ASAL SEKOLAH'] || row['sekolah_asal'] || '').trim(),
-                pekerjaan_ayah: String(
+                sekolah_asal: rapikan(row['ASAL SEKOLAH'] || row['sekolah_asal'] || ''),
+                pekerjaan_ayah: rapikan(
                     row['PEKERJAAAN AYAH'] || row['PEKERJAAN AYAH'] || row['pekerjaan_ayah'] || ''
-                ).trim(),
-                pekerjaan_ibu: String(row['PEKERJAAN IBU'] || row['pekerjaan_ibu'] || '').trim(),
+                ),
+                pekerjaan_ibu: rapikan(row['PEKERJAAN IBU'] || row['pekerjaan_ibu'] || ''),
                 status_pip_pkh: String(row['APAKAH ANANDA PENERIMA PIP / PKH'] || '').trim().toUpperCase() === 'YA'
             }));
 
@@ -551,7 +638,12 @@ const siswaController = {
                         alasan
                     });
                 } else {
-                    dataSiswa.push(row);
+                    // Baris valid: pekerjaan kosong otomatis menjadi "Tidak bekerja".
+                    dataSiswa.push({
+                        ...row,
+                        pekerjaan_ayah: pekerjaanAtauDefault(row.pekerjaan_ayah),
+                        pekerjaan_ibu: pekerjaanAtauDefault(row.pekerjaan_ibu)
+                    });
                 }
             });
 
@@ -574,6 +666,7 @@ const siswaController = {
                 return redirectError(res, pesanGagalTotal);
             }
 
+            // Duplikat NISN (dalam file maupun dengan data yang sudah ada) ditolak di bulkInsert.
             const hasil = await siswaModel.bulkInsert(dataSiswa, periode.id_periode);
 
             await userModel.logActivity(req.session.user.id_user, `Admin mengimpor ${hasil.berhasil} data siswa dari Excel`);

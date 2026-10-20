@@ -3,13 +3,55 @@ const userModel = require('../models/userModel');
 
 const REGEX_EMAIL = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
 
+// NIP standar = 18 digit angka. Ubah regex ini jika format NIP sekolah berbeda.
+const REGEX_NIP = /^[0-9]{18}$/;
+
+const BASE_URL = '/superadmin/akun-admin';
+
+// Hapus semua spasi pada NIP (sering ikut ter-copy dari dokumen: "1985 0101 2010 01 1 001").
+function rapikanNip(nilai) {
+    return String(nilai === undefined || nilai === null ? '' : nilai).replace(/\s+/g, '').trim();
+}
+
+// Aturan NIP:
+// - role kepsek  -> WAJIB
+// - role lainnya -> opsional (kosong disimpan sebagai NULL)
+// Jika diisi, harus 18 digit angka.
+// Return { error } atau { nip } (nip = string atau null).
+function validasiNip(role, nipMentah) {
+    const nip = rapikanNip(nipMentah);
+
+    if (role === 'kepsek' && !nip) {
+        return { error: 'NIP wajib diisi untuk akun Kepala Sekolah.' };
+    }
+
+    if (nip && !REGEX_NIP.test(nip)) {
+        return { error: 'NIP harus berupa 18 digit angka.' };
+    }
+
+    return { nip: nip || null };
+}
+
+// Pesan jika sudah ada Kepala Sekolah aktif (kepsek hanya boleh 1 yang aktif).
+function pesanKepsekSudahAda(kepsekAktif) {
+    return `Sudah ada Kepala Sekolah aktif: "${kepsekAktif.nama}" (username: ${kepsekAktif.username}). ` +
+        'Kepala Sekolah hanya boleh 1 akun aktif. ' +
+        'Hapus atau nonaktifkan akun Kepala Sekolah yang lama terlebih dahulu.';
+}
+
+const redirectError = (res, pesan) =>
+    res.redirect(`${BASE_URL}?error=` + encodeURIComponent(pesan));
+
 const userManagementController = {
     async index(req, res) {
         try {
             const users = await userManagementModel.getAllUsers();
+            const kepsekAktif = await userManagementModel.getKepsekAktif();
+
             res.render('superadmin/akun-admin', {
                 user: req.session.user,
                 users,
+                kepsekAktif: kepsekAktif || null,
                 activePage: 'akun-admin',
                 pageTitle: 'Kelola Akun Operator',
                 success: req.query.success || null,
@@ -23,7 +65,7 @@ const userManagementController = {
 
     async create(req, res) {
         try {
-            const { nama, username, email, password, confirmPassword, role } = req.body;
+            const { nama, username, email, password, confirmPassword, role, nip } = req.body;
 
             if (!nama || !username || !email || !password || !confirmPassword || !role) {
                 return res.redirect('/superadmin/akun-admin?error=Semua field wajib diisi, termasuk email dan konfirmasi password.');
@@ -43,6 +85,20 @@ const userManagementController = {
                 return res.redirect('/superadmin/akun-admin?error=Email harus menggunakan domain @gmail.com.');
             }
 
+            // NIP: wajib untuk kepsek, opsional untuk role lain.
+            const hasilNip = validasiNip(role, nip);
+            if (hasilNip.error) return redirectError(res, hasilNip.error);
+            const nipBersih = hasilNip.nip;
+
+            // Kepala Sekolah hanya boleh 1 yang aktif.
+            // Dicek sebelum jalur reaktivasi, jadi akun kepsek lama yang diaktifkan kembali juga ikut dibatasi.
+            if (role === 'kepsek') {
+                const kepsekAktif = await userManagementModel.getKepsekAktif();
+                if (kepsekAktif) {
+                    return redirectError(res, pesanKepsekSudahAda(kepsekAktif));
+                }
+            }
+
             // Cek duplikasi hanya terhadap akun yang MASIH AKTIF
             const usernameExists = await userManagementModel.checkUsernameExists(username);
             if (usernameExists) {
@@ -52,6 +108,11 @@ const userManagementController = {
             const emailExists = await userManagementModel.checkEmailExists(emailTrimmed);
             if (emailExists) {
                 return res.redirect('/superadmin/akun-admin?error=Email sudah digunakan oleh akun aktif lain.');
+            }
+
+            const nipExists = await userManagementModel.checkNipExists(nipBersih);
+            if (nipExists) {
+                return redirectError(res, 'NIP sudah digunakan oleh akun aktif lain.');
             }
 
             // Cek apakah username dan email ini dulu pernah dipakai akun yang SUDAH DIHAPUS (nonaktif).
@@ -76,7 +137,8 @@ const userManagementController = {
                         username,
                         emailTrimmed,
                         password,
-                        role
+                        role,
+                        nipBersih
                     );
                 } catch (dupErr) {
                     return res.redirect('/superadmin/akun-admin?error=' + encodeURIComponent(dupErr.message));
@@ -89,7 +151,7 @@ const userManagementController = {
             }
 
             // Kalau tidak ada akun lama yang cocok, baru buat akun benar-benar baru
-            await userManagementModel.createUser(nama, username, emailTrimmed, password, role);
+            await userManagementModel.createUser(nama, username, emailTrimmed, password, role, nipBersih);
             await userModel.logActivity(req.session.user.id_user, `Admin menambahkan akun baru: ${nama} (${role})`);
 
             res.redirect('/superadmin/akun-admin?success=Akun berhasil ditambahkan.');
@@ -101,7 +163,7 @@ const userManagementController = {
 
     async update(req, res) {
         try {
-            const { id_user, nama, username, email, password, confirmPassword, role } = req.body;
+            const { id_user, nama, username, email, password, confirmPassword, role, nip } = req.body;
 
             if (!nama || !username || !email || !role) {
                 return res.redirect('/superadmin/akun-admin?error=Semua field wajib diisi, termasuk email.');
@@ -109,6 +171,26 @@ const userManagementController = {
 
             if (!REGEX_EMAIL.test(email.trim())) {
                 return res.redirect('/superadmin/akun-admin?error=Email harus menggunakan domain @gmail.com.');
+            }
+
+            // NIP: wajib untuk kepsek, opsional untuk role lain.
+            const hasilNip = validasiNip(role, nip);
+            if (hasilNip.error) return redirectError(res, hasilNip.error);
+            const nipBersih = hasilNip.nip;
+
+            // Kepala Sekolah hanya boleh 1 yang aktif.
+            // Hanya dicek jika akun ini BARU menjadi kepsek (sebelumnya bukan kepsek aktif).
+            // Mengedit akun yang memang sudah kepsek aktif tidak diblokir.
+            if (role === 'kepsek') {
+                const akunSekarang = await userManagementModel.getUserById(id_user);
+                const sudahKepsekAktif = akunSekarang && akunSekarang.role === 'kepsek' && Boolean(akunSekarang.status_aktif);
+
+                if (!sudahKepsekAktif) {
+                    const kepsekLain = await userManagementModel.getKepsekAktif(id_user);
+                    if (kepsekLain) {
+                        return redirectError(res, pesanKepsekSudahAda(kepsekLain));
+                    }
+                }
             }
 
             // Password di form edit sifatnya OPSIONAL: kosong berarti password tidak diubah.
@@ -127,7 +209,12 @@ const userManagementController = {
                 return res.redirect('/superadmin/akun-admin?error=Email sudah digunakan oleh akun lain.');
             }
 
-            await userManagementModel.updateUser(id_user, nama, username, email.trim(), role);
+            const nipExists = await userManagementModel.checkNipExists(nipBersih, id_user);
+            if (nipExists) {
+                return redirectError(res, 'NIP sudah digunakan oleh akun aktif lain.');
+            }
+
+            await userManagementModel.updateUser(id_user, nama, username, email.trim(), role, nipBersih);
 
             if (inginGantiPassword) {
                 await userManagementModel.updatePassword(id_user, password);
@@ -165,6 +252,19 @@ const userManagementController = {
         try {
             const { id_user } = req.params;
             const targetUser = await userManagementModel.getUserById(id_user);
+
+            if (!targetUser) {
+                return redirectError(res, 'Akun tidak ditemukan.');
+            }
+
+            // Mengaktifkan kembali akun kepsek yang nonaktif: tolak jika sudah ada kepsek aktif lain.
+            if (targetUser.role === 'kepsek' && !targetUser.status_aktif) {
+                const kepsekLain = await userManagementModel.getKepsekAktif(id_user);
+                if (kepsekLain) {
+                    return redirectError(res, pesanKepsekSudahAda(kepsekLain));
+                }
+            }
+
             await userManagementModel.toggleStatus(id_user);
             await userModel.logActivity(req.session.user.id_user, `Admin mengubah status akun: ${targetUser.nama}`);
             res.redirect('/superadmin/akun-admin?success=Status akun berhasil diubah.');

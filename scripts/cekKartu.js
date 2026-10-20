@@ -13,16 +13,31 @@ const akunSiswaModel = require('../models/akunSiswaModel');
         const kartuList = await akunSiswaModel.getDataKartuSemua(idPeriode);
         let cocok = 0;
         let tidakCocok = 0;
-        let tanpaPasswordKartu = 0;
+        let gagalDekripsi = 0;
+        let sudahGanti = 0;
+        let akunHilang = 0;
 
         for (const k of kartuList) {
             if (!k.password_awal) {
-                tanpaPasswordKartu++;
-                console.log('KARTU KOSONG (sudah ganti password / gagal dekripsi):', k.nama, k.nisn);
+                if (Number(k.wajib_ganti_password) === 0) {
+                    // Wajar: siswa sudah mengganti password, password awal sengaja dihapus.
+                    sudahGanti++;
+                } else {
+                    // Bermasalah: belum ganti password tapi password awal tidak terbaca.
+                    gagalDekripsi++;
+                    console.log('GAGAL DEKRIPSI (belum ganti password):', k.nama, k.nisn);
+                }
                 continue;
             }
 
             const detail = await akunSiswaModel.findByIdSiswa(k.id_siswa);
+
+            if (!detail) {
+                akunHilang++;
+                console.log('AKUN TIDAK DITEMUKAN:', k.nama, k.nisn);
+                continue;
+            }
+
             const ok = await bcrypt.compare(k.password_awal, detail.password);
 
             if (ok) {
@@ -34,9 +49,12 @@ const akunSiswaModel = require('../models/akunSiswaModel');
         }
 
         console.log('---');
-        console.log('Cocok:', cocok);
-        console.log('Tidak cocok:', tidakCocok);
-        console.log('Kartu kosong:', tanpaPasswordKartu);
+        console.log('Total diperiksa          :', kartuList.length);
+        console.log('Cocok                    :', cocok);
+        console.log('Tidak cocok              :', tidakCocok);
+        console.log('Gagal dekripsi           :', gagalDekripsi);
+        console.log('Sudah ganti password     :', sudahGanti);
+        console.log('Akun tidak ditemukan     :', akunHilang);
     } catch (e) {
         console.error(e);
     }

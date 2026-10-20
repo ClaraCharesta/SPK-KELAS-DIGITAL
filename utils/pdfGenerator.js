@@ -171,8 +171,13 @@ function drawSectionTitle(doc, y, title, accent, rightText) {
     return y + 15 + 10;
 }
 
+/**
+ * data = { periode, hasilRanking, bobotKriteria, kepsek }
+ * kepsek = { nama, nip } -> Kepala Sekolah yang AKTIF (ambil dari userModel.getKepsekAktif()).
+ * Jika kepsek tidak ada, bagian tanda tangan tetap tercetak dengan garis kosong seperti sebelumnya.
+ */
 function generateLaporanPDF(res, data) {
-    const { periode, hasilRanking, bobotKriteria } = data;
+    const { periode, hasilRanking, bobotKriteria, kepsek } = data;
 
     const doc = new PDFDocument({ margin: 0, size: 'A4', bufferPages: true });
     res.setHeader('Content-Type', 'application/pdf');
@@ -377,6 +382,10 @@ function generateLaporanPDF(res, data) {
     const sigW = 190;
     const sigX = PAGE_WIDTH - MARGIN - sigW;
 
+    // Identitas Kepala Sekolah AKTIF (diambil dari akun user dengan role kepsek)
+    const namaKepsek = kepsek && kepsek.nama ? String(kepsek.nama).trim() : '';
+    const nipKepsek = kepsek && kepsek.nip ? String(kepsek.nip).trim() : '';
+
     doc.fillColor(COLORS.text).font('Helvetica').fontSize(9.5)
         .text(`Padang, ${tglSekarang}`, sigX, y, { width: sigW, align: 'center', lineBreak: false });
     y += 14;
@@ -385,10 +394,27 @@ function generateLaporanPDF(res, data) {
     doc.font('Helvetica-Bold')
         .text('Kepala Sekolah', sigX, y, { width: sigW, align: 'center', lineBreak: false });
     y += 58;
-    doc.moveTo(sigX + 15, y).lineTo(sigX + sigW - 15, y).lineWidth(0.6).strokeColor(COLORS.text).stroke();
-    y += 5;
-    doc.font('Helvetica').fontSize(9)
-        .text('NIP. ', sigX + 15, y, { width: sigW - 30, align: 'left', lineBreak: false });
+
+    if (namaKepsek) {
+        // Nama Kepala Sekolah (tebal, digarisbawahi) lalu NIP di bawahnya
+        doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORS.text)
+            .text(namaKepsek, sigX - 25, y, { width: sigW + 50, align: 'center', lineBreak: false });
+
+        const lebarNama = doc.widthOfString(namaKepsek);
+        const garisX = sigX + (sigW - lebarNama) / 2;
+        doc.moveTo(garisX, y + 12).lineTo(garisX + lebarNama, y + 12)
+            .lineWidth(0.6).strokeColor(COLORS.text).stroke();
+
+        y += 17;
+        doc.font('Helvetica').fontSize(9).fillColor(COLORS.text)
+            .text(`NIP. ${nipKepsek || '-'}`, sigX, y, { width: sigW, align: 'center', lineBreak: false });
+    } else {
+        // Tidak ada kepsek aktif: tetap tampilkan garis kosong seperti semula
+        doc.moveTo(sigX + 15, y).lineTo(sigX + sigW - 15, y).lineWidth(0.6).strokeColor(COLORS.text).stroke();
+        y += 5;
+        doc.font('Helvetica').fontSize(9)
+            .text('NIP. ', sigX + 15, y, { width: sigW - 30, align: 'left', lineBreak: false });
+    }
 
     // ===== FOOTER SEMUA HALAMAN (garis + identitas + nomor halaman) =====
     const range = doc.bufferedPageRange();

@@ -1,0 +1,175 @@
+/* =====================================================
+   ADMIN - DATA SISWA
+   File: public/css/admin-siswa.css
+   ===================================================== */
+
+/* ---------- Ringkasan (kartu statistik mini) ---------- */
+.stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+.stat-mini { background:#fff; border:1px solid #e5e7eb; border-top:3px solid #cbd5e1; border-radius:10px; padding:12px 14px; cursor:pointer; transition:box-shadow .15s, transform .15s; }
+.stat-mini:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); transform:translateY(-1px); }
+.stat-mini .angka { font-size:24px; font-weight:700; line-height:1.2; }
+.stat-mini .label { font-size:12px; color:#666; }
+.stat-mini.biru { border-top-color:#3b82f6; }
+.stat-mini.hijau { border-top-color:#22c55e; }
+.stat-mini.abu { border-top-color:#94a3b8; }
+.stat-mini.warn { border-top-color:#f59e0b; background:#fffaf0; }
+.stat-mini.merah { border-top-color:#ef4444; }
+
+/* ---------- Toolbar ---------- */
+.toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+.toolbar .search-input { flex:1; min-width:220px; max-width:340px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; }
+.toolbar select { padding:10px 12px; border:1px solid #ddd; border-radius:8px; }
+.toolbar .spacer { flex:1; }
+.toolbar .info-hitung { font-size:12px; color:#777; }
+
+/* ---------- Badge ---------- */
+.badge-akun { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; white-space:nowrap; }
+.badge-akun.tanpa_akun { background:#eceff3; color:#5b6573; }
+.badge-akun.belum_aktif { background:#fdf1de; color:#b35c00; }
+.badge-akun.aktif { background:#e2f8ea; color:#1e8449; }
+.badge-akun.nonaktif { background:#fde8e8; color:#b3261e; }
+.badge-akun.berminat { background:#e2f8ea; color:#1e8449; }
+.badge-akun.tidak_berminat { background:#fde8e8; color:#b3261e; }
+
+.sub-info { display:block; font-size:11px; color:#888; margin-top:3px; }
+
+/* ---------- Tabel ---------- */
+.table-scroll { max-height:580px; overflow:auto; border:1px solid #e5e7eb; border-radius:10px; }
+.table-scroll .data-table { margin:0; }
+.table-scroll thead th { position:sticky; top:0; background:#f8fafc; z-index:2; box-shadow:0 1px 0 #e5e7eb; }
+
+.action-cell { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.action-cell form { margin:0; }
+
+.btn-kecil { font-size:12px; padding:5px 10px; border:1px solid #d5d9e0; background:#fff; border-radius:6px; cursor:pointer; text-decoration:none; color:#333; display:inline-flex; align-items:center; gap:4px; }
+.btn-kecil:hover { background:#f4f6f9; }
+.btn-nilai { background:#eef3ff; border-color:#cbd8ff; color:#2448a5; }
+.btn-nilai:hover { background:#dfe8ff; }
+.btn-kartu { background:#f3f0ff; border-color:#d9d0ff; color:#5b3fc4; }
+.btn-kartu:hover { background:#e8e2ff; }
+.btn-kartu.btn-lebar { padding:9px 12px; }
+
+/* ---------- Tombol mati ---------- */
+.btn-mati { opacity:.45; cursor:not-allowed !important; pointer-events:none; background:#f1f3f6 !important; border-color:#d9dde4 !important; color:#7b8494 !important; }
+.btn-off { opacity:.5; cursor:not-allowed !important; }
+.teks-kunci { color:#8a6d3b; font-size:12px; white-space:nowrap; }
+.link-template { text-decoration:none; display:flex; align-items:center; gap:6px; }
+.teks-tidak-ikut { color:#999; font-size:12px; }
+
+/* ---------- Aksi minat per siswa ---------- */
+.minat-aksi { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+.minat-aksi form { margin:0; }
+.btn-minat-ya { background:#e2f8ea; border-color:#b7e6c9; color:#1e8449; }
+.btn-minat-ya:hover { background:#d0f1de; }
+.btn-minat-tidak { background:#fde8e8; border-color:#f5c2c0; color:#b3261e; }
+.btn-minat-tidak:hover { background:#fbd5d3; }
+
+/* ---------- Checklist massal ---------- */
+.col-cek { width:38px; text-align:center; }
+.col-cek input[type="checkbox"] { width:17px; height:17px; cursor:pointer; accent-color:#1e8449; }
+.baris-siswa.terpilih td { background:#f1fbf5; }
+
+.bulk-bar {
+    display:none; align-items:center; gap:10px; flex-wrap:wrap;
+    background:#f4f8ff; border:1px solid #cbd8ff; border-radius:10px;
+    padding:10px 14px; margin-bottom:12px;
+}
+.bulk-bar.tampil { display:flex; }
+.bulk-bar .bulk-info { font-size:14px; color:#1e3a8a; }
+.bulk-bar .bulk-info strong { font-size:16px; }
+.bulk-bar .spacer { flex:1; }
+.bulk-bar form { margin:0; }
+
+.bulk-aksi { display:flex; gap:8px; flex-wrap:wrap; }
+
+.btn-massal {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 16px; border-radius:8px; border:1px solid transparent;
+    font-size:13.5px; font-weight:600; cursor:pointer; color:#fff;
+    transition:background .15s, transform .1s;
+}
+.btn-massal:active { transform:translateY(1px); }
+.btn-massal-ya { background:#1e8449; }
+.btn-massal-ya:hover { background:#166a3a; }
+.btn-massal-tidak { background:#b3261e; }
+.btn-massal-tidak:hover { background:#8f1d17; }
+
+/* ---------- Panduan ---------- */
+.info-alur { font-size:13px; color:#444; line-height:1.7; }
+.info-alur li { margin-bottom:2px; }
+
+/* ---------- Penanda baris ---------- */
+.baris-siswa.perlu-dihubungi td:first-child { box-shadow:inset 3px 0 0 #f0a020; }
+.baris-siswa.tidak-ikut td { color:#888; }
+
+/* ---------- Alert peringatan (oranye) ---------- */
+.alert-peringatan { background:#fdf1de; color:#b35c00; }
+
+/* =====================================================
+   FORM TAMBAH / EDIT SISWA
+   ===================================================== */
+.modal-box.modal-lebar { max-width:640px; width:95%; max-height:92vh; overflow-y:auto; }
+
+.modal-box .form-siswa .form-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:14px 16px;
+}
+.modal-box .form-siswa .span-2 { grid-column:1 / -1; }
+
+.modal-box .form-siswa .form-group { display:flex; flex-direction:column; min-width:0; }
+
+.modal-box .form-siswa .form-group > label {
+    display:block; margin:0 0 6px; font-size:13px; font-weight:600; color:#1f2937;
+}
+
+.modal-box .form-siswa input[type="text"],
+.modal-box .form-siswa select {
+    width:100%; margin:0; padding:10px 12px;
+    border:1px solid #d1d5db; border-radius:8px;
+    font-size:14px; background:#fff; color:#1f2937;
+    transition:border-color .15s, box-shadow .15s;
+}
+.modal-box .form-siswa input[type="text"]:focus,
+.modal-box .form-siswa select:focus {
+    outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.15);
+}
+.modal-box .form-siswa input::placeholder { color:#9ca3af; }
+
+.tag-info { font-size:11px; font-weight:400; color:#6b7280; }
+.tag-opsional {
+    display:inline-block; margin-left:4px; padding:1px 7px; border-radius:999px;
+    background:#eef2f7; color:#6b7280; font-size:10.5px; font-weight:600;
+}
+
+.hint-field {
+    display:flex; align-items:flex-start; gap:5px;
+    margin:6px 0 0; font-size:11.5px; line-height:1.4; color:#6b7280;
+}
+.hint-field i { margin-top:1px; color:#3b82f6; }
+
+.form-note {
+    display:flex; align-items:flex-start; gap:8px;
+    padding:10px 12px; border-radius:8px;
+    background:#f4f8ff; border-left:3px solid #3b82f6;
+    font-size:12px; line-height:1.5; color:#1e3a8a;
+}
+.form-note i { margin-top:2px; }
+
+.form-peringatan {
+    display:none; margin:14px 0 0; padding:9px 12px; border-radius:8px;
+    background:#fdecec; color:#b91c1c; font-size:12.5px; font-weight:600;
+}
+
+.modal-box .form-siswa .modal-footer { margin-top:18px; }
+
+/* ---------- Petunjuk di modal import ---------- */
+.import-intro { font-size:13px; color:#777; margin-bottom:10px; }
+.import-aturan { font-size:12px; color:#777; margin:0 0 15px 18px; line-height:1.6; }
+
+/* ---------- Responsif ---------- */
+@media (max-width:768px) {
+    .toolbar .search-input { max-width:none; width:100%; }
+    .table-scroll { max-height:65vh; }
+    .modal-box .form-siswa .form-grid { grid-template-columns:1fr; }
+    .bulk-aksi { width:100%; }
+    .bulk-aksi .btn-massal { flex:1; justify-content:center; }
+}
