@@ -1,5 +1,11 @@
 const db = require('../config/database');
 
+const PEKERJAAN_DEFAULT = 'Tidak bekerja';
+
+function bersihkan(nilai) {
+    return String(nilai === undefined || nilai === null ? '' : nilai).replace(/\s+/g, ' ').trim();
+}
+
 const siswaModel = {
     async getActivePeriode() {
         const [rows] = await db.query("SELECT * FROM periode_seleksi WHERE status_periode = 'aktif' LIMIT 1");
@@ -20,7 +26,15 @@ const siswaModel = {
     },
 
     async createSiswa(data) {
-        const { id_periode, nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = data;
+        const { id_periode, jenis_kelamin, status_pip_pkh } = data;
+
+        const nisn = bersihkan(data.nisn);
+        const nama = bersihkan(data.nama);
+        const sekolah_asal = bersihkan(data.sekolah_asal);
+        // Pekerjaan opsional: kosong -> "Tidak bekerja"
+        const pekerjaan_ayah = bersihkan(data.pekerjaan_ayah) || PEKERJAAN_DEFAULT;
+        const pekerjaan_ibu = bersihkan(data.pekerjaan_ibu) || PEKERJAAN_DEFAULT;
+
         try {
             const [result] = await db.query(
                 `INSERT INTO siswa (id_periode, nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh, status_penerimaan)
@@ -37,12 +51,26 @@ const siswaModel = {
     },
 
     async updateSiswa(id_siswa, data) {
-        const { nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh } = data;
-        await db.query(
-            `UPDATE siswa SET nisn=?, nama=?, jenis_kelamin=?, sekolah_asal=?, pekerjaan_ayah=?, pekerjaan_ibu=?, status_pip_pkh=?
-             WHERE id_siswa=?`,
-            [nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh, id_siswa]
-        );
+        const { jenis_kelamin, status_pip_pkh } = data;
+
+        const nisn = bersihkan(data.nisn);
+        const nama = bersihkan(data.nama);
+        const sekolah_asal = bersihkan(data.sekolah_asal);
+        const pekerjaan_ayah = bersihkan(data.pekerjaan_ayah) || PEKERJAAN_DEFAULT;
+        const pekerjaan_ibu = bersihkan(data.pekerjaan_ibu) || PEKERJAAN_DEFAULT;
+
+        try {
+            await db.query(
+                `UPDATE siswa SET nisn=?, nama=?, jenis_kelamin=?, sekolah_asal=?, pekerjaan_ayah=?, pekerjaan_ibu=?, status_pip_pkh=?
+                 WHERE id_siswa=?`,
+                [nisn, nama, jenis_kelamin, sekolah_asal, pekerjaan_ayah, pekerjaan_ibu, status_pip_pkh, id_siswa]
+            );
+        } catch (err) {
+            if (err.code === 'ER_DUP_ENTRY') {
+                throw new Error(`NISN ${nisn} sudah terdaftar pada siswa lain.`);
+            }
+            throw err;
+        }
     },
 
     // Hapus siswa beserta seluruh data turunannya dalam satu transaksi.
@@ -65,7 +93,7 @@ const siswaModel = {
 
     async checkNisnExists(nisn, id_periode, excludeId = null) {
         let query = 'SELECT id_siswa FROM siswa WHERE nisn = ? AND id_periode = ?';
-        const params = [nisn, id_periode];
+        const params = [bersihkan(nisn), id_periode];
 
         if (excludeId) {
             query += ' AND id_siswa != ?';
@@ -84,29 +112,30 @@ const siswaModel = {
 
         for (const row of dataArray) {
             const labelBaris = row.baris ? `Baris ${row.baris}` : 'Baris ?';
+            const nisnBersih = bersihkan(row.nisn);
 
-            if (nisnDalamFile.has(row.nisn)) {
+            if (nisnDalamFile.has(nisnBersih)) {
                 gagal++;
-                pesanGagal.push(`${labelBaris} - NISN ${row.nisn} (${row.nama}): duplikat dalam file, baris kedua dilewati.`);
+                pesanGagal.push(`${labelBaris} - NISN ${nisnBersih} (${row.nama}): duplikat dalam file, baris kedua dilewati.`);
                 continue;
             }
 
-            nisnDalamFile.add(row.nisn);
+            nisnDalamFile.add(nisnBersih);
 
             try {
-                const exists = await siswaModel.checkNisnExists(row.nisn, id_periode);
+                const exists = await siswaModel.checkNisnExists(nisnBersih, id_periode);
 
                 if (exists) {
                     gagal++;
-                    pesanGagal.push(`${labelBaris} - NISN ${row.nisn} (${row.nama}): sudah terdaftar di sistem.`);
+                    pesanGagal.push(`${labelBaris} - NISN ${nisnBersih} (${row.nama}): sudah terdaftar di sistem.`);
                     continue;
                 }
 
-                await siswaModel.createSiswa({ ...row, id_periode });
+                await siswaModel.createSiswa({ ...row, nisn: nisnBersih, id_periode });
                 berhasil++;
             } catch (err) {
                 gagal++;
-                pesanGagal.push(`${labelBaris} - NISN ${row.nisn || '-'} (${row.nama || '-'}): ${err.message}`);
+                pesanGagal.push(`${labelBaris} - NISN ${nisnBersih || '-'} (${row.nama || '-'}): ${err.message}`);
             }
         }
 
@@ -219,13 +248,18 @@ const siswaModel = {
         }
     },
 
-    // Operator menandai BANYAK siswa sekaligus sebagai 'berminat' (checklist).
+    // Operator menandai BANYAK siswa sekaligus (checklist) sebagai 'berminat' ATAU 'tidak_berminat'.
     // Hanya siswa yang punya akun dan masih 'belum_respon' pada periode ini yang diubah;
     // sisanya dilewati. Semua dalam satu transaksi.
+    // 'tidak_berminat' juga menonaktifkan akun (sama seperti pada setMinatOlehOperator).
     // Return { ok: true, diubah, dilewati } atau { ok: false, alasan }.
-    async setMinatMassal(daftarId, id_periode) {
+    async setMinatMassal(daftarId, id_periode, statusBaru = 'berminat') {
         if (!Array.isArray(daftarId) || daftarId.length === 0) {
             return { ok: false, alasan: 'TIDAK_ADA_PILIHAN' };
+        }
+
+        if (!['berminat', 'tidak_berminat'].includes(statusBaru)) {
+            return { ok: false, alasan: 'STATUS_TIDAK_VALID' };
         }
 
         const conn = await db.getConnection();
@@ -259,14 +293,29 @@ const siswaModel = {
             let diubah = 0;
 
             if (idLayak.length > 0) {
-                const [hasil] = await conn.query(
-                    `UPDATE akun_siswa
-                     SET status_minat = 'berminat',
-                         tanggal_respon_minat = NOW()
-                     WHERE id_siswa IN (?)
-                       AND status_minat = 'belum_respon'`,
-                    [idLayak]
-                );
+                let hasil;
+
+                if (statusBaru === 'tidak_berminat') {
+                    [hasil] = await conn.query(
+                        `UPDATE akun_siswa
+                         SET status_minat = 'tidak_berminat',
+                             status_akun = 'nonaktif',
+                             tanggal_respon_minat = NOW()
+                         WHERE id_siswa IN (?)
+                           AND status_minat = 'belum_respon'`,
+                        [idLayak]
+                    );
+                } else {
+                    [hasil] = await conn.query(
+                        `UPDATE akun_siswa
+                         SET status_minat = 'berminat',
+                             tanggal_respon_minat = NOW()
+                         WHERE id_siswa IN (?)
+                           AND status_minat = 'belum_respon'`,
+                        [idLayak]
+                    );
+                }
+
                 diubah = hasil.affectedRows;
             }
 

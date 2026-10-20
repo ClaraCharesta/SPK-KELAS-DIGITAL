@@ -1,5 +1,6 @@
 const waspasModel = require('../models/waspasModel');
 const periodeModel = require('../models/periodeModel');
+const userModel = require('../models/userModel');
 const { generateLaporanPDF } = require('../utils/pdfGenerator');
 const { hitungWASPAS } = require('../utils/waspasCalculator');
 
@@ -32,6 +33,21 @@ async function lengkapiWsmWpm(idPeriode, hasilRanking) {
     }
 
     return hasilRanking;
+}
+
+// ================================================================
+// Helper: ambil Kepala Sekolah yang sedang AKTIF (nama + NIP).
+// Dibungkus try/catch supaya laporan tetap bisa dicetak
+// (dengan garis tanda tangan kosong) kalau query-nya gagal.
+// ================================================================
+async function ambilKepsekAktif() {
+    try {
+        const kepsek = await userModel.getKepsekAktif();
+        return kepsek || null;
+    } catch (kepsekError) {
+        console.error('Gagal mengambil data Kepala Sekolah aktif untuk laporan:', kepsekError);
+        return null;
+    }
 }
 
 const laporanController = {
@@ -76,7 +92,10 @@ const laporanController = {
 
             await lengkapiWsmWpm(periode.id_periode, hasilRanking);
 
-            generateLaporanPDF(res, { periode, hasilRanking, bobotKriteria });
+            // Nama + NIP Kepala Sekolah yang aktif, dipakai di blok tanda tangan PDF.
+            const kepsek = await ambilKepsekAktif();
+
+            generateLaporanPDF(res, { periode, hasilRanking, bobotKriteria, kepsek });
         } catch (error) {
             console.error(error);
             const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'admin';

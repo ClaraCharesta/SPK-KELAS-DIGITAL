@@ -5,13 +5,31 @@ const userManagementModel = {
     // Hanya tampilkan akun yang masih aktif (status_aktif = TRUE)
     async getAllUsers() {
         const [rows] = await db.query(
-            "SELECT id_user, nama, username, email, role, status_aktif, created_at FROM users WHERE role IN ('operator','kepsek') AND status_aktif = TRUE ORDER BY created_at DESC"
+            "SELECT id_user, nama, username, email, nip, role, status_aktif, created_at FROM users WHERE role IN ('operator','kepsek') AND status_aktif = TRUE ORDER BY created_at DESC"
         );
         return rows;
     },
 
     async getUserById(id_user) {
         const [rows] = await db.query('SELECT * FROM users WHERE id_user = ?', [id_user]);
+        return rows[0];
+    },
+
+    // Kepala Sekolah yang sedang AKTIF. Kepsek hanya boleh 1 yang aktif.
+    // excludeId (opsional) dipakai untuk mengabaikan akun tertentu (mis. akun yang sedang diedit).
+    // Return { id_user, nama, username } atau undefined jika tidak ada kepsek aktif.
+    async getKepsekAktif(excludeId = null) {
+        let query = "SELECT id_user, nama, username FROM users WHERE role = 'kepsek' AND status_aktif = TRUE";
+        const params = [];
+
+        if (excludeId) {
+            query += ' AND id_user != ?';
+            params.push(excludeId);
+        }
+
+        query += ' ORDER BY created_at DESC, id_user DESC LIMIT 1';
+
+        const [rows] = await db.query(query, params);
         return rows[0];
     },
 
@@ -28,6 +46,22 @@ const userManagementModel = {
     async checkEmailExists(email, excludeId = null) {
         let query = 'SELECT id_user FROM users WHERE email = ? AND status_aktif = TRUE';
         const params = [email];
+
+        if (excludeId) {
+            query += ' AND id_user != ?';
+            params.push(excludeId);
+        }
+
+        const [rows] = await db.query(query, params);
+        return rows.length > 0;
+    },
+
+    // Hanya cek NIP yang MASIH AKTIF (sama seperti email/username). NIP kosong tidak dicek.
+    async checkNipExists(nip, excludeId = null) {
+        if (!nip) return false;
+
+        let query = 'SELECT id_user FROM users WHERE nip = ? AND status_aktif = TRUE';
+        const params = [nip];
 
         if (excludeId) {
             query += ' AND id_user != ?';
@@ -57,23 +91,24 @@ const userManagementModel = {
         return rows[0];
     },
 
-    async createUser(nama, username, email, password, role) {
+    // nip = null untuk role selain kepsek yang tidak mengisi NIP.
+    async createUser(nama, username, email, password, role, nip = null) {
         const hashedPassword = await bcrypt.hash(password, 10);
         const [result] = await db.query(
-            'INSERT INTO users (nama, username, email, password, role, status_aktif) VALUES (?, ?, ?, ?, ?, TRUE)',
-            [nama, username, email, hashedPassword, role]
+            'INSERT INTO users (nama, username, email, nip, password, role, status_aktif) VALUES (?, ?, ?, ?, ?, ?, TRUE)',
+            [nama, username, email, nip || null, hashedPassword, role]
         );
         return result.insertId;
     },
 
     // BARU: reaktivasi akun lama yang nonaktif -> ditimpa dengan data baru + status_aktif jadi TRUE.
     // Row lama TETAP dipakai (id_user sama), jadi log_aktivitas lama akun ini tetap nyambung.
-    async reactivateUser(id_user, nama, username, email, password, role) {
+    async reactivateUser(id_user, nama, username, email, password, role, nip = null) {
         const hashedPassword = await bcrypt.hash(password, 10);
         try {
             await db.query(
-                'UPDATE users SET nama = ?, username = ?, email = ?, password = ?, role = ?, status_aktif = TRUE WHERE id_user = ?',
-                [nama, username, email, hashedPassword, role, id_user]
+                'UPDATE users SET nama = ?, username = ?, email = ?, nip = ?, password = ?, role = ?, status_aktif = TRUE WHERE id_user = ?',
+                [nama, username, email, nip || null, hashedPassword, role, id_user]
             );
         } catch (err) {
             if (err.code === 'ER_DUP_ENTRY') {
@@ -83,10 +118,10 @@ const userManagementModel = {
         }
     },
 
-    async updateUser(id_user, nama, username, email, role) {
+    async updateUser(id_user, nama, username, email, role, nip = null) {
         await db.query(
-            'UPDATE users SET nama = ?, username = ?, email = ?, role = ? WHERE id_user = ?',
-            [nama, username, email, role, id_user]
+            'UPDATE users SET nama = ?, username = ?, email = ?, nip = ?, role = ? WHERE id_user = ?',
+            [nama, username, email, nip || null, role, id_user]
         );
     },
 

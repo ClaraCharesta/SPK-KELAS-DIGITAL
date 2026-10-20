@@ -50,6 +50,20 @@ const userModel = {
     // dan saat user selesai mengganti passwordnya sendiri.
     async setWajibGantiPassword(id_user, value) {
         await db.query('UPDATE users SET wajib_ganti_password = ? WHERE id_user = ?', [value, id_user]);
+    },
+
+    // Kepala Sekolah yang sedang AKTIF (nama + NIP), dipakai untuk tanda tangan laporan PDF.
+    // Jika ada lebih dari satu kepsek aktif, diambil yang paling baru dibuat.
+    // Return { id_user, nama, nip } atau undefined jika tidak ada.
+    async getKepsekAktif() {
+        const [rows] = await db.query(
+            `SELECT id_user, nama, nip
+             FROM users
+             WHERE role = 'kepsek' AND status_aktif = TRUE
+             ORDER BY created_at DESC, id_user DESC
+             LIMIT 1`
+        );
+        return rows[0];
     }
 };
 

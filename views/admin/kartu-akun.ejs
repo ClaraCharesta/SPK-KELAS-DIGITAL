@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="google" content="notranslate">
     <title><%= judul %></title>
     <style>
         * { box-sizing: border-box; }
@@ -19,7 +20,7 @@
         .baris { display:flex; font-size:13px; margin:4px 0; }
         .baris .k { width:92px; color:#64748b; flex-shrink:0; }
         .baris .v { font-weight:600; word-break:break-all; }
-        .pw { font-family:Consolas, monospace; font-size:15px; letter-spacing:1px; background:#f1f5f9; padding:2px 8px; border-radius:4px; }
+        .pw { font-family:Consolas, 'Courier New', monospace; font-size:17px; letter-spacing:1px; background:#f1f5f9; padding:2px 8px; border-radius:4px; user-select:all; -webkit-user-select:all; }
         .sudah { font-size:12px; color:#b35c00; background:#fdf1de; padding:6px 8px; border-radius:6px; margin-top:6px; }
         .hilang { font-size:12px; color:#b3261e; background:#fde8e8; padding:6px 8px; border-radius:6px; margin-top:6px; }
         .foot { font-size:11px; color:#64748b; margin-top:10px; border-top:1px solid #e2e8f0; padding-top:8px; }
@@ -58,7 +59,7 @@
                 <div class="baris"><span class="k">Username</span><span class="v"><%= k.username %></span></div>
 
                 <% if (k.password_awal) { %>
-                    <div class="baris"><span class="k">Password</span><span class="v"><span class="pw"><%= k.password_awal %></span></span></div>
+                    <div class="baris"><span class="k">Password</span><span class="v"><span class="pw" translate="no"><%= k.password_awal %></span></span></div>
                 <% } else if (belumGanti) { %>
                     <div class="hilang">Siswa belum mengganti password awal, tetapi password awal tidak tersimpan atau tidak terbaca. Gunakan Reset untuk membuat password baru.</div>
                 <% } else { %>
