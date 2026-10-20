@@ -9,7 +9,8 @@ const pool = typeof raw.promise === 'function' ? raw.promise() : raw;
 const KRITERIA_SISWA = [
     'Minat Belajar Teknologi',
     'Kepemilikan Perangkat Digital',
-    'Kondisi Ekonomi Keluarga'
+    'Kondisi Ekonomi Keluarga',
+    'Kemampuan Komputer'
 ];
 
 // ---------------------------------------------------------------------------
