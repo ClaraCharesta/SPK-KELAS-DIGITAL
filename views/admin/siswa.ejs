@@ -4,6 +4,25 @@
     <title>Data Siswa</title>
     <%- include('../partials/head') %>
     <link rel="stylesheet" href="/css/admin-siswa.css">
+    <style>
+        .alert-isi { flex: 1; min-width: 0; }
+        .rincian-pesan { margin-top: 8px; }
+        .rincian-pesan summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            user-select: none;
+        }
+        .rincian-pesan ul {
+            margin: 8px 0 0;
+            padding-left: 20px;
+            max-height: 240px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .rincian-pesan li { margin-bottom: 4px; word-break: break-word; }
+    </style>
 </head>
 
 <body>
@@ -39,6 +58,51 @@
     const adaYangBisaDicentang = !sudahTerkunci && !blokirSiswa && daftarSiswa.some(function(x) {
         return Boolean(x.punya_akun) && (x.status_minat || 'belum_respon') === 'belum_respon';
     });
+
+    // Pesan panjang (hasil import) dipecah jadi ringkasan singkat + rincian yang bisa dibuka.
+    const POLA_BARIS = /Baris (?:\d+|\?) [-(]/;
+
+    function pecahPesan(pesan) {
+        const teks = String(pesan || '').trim();
+        const hasil = { teks: teks, ringkasan: teks, rincian: [] };
+
+        if (!teks || !POLA_BARIS.test(teks)) return hasil;
+
+        const bagianRingkasan = [];
+        const bagianRincian = [];
+
+        teks.split(' || ').forEach(function(item) {
+            const idx = item.search(POLA_BARIS);
+
+            if (idx === -1) {
+                if (item.trim()) bagianRincian.push(item.trim());
+                return;
+            }
+
+            let awal = item.slice(0, idx).trim();
+
+            if (awal) {
+                const sisa = awal.match(/^(dan \d+ baris lainnya)\s*/);
+                if (sisa) {
+                    bagianRincian.push(sisa[1]);
+                    awal = awal.slice(sisa[0].length).trim();
+                }
+                awal = awal.replace(/[:\s]+$/, '').replace(/\.+$/, '');
+                if (awal) bagianRingkasan.push(awal);
+            }
+
+            bagianRincian.push(item.slice(idx).trim());
+        });
+
+        if (bagianRincian.length === 0) return hasil;
+
+        hasil.ringkasan = bagianRingkasan.map(function(b) { return b.replace(/\.+$/, ''); }).join('. ') + '.';
+        hasil.rincian = bagianRincian;
+        return hasil;
+    }
+
+    const pesanSukses = pecahPesan((typeof success !== 'undefined' && success) ? success : '');
+    const pesanError = pecahPesan((typeof error !== 'undefined' && error) ? error : '');
 %>
 
 <div class="app-layout">
@@ -94,12 +158,42 @@
                 </div>
             </div>
 
-            <% if (typeof success !== 'undefined' && success) { %>
-                <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> <%= success %></div>
+            <% if (pesanSukses.teks) { %>
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <div class="alert-isi">
+                        <%= pesanSukses.ringkasan %>
+                        <% if (pesanSukses.rincian.length > 0) { %>
+                            <details class="rincian-pesan">
+                                <summary>Lihat rincian</summary>
+                                <ul>
+                                    <% pesanSukses.rincian.forEach(function(r) { %>
+                                        <li><%= r %></li>
+                                    <% }) %>
+                                </ul>
+                            </details>
+                        <% } %>
+                    </div>
+                </div>
             <% } %>
 
-            <% if (typeof error !== 'undefined' && error) { %>
-                <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+            <% if (pesanError.teks) { %>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <div class="alert-isi">
+                        <%= pesanError.ringkasan %>
+                        <% if (pesanError.rincian.length > 0) { %>
+                            <details class="rincian-pesan">
+                                <summary>Lihat rincian</summary>
+                                <ul>
+                                    <% pesanError.rincian.forEach(function(r) { %>
+                                        <li><%= r %></li>
+                                    <% }) %>
+                                </ul>
+                            </details>
+                        <% } %>
+                    </div>
+                </div>
             <% } %>
 
             <!-- Flash pembuatan akun -->

@@ -42,6 +42,19 @@ const PERTANYAAN = [
             'Mampu, kuota biasanya tersedia',
             'Sangat mampu, kuota selalu tersedia setiap bulan'
         ]
+    },
+    {
+        key: 'literasi',
+        nama_kriteria: 'Kemampuan Komputer',
+        judul: 'Kemampuan Komputer / Literasi Digital',
+        pertanyaan: 'Seberapa baik kemampuan Anda dalam menggunakan komputer/laptop dan internet (mengetik, aplikasi perkantoran, mencari informasi, mengelola file)?',
+        opsi: [
+            'Belum bisa menggunakan komputer sama sekali',
+            'Hanya bisa hal dasar (menyalakan komputer, membuka aplikasi sederhana)',
+            'Cukup bisa (mengetik, Word/PowerPoint dasar, menjelajah internet)',
+            'Mahir (mengelola file, memakai aplikasi perkantoran, memasang aplikasi)',
+            'Sangat mahir (menguasai banyak aplikasi, mengatasi masalah dasar, belajar software baru secara mandiri)'
+        ]
     }
 ];
 
@@ -78,7 +91,7 @@ function bolehSetuju(d) {
     return bolehTolak(d);
 }
 
-// Ketiga pertanyaan sudah terjawab semua?
+// Semua pertanyaan sudah terjawab?
 function jawabanLengkap(jawaban) {
     return PERTANYAAN.every(function (p) {
         const nilai = jawaban[p.nama_kriteria];
@@ -86,7 +99,7 @@ function jawabanLengkap(jawaban) {
     });
 }
 
-// Siswa sudah menyatakan setuju (berminat) tetapi form 3 pertanyaan belum lengkap:
+// Siswa sudah menyatakan setuju (berminat) tetapi form belum lengkap:
 // wajib tetap berada di form.
 function wajibLengkapiForm(d, jawaban) {
     return bolehIsiForm(d) &&
@@ -183,7 +196,7 @@ const portalSiswaController = {
 
     // Dipanggil dari POST /siswa/form saat body berisi aksi=setuju
     // (siswa menekan "Ya, saya yakin"). Status langsung 'berminat' (mengikat),
-    // lalu diarahkan ke form 3 pertanyaan.
+    // lalu diarahkan ke form pertanyaan.
     async setuju(req, res) {
         try {
             const d = await ambilDetail(req);
@@ -220,7 +233,7 @@ const portalSiswaController = {
         }
     },
 
-    // GET /siswa/form : form 3 pertanyaan
+    // GET /siswa/form : form pertanyaan skala
     async tampilForm(req, res) {
         try {
             const d = await ambilDetail(req);

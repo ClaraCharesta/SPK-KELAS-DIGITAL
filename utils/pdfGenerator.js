@@ -9,9 +9,16 @@ const PAGE_WIDTH = 595.28;   // A4 portrait (pt)
 const PAGE_HEIGHT = 841.89;
 const MARGIN = 40;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-const BOTTOM_LIMIT = PAGE_HEIGHT - MARGIN - 6;
+const BOTTOM_LIMIT = PAGE_HEIGHT - 52; // sisakan ruang untuk footer
+
+const L_WIDTH = 841.89;      // A4 landscape (pt)
+const L_HEIGHT = 595.28;
+const L_CONTENT_WIDTH = L_WIDTH - MARGIN * 2;
+const L_BOTTOM_LIMIT = L_HEIGHT - 52;
 
 const SEKOLAH_INFO = {
+    instansi1: 'PEMERINTAH PROVINSI SUMATERA BARAT',
+    instansi2: 'DINAS PENDIDIKAN',
     nama: 'SMA NEGERI 12 PADANG',
     alamat: 'Jl. Gurun Laweh, RT.2/RW.2, Kec. Nanggalo, Kota Padang, Sumatera Barat 25145',
     telepon: '(0751) 4977224',
@@ -19,42 +26,39 @@ const SEKOLAH_INFO = {
     provinsi: 'Sumatera Barat'
 };
 
-// Palet hitam putih: hitam untuk teks & garis utama, abu-abu untuk garis tipis, zebra, dan latar.
+// Hitam putih tanpa isi warna (hemat tinta): hanya teks dan garis.
+// Satu-satunya warna: garis pembatas merah antara siswa masuk dan tidak masuk.
 const COLORS = {
-    ink: '#000000',          // hitam: judul, garis kop surat, teks utama
+    ink: '#000000',
     text: '#000000',
     textMuted: '#555555',
-    border: '#999999',
-    borderLight: '#cccccc',
-    zebra: '#f4f4f4',
-    cardBg: '#f4f4f4',
-    headerBg: '#e6e6e6',
-    headerLine: '#000000',
-    neutral: '#555555',
-    track: '#dddddd'
+    line: '#000000',
+    lineSoft: '#9a9a9a',
+    red: '#d00000'
 };
 
 // Status di database yang dianggap MASUK kelas digital. Selain ini dianggap TIDAK masuk.
-// (diterima = hasil WASPAS dalam kuota, lulus/diusulkan = status lanjutan setelah diterima)
 const STATUS_MASUK = ['diterima', 'lulus', 'diusulkan'];
 
 function isMasuk(status) {
     return STATUS_MASUK.includes(String(status || '').toLowerCase().trim());
 }
 
-// Hanya ada 2 status tampilan di laporan
 const STATUS_LABEL = {
-    masuk: 'Masuk Kelas Digital',
-    tidak: 'Tidak Masuk Kelas Digital'
+    masuk: 'Masuk',
+    tidak: 'Tidak Masuk'
 };
 
+const CELL_PAD_X = 6;
+
 /**
- * Kop surat resmi klasik: logo di kiri, identitas sekolah center di tengah
- * halaman penuh (bukan center relatif terhadap logo), lalu garis ganda tebal-tipis.
+ * Kop surat: logo kiri, identitas di tengah, garis ganda tebal-tipis.
+ * Dipanggil di SETIAP halaman. Mengembalikan posisi Y tepat di bawah garis ganda.
  */
-function drawLetterhead(doc, subtitle) {
+function drawKop(doc, pageW) {
+    const contentW = pageW - MARGIN * 2;
     const top = MARGIN;
-    const logoSize = 58;
+    const logoSize = 56;
 
     if (fs.existsSync(LOGO_PATH)) {
         try {
@@ -64,111 +68,162 @@ function drawLetterhead(doc, subtitle) {
         }
     }
 
-    // Teks identitas sekolah di-center terhadap FULL lebar halaman (MARGIN s/d PAGE_WIDTH-MARGIN),
-    // bukan digeser mengikuti logo — ini yang bikin kop surat terlihat "ketengah" seperti format resmi.
-    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(15)
-        .text(SEKOLAH_INFO.nama, MARGIN, top + 2, { width: CONTENT_WIDTH, align: 'center' });
+    doc.fillColor(COLORS.ink).font('Helvetica').fontSize(9)
+        .text(SEKOLAH_INFO.instansi1, MARGIN, top, { width: contentW, align: 'center', lineBreak: false });
+    doc.text(SEKOLAH_INFO.instansi2, MARGIN, doc.y + 1, { width: contentW, align: 'center', lineBreak: false });
 
-    doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(8.3)
-        .text(SEKOLAH_INFO.alamat, MARGIN, doc.y + 3, { width: CONTENT_WIDTH, align: 'center' });
+    doc.font('Helvetica-Bold').fontSize(13)
+        .text(SEKOLAH_INFO.nama, MARGIN, doc.y + 2, { width: contentW, align: 'center', lineBreak: false });
 
-    doc.text(
-        `Telp. ${SEKOLAH_INFO.telepon}   |   Didirikan ${SEKOLAH_INFO.didirikan}   |   Provinsi ${SEKOLAH_INFO.provinsi}`,
-        MARGIN, doc.y + 1, { width: CONTENT_WIDTH, align: 'center' }
-    );
+    doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(7.5)
+        .text(
+            `${SEKOLAH_INFO.alamat}  |  Telp. ${SEKOLAH_INFO.telepon}`,
+            MARGIN, doc.y + 3, { width: contentW, align: 'center', lineBreak: false }
+        );
 
-    const textBottom = doc.y + 8;
-    const lineY = Math.max(textBottom, top + logoSize + 6);
+    const lineY = Math.max(doc.y + 6, top + logoSize + 6);
 
-    // Garis ganda tebal-tipis khas kop surat resmi
-    doc.moveTo(MARGIN, lineY).lineTo(PAGE_WIDTH - MARGIN, lineY)
-        .lineWidth(1.4).strokeColor(COLORS.ink).stroke();
-    doc.moveTo(MARGIN, lineY + 3).lineTo(PAGE_WIDTH - MARGIN, lineY + 3)
-        .lineWidth(0.5).strokeColor(COLORS.ink).stroke();
+    // Garis ganda tebal-tipis khas kop surat
+    doc.moveTo(MARGIN, lineY).lineTo(pageW - MARGIN, lineY)
+        .lineWidth(1.8).strokeColor(COLORS.line).stroke();
+    doc.moveTo(MARGIN, lineY + 3).lineTo(pageW - MARGIN, lineY + 3)
+        .lineWidth(0.5).strokeColor(COLORS.line).stroke();
 
-    let y = lineY + 20;
-
-    // Judul dokumen, center, dengan garis bawah pendek (gaya judul surat resmi)
-    doc.fillColor(COLORS.text).font('Helvetica-Bold').fontSize(11.5)
-        .text(subtitle, MARGIN, y, { width: CONTENT_WIDTH, align: 'center' });
-    y = doc.y + 4;
-
-    const titleWidth = doc.widthOfString(subtitle, { font: 'Helvetica-Bold', size: 11.5 });
-    const underlineX = (PAGE_WIDTH - titleWidth) / 2;
-    doc.moveTo(underlineX, y).lineTo(underlineX + titleWidth, y)
-        .lineWidth(0.7).strokeColor(COLORS.text).stroke();
-
-    return y + 18;
-}
-
-function needsNewPage(y, blockHeight) {
-    return y + blockHeight > BOTTOM_LIMIT;
+    return lineY + 3;
 }
 
 /**
- * Menggambar satu baris tabel: latar (fill), garis bawah, dan garis vertikal
- * di setiap batas kolom (termasuk batas kiri dan kanan).
- * bounds = daftar posisi X batas kolom.
- * opts: { header: true } untuk baris header (latar abu muda), { fill: '#hex' } untuk baris biasa.
+ * Halaman pertama: kop surat + judul dokumen.
+ * Mengembalikan posisi Y untuk konten berikutnya.
  */
-function drawTableRow(doc, y, h, bounds, opts) {
-    const options = opts || {};
+function drawLetterhead(doc, pageW, judul, subJudul) {
+    const contentW = pageW - MARGIN * 2;
+
+    let y = drawKop(doc, pageW) + 15;
+
+    doc.fillColor(COLORS.text).font('Helvetica-Bold').fontSize(11);
+    doc.text(judul, MARGIN, y, { width: contentW, align: 'center', lineBreak: false });
+    y = doc.y + 2;
+
+    if (subJudul) {
+        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(9)
+            .text(subJudul, MARGIN, y, { width: contentW, align: 'center', lineBreak: false });
+        y = doc.y;
+    }
+
+    return y + 14;
+}
+
+/**
+ * Halaman lanjutan: kop surat penuh (tanpa judul).
+ * Mengembalikan posisi Y untuk konten berikutnya.
+ */
+function drawKopLanjutan(doc, pageW) {
+    return drawKop(doc, pageW) + 14;
+}
+
+/**
+ * Footer semua halaman: garis tipis, keterangan dokumen, nomor halaman.
+ */
+function drawFooters(doc, teksKiri) {
+    const range = doc.bufferedPageRange();
+
+    for (let i = 0; i < range.count; i++) {
+        doc.switchToPage(range.start + i);
+
+        const pw = doc.page.width;
+        const ph = doc.page.height;
+        const fy = ph - 34;
+
+        doc.moveTo(MARGIN, fy).lineTo(pw - MARGIN, fy)
+            .lineWidth(0.4).strokeColor(COLORS.lineSoft).stroke();
+
+        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(7.5)
+            .text(teksKiri, MARGIN, fy + 6, { width: pw - MARGIN * 2 - 90, align: 'left', lineBreak: false });
+        doc.text(
+            `Halaman ${i + 1} dari ${range.count}`,
+            pw - MARGIN - 90, fy + 6, { width: 90, align: 'right', lineBreak: false }
+        );
+    }
+}
+
+/**
+ * Tinggi satu baris tabel, mengikuti teks yang membungkus di sel paling tinggi.
+ */
+function measureRow(doc, cells, bounds, opts) {
+    const o = opts || {};
+    const fontSize = o.fontSize || 8.5;
+
+    doc.font(o.bold || o.header ? 'Helvetica-Bold' : 'Helvetica').fontSize(fontSize);
+
+    let maxH = 0;
+    cells.forEach((teks, i) => {
+        const w = bounds[i + 1] - bounds[i] - CELL_PAD_X * 2;
+        const h = doc.heightOfString(String(teks), { width: w });
+        if (h > maxH) maxH = h;
+    });
+
+    return Math.max(o.minH || 18, maxH + 8);
+}
+
+/**
+ * Menggambar satu baris tabel dengan kotak penuh:
+ * garis atas (hanya pada header, baris lain memakai garis bawah baris sebelumnya),
+ * garis bawah, dan garis vertikal pada setiap batas kolom.
+ */
+function drawRow(doc, y, h, bounds, cells, aligns, opts) {
+    const o = opts || {};
+    const fontSize = o.fontSize || 8.5;
     const left = bounds[0];
     const right = bounds[bounds.length - 1];
 
-    if (options.header) {
-        doc.rect(left, y, right - left, h).fill(COLORS.headerBg);
-    } else if (options.fill) {
-        doc.rect(left, y, right - left, h).fill(options.fill);
+    doc.lineWidth(o.header ? 0.8 : 0.5).strokeColor(COLORS.line);
+
+    if (o.header || o.firstRow) {
+        doc.moveTo(left, y).lineTo(right, y).stroke();
     }
-
-    const lineColor = options.header ? COLORS.headerLine : COLORS.border;
-    doc.lineWidth(options.header ? 0.8 : 0.5).strokeColor(lineColor);
-
     doc.moveTo(left, y + h).lineTo(right, y + h).stroke();
     bounds.forEach((x) => {
         doc.moveTo(x, y).lineTo(x, y + h).stroke();
     });
 
-    if (options.header) {
-        // garis atas header hitam supaya kotak header utuh
-        doc.moveTo(left, y).lineTo(right, y).lineWidth(0.8).strokeColor(COLORS.headerLine).stroke();
-    }
+    doc.fillColor(COLORS.text)
+        .font(o.bold || o.header ? 'Helvetica-Bold' : 'Helvetica')
+        .fontSize(fontSize);
+
+    cells.forEach((teks, i) => {
+        const w = bounds[i + 1] - bounds[i] - CELL_PAD_X * 2;
+        const th = doc.heightOfString(String(teks), { width: w });
+        const ty = y + (h - th) / 2;
+        doc.text(String(teks), bounds[i] + CELL_PAD_X, ty, {
+            width: w,
+            align: (aligns && aligns[i]) || 'left'
+        });
+    });
 }
 
 /**
- * Badge status berbentuk pill (Masuk / Tidak Masuk Kelas Digital), di-center terhadap kolom [x1, x2].
- * Masuk = hitam dengan teks putih. Tidak masuk = putih dengan garis tepi hitam.
+ * Garis pembatas merah melintang penuh lebar tabel.
  */
-function drawStatusBadge(doc, masuk, x1, x2, rowY, rowH) {
-    const bw = 112;
-    const bh = 14;
-    const bx = x1 + ((x2 - x1) - bw) / 2;
-    const by = rowY + (rowH - bh) / 2;
-    const label = masuk ? STATUS_LABEL.masuk : STATUS_LABEL.tidak;
-
-    if (masuk) {
-        doc.roundedRect(bx, by, bw, bh, 7).fill(COLORS.ink);
-        doc.fillColor('#ffffff');
-    } else {
-        doc.roundedRect(bx, by, bw, bh, 7).lineWidth(0.6).strokeColor(COLORS.ink).stroke();
-        doc.fillColor(COLORS.ink);
-    }
-
-    doc.font('Helvetica-Bold').fontSize(7)
-        .text(label, bx, by + 3.8, { width: bw, align: 'center', lineBreak: false });
+function drawGarisMerah(doc, y, bounds) {
+    doc.lineWidth(1.6).strokeColor(COLORS.red)
+        .moveTo(bounds[0], y).lineTo(bounds[bounds.length - 1], y).stroke();
+    doc.strokeColor(COLORS.line);
 }
 
-/** Judul bagian dengan garis aksen di kiri. */
-function drawSectionTitle(doc, y, title, accent, rightText) {
-    doc.rect(MARGIN, y, 4, 15).fill(accent);
-    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(11)
-        .text(title, MARGIN + 11, y + 2, { width: CONTENT_WIDTH - 90, lineBreak: false });
-    if (rightText) {
-        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(8.5)
-            .text(rightText, PAGE_WIDTH - MARGIN - 90, y + 3.5, { width: 90, align: 'right', lineBreak: false });
-    }
-    return y + 15 + 10;
+function needsNewPage(y, blockHeight, limit) {
+    return y + blockHeight > (limit || BOTTOM_LIMIT);
+}
+
+function drawSectionTitle(doc, y, teks, size) {
+    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(size || 9.5)
+        .text(teks, MARGIN, y, { width: CONTENT_WIDTH, lineBreak: false });
+    return doc.y + 6;
+}
+
+function formatAngka(nilai, digit) {
+    const n = parseFloat(nilai);
+    return Number.isFinite(n) ? n.toFixed(digit) : '-';
 }
 
 /**
@@ -194,190 +249,138 @@ function generateLaporanPDF(res, data) {
     const siswaMasuk = hasilRanking.filter((h) => isMasuk(h.status_penerimaan));
     const siswaTidakMasuk = hasilRanking.filter((h) => !isMasuk(h.status_penerimaan));
 
-    let y = drawLetterhead(doc, 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL');
+    let y = drawLetterhead(
+        doc,
+        PAGE_WIDTH,
+        'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL',
+        `Tahun Ajaran ${periode.tahun_ajaran}`
+    );
 
-    // ===== Info laporan (2 baris label : nilai) =====
-    const labelW = 95;
-    doc.font('Helvetica').fontSize(9.5).fillColor(COLORS.textMuted)
-        .text('Tahun Ajaran', MARGIN, y, { width: labelW, lineBreak: false });
-    doc.fillColor(COLORS.text).font('Helvetica-Bold')
-        .text(`:  ${periode.tahun_ajaran}`, MARGIN + labelW, y, { width: CONTENT_WIDTH - labelW, lineBreak: false });
-    y += 15;
-    doc.font('Helvetica').fillColor(COLORS.textMuted)
-        .text('Tanggal Cetak', MARGIN, y, { width: labelW, lineBreak: false });
-    doc.fillColor(COLORS.text).font('Helvetica-Bold')
-        .text(`:  ${tglSekarang}`, MARGIN + labelW, y, { width: CONTENT_WIDTH - labelW, lineBreak: false });
-    y += 26;
-
-    // ===== Kotak ringkasan =====
-    const cardGap = 10;
-    const cardW = (CONTENT_WIDTH - cardGap * 3) / 4;
-    const cardH = 48;
-    const cards = [
-        { label: 'Total Siswa', value: String(hasilRanking.length), color: COLORS.ink },
-        { label: 'Kuota Kelas Digital', value: String(periode.kuota_kelas_digital), color: COLORS.ink },
-        { label: 'Masuk Kelas Digital', value: String(siswaMasuk.length), color: COLORS.ink },
-        { label: 'Tidak Masuk Kelas Digital', value: String(siswaTidakMasuk.length), color: COLORS.neutral }
-    ];
-    cards.forEach((c, i) => {
-        const cx = MARGIN + i * (cardW + cardGap);
-        doc.roundedRect(cx, y, cardW, cardH, 5).fillAndStroke(COLORS.cardBg, COLORS.borderLight);
-        doc.rect(cx + 0.5, y + 8, 3, cardH - 16).fill(c.color);
-        doc.fillColor(c.color).font('Helvetica-Bold').fontSize(17)
-            .text(c.value, cx, y + 8, { width: cardW, align: 'center', lineBreak: false });
-        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(7.5)
-            .text(c.label, cx, y + 31, { width: cardW, align: 'center', lineBreak: false });
-    });
-    y += cardH + 26;
-
-    // ===== BOBOT KRITERIA =====
-    y = drawSectionTitle(doc, y, 'Bobot Kriteria (Hasil FUCOM)', COLORS.ink, `${bobotKriteria.length} kriteria`);
-
-    const bobotRowH = 22;
-    const bobotBounds = [MARGIN, MARGIN + 36, MARGIN + 290, PAGE_WIDTH - MARGIN];
-
-    drawTableRow(doc, y, bobotRowH, bobotBounds, { header: true });
-    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(8.5);
-    doc.text('No', bobotBounds[0] + 4, y + 7, { width: bobotBounds[1] - bobotBounds[0] - 8, align: 'center', lineBreak: false });
-    doc.text('Kriteria', bobotBounds[1] + 8, y + 7, { width: bobotBounds[2] - bobotBounds[1] - 16, lineBreak: false });
-    doc.text('Bobot', bobotBounds[2] + 8, y + 7, { width: bobotBounds[3] - bobotBounds[2] - 16, lineBreak: false });
-    y += bobotRowH;
-
-    let totalBobot = 0;
-    bobotKriteria.forEach((b, i) => {
-        const nilai = parseFloat(b.nilai_bobot) || 0;
-        totalBobot += nilai;
-
-        drawTableRow(doc, y, bobotRowH, bobotBounds, { fill: i % 2 === 1 ? COLORS.zebra : null });
-
-        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(9)
-            .text(String(i + 1), bobotBounds[0] + 4, y + 6.5, {
-                width: bobotBounds[1] - bobotBounds[0] - 8, align: 'center', lineBreak: false
-            });
-        doc.fillColor(COLORS.text).font('Helvetica').fontSize(9)
-            .text(b.nama_kriteria, bobotBounds[1] + 8, y + 6.5, {
-                width: bobotBounds[2] - bobotBounds[1] - 16, height: 12, lineBreak: false, ellipsis: true
-            });
-
-        // Bar proporsi + persentase
-        const barX = bobotBounds[2] + 8;
-        const barW = 120;
-        const barY = y + (bobotRowH - 6) / 2;
-        doc.roundedRect(barX, barY, barW, 6, 3).fill(COLORS.track);
-        const fillW = Math.max(0, Math.min(1, nilai)) * barW;
-        if (fillW > 0) {
-            doc.roundedRect(barX, barY, Math.max(fillW, 3), 6, 3).fill(COLORS.ink);
-        }
-        doc.fillColor(COLORS.text).font('Helvetica-Bold').fontSize(9)
-            .text(`${(nilai * 100).toFixed(2)}%`, barX + barW + 6, y + 6.5, {
-                width: bobotBounds[3] - (barX + barW + 6) - 8, align: 'right', lineBreak: false
-            });
-
-        y += bobotRowH;
-    });
-
-    // Baris total
-    drawTableRow(doc, y, bobotRowH, [bobotBounds[0], bobotBounds[2], bobotBounds[3]], { fill: COLORS.cardBg });
-    doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(9)
-        .text('Total', bobotBounds[0] + 8, y + 6.5, {
-            width: bobotBounds[2] - bobotBounds[0] - 16, align: 'right', lineBreak: false
-        });
-    doc.text(`${(totalBobot * 100).toFixed(2)}%`, bobotBounds[2] + 8, y + 6.5, {
-        width: bobotBounds[3] - bobotBounds[2] - 16, align: 'right', lineBreak: false
-    });
-    y += bobotRowH;
-
-    y += 28;
-
-    // ===== HASIL PERANGKINGAN (DIPISAH: MASUK & TIDAK MASUK KELAS DIGITAL) =====
-    const rowH = 22;
-    const rankBounds = [
-        MARGIN,
-        MARGIN + 40,
-        MARGIN + 116,
-        PAGE_WIDTH - MARGIN - 210,
-        PAGE_WIDTH - MARGIN - 132,
-        PAGE_WIDTH - MARGIN
-    ];
-
-    function drawRankingHeader() {
-        drawTableRow(doc, y, rowH + 2, rankBounds, { header: true });
-        doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(8.5);
-        doc.text('Rank', rankBounds[0] + 4, y + 8, { width: rankBounds[1] - rankBounds[0] - 8, align: 'center', lineBreak: false });
-        doc.text('NISN', rankBounds[1] + 8, y + 8, { width: rankBounds[2] - rankBounds[1] - 16, lineBreak: false });
-        doc.text('Nama', rankBounds[2] + 8, y + 8, { width: rankBounds[3] - rankBounds[2] - 16, lineBreak: false });
-        doc.text('Nilai Q', rankBounds[3] + 8, y + 8, { width: rankBounds[4] - rankBounds[3] - 16, align: 'right', lineBreak: false });
-        doc.text('Status', rankBounds[4] + 4, y + 8, { width: rankBounds[5] - rankBounds[4] - 8, align: 'center', lineBreak: false });
-        y += rowH + 2;
-    }
-
-    function newPageLanjutan() {
+    function halamanBaru() {
         doc.addPage();
-        y = drawLetterhead(doc, 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL (Lanjutan)');
+        y = drawKopLanjutan(doc, PAGE_WIDTH);
     }
 
-    function drawRankingSection(judul, list, accent) {
-        // Pastikan judul + header + minimal 1 baris muat di halaman ini
-        if (needsNewPage(y, 80)) {
-            newPageLanjutan();
-        }
+    /**
+     * Tabel generik berkotak penuh dengan header berulang di tiap halaman.
+     * rows = [{ cells, bold, bounds?, aligns?, garisMerah? }]
+     * bounds/aligns pada baris bersifat opsional (untuk sel yang digabung).
+     * garisMerah = true -> gambar garis merah di batas atas baris ini.
+     */
+    function drawTable(headerCells, rows, bounds, aligns, teksKosong) {
+        const hHeader = measureRow(doc, headerCells, bounds, { header: true, minH: 22 });
 
-        y = drawSectionTitle(doc, y, judul, accent, `${list.length} siswa`);
+        if (needsNewPage(y, hHeader + 40)) halamanBaru();
 
-        drawRankingHeader();
+        drawRow(doc, y, hHeader, bounds, headerCells, headerCells.map(() => 'center'), { header: true });
+        y += hHeader;
 
-        if (list.length === 0) {
-            drawTableRow(doc, y, rowH, [MARGIN, PAGE_WIDTH - MARGIN], {});
-            doc.fillColor(COLORS.textMuted).font('Helvetica-Oblique').fontSize(8.5)
-                .text('Tidak ada data.', MARGIN, y + 7, { width: CONTENT_WIDTH, align: 'center', lineBreak: false });
-            y += rowH;
+        if (rows.length === 0) {
+            const hKosong = 20;
+            drawRow(doc, y, hKosong, [bounds[0], bounds[bounds.length - 1]],
+                [teksKosong || 'Tidak ada data.'], ['center'], {});
+            y += hKosong;
             return;
         }
 
-        list.forEach((h, i) => {
-            if (needsNewPage(y, rowH)) {
-                newPageLanjutan();
-                drawRankingHeader();
+        rows.forEach((r) => {
+            const rb = r.bounds || bounds;
+            const ra = r.aligns || aligns;
+            const h = measureRow(doc, r.cells, rb, { bold: r.bold });
+            let barisPertamaDiHalaman = false;
+
+            if (needsNewPage(y, h)) {
+                halamanBaru();
+                drawRow(doc, y, hHeader, bounds, headerCells, headerCells.map(() => 'center'), { header: true });
+                y += hHeader;
+                barisPertamaDiHalaman = true;
             }
 
-            drawTableRow(doc, y, rowH, rankBounds, { fill: i % 2 === 1 ? COLORS.zebra : null });
+            drawRow(doc, y, h, rb, r.cells, ra, { bold: r.bold });
 
-            doc.fillColor(COLORS.text);
-            doc.font('Helvetica-Bold').fontSize(8.5)
-                .text(String(h.ranking), rankBounds[0] + 4, y + 7, {
-                    width: rankBounds[1] - rankBounds[0] - 8, align: 'center', lineBreak: false
-                });
-            doc.font('Helvetica').fontSize(8.5)
-                .text(String(h.nisn), rankBounds[1] + 8, y + 7, {
-                    width: rankBounds[2] - rankBounds[1] - 16, height: 12, lineBreak: false, ellipsis: true
-                });
-            doc.text(h.nama, rankBounds[2] + 8, y + 7, {
-                width: rankBounds[3] - rankBounds[2] - 16, height: 12, lineBreak: false, ellipsis: true
-            });
-            doc.font('Helvetica-Bold')
-                .text(parseFloat(h.nilai_akhir_q).toFixed(4), rankBounds[3] + 8, y + 7, {
-                    width: rankBounds[4] - rankBounds[3] - 16, align: 'right', lineBreak: false
-                });
+            // Garis merah pembatas (dilewati jika batas jatuh tepat di pergantian halaman)
+            if (r.garisMerah && !barisPertamaDiHalaman) {
+                drawGarisMerah(doc, y, bounds);
+            }
 
-            drawStatusBadge(doc, isMasuk(h.status_penerimaan), rankBounds[4], rankBounds[5], y, rowH);
-
-            y += rowH;
+            y += h;
         });
     }
 
-    drawRankingSection('A. Siswa yang Masuk Kelas Digital', siswaMasuk, COLORS.ink);
+    // ===== Ringkasan satu baris =====
+    doc.fillColor(COLORS.text).font('Helvetica').fontSize(9)
+        .text(
+            `Kuota: ${periode.kuota_kelas_digital} siswa   |   Total siswa: ${hasilRanking.length}   |   ` +
+            `Masuk: ${siswaMasuk.length}   |   Tidak masuk: ${siswaTidakMasuk.length}   |   Dicetak: ${tglSekarang}`,
+            MARGIN, y, { width: CONTENT_WIDTH, align: 'left', lineBreak: false }
+        );
+    y = doc.y + 18;
 
-    // Bagian B selalu mulai di halaman baru (tidak menempel di bawah tabel A)
-    newPageLanjutan();
-    drawRankingSection('B. Siswa yang Tidak Masuk Kelas Digital', siswaTidakMasuk, COLORS.neutral);
+    // ===== BOBOT KRITERIA =====
+    if (needsNewPage(y, 90)) halamanBaru();
+    y = drawSectionTitle(doc, y, 'Bobot Kriteria (FUCOM)');
+
+    const bobotBounds = [MARGIN, MARGIN + 36, PAGE_WIDTH - MARGIN - 110, PAGE_WIDTH - MARGIN];
+
+    let totalBobot = 0;
+    const barisBobot = bobotKriteria.map((b, i) => {
+        const nilai = parseFloat(b.nilai_bobot) || 0;
+        totalBobot += nilai;
+        return {
+            cells: [String(i + 1), String(b.nama_kriteria), `${(nilai * 100).toFixed(2)}%`]
+        };
+    });
+
+    if (barisBobot.length > 0) {
+        // Baris total: dua kolom pertama digabung, teks rata kanan
+        barisBobot.push({
+            cells: ['Total', `${(totalBobot * 100).toFixed(2)}%`],
+            bounds: [bobotBounds[0], bobotBounds[2], bobotBounds[3]],
+            aligns: ['right', 'center'],
+            bold: true
+        });
+    }
+
+    drawTable(['No', 'Kriteria', 'Bobot'], barisBobot, bobotBounds, ['center', 'left', 'center'], 'Belum ada bobot kriteria.');
+    y += 22;
+
+    // ===== HASIL PERANGKINGAN =====
+    const rankBounds = [
+        MARGIN,
+        MARGIN + 40,
+        MARGIN + 125,
+        PAGE_WIDTH - MARGIN - 175,
+        PAGE_WIDTH - MARGIN - 95,
+        PAGE_WIDTH - MARGIN
+    ];
+    const rankAligns = ['center', 'left', 'left', 'center', 'center'];
+    const rankHeader = ['Rank', 'NISN', 'Nama', 'Nilai Q', 'Keterangan'];
+
+    const barisRanking = hasilRanking.map((h, i) => {
+        const masuk = isMasuk(h.status_penerimaan);
+        const sebelumnyaMasuk = i > 0 && isMasuk(hasilRanking[i - 1].status_penerimaan);
+
+        return {
+            cells: [
+                String(h.ranking),
+                String(h.nisn),
+                String(h.nama),
+                formatAngka(h.nilai_akhir_q, 4),
+                masuk ? STATUS_LABEL.masuk : STATUS_LABEL.tidak
+            ],
+            // Garis merah tepat di batas siswa masuk -> tidak masuk
+            garisMerah: i > 0 && sebelumnyaMasuk && !masuk
+        };
+    });
+
+    if (needsNewPage(y, 80)) halamanBaru();
+    y = drawSectionTitle(doc, y, 'Hasil Perangkingan (WASPAS)');
+    drawTable(rankHeader, barisRanking, rankBounds, rankAligns, 'Tidak ada data.');
 
     y += 30;
 
     // ===== TANDA TANGAN =====
-    if (needsNewPage(y, 120)) {
-        doc.addPage();
-        y = drawLetterhead(doc, 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL (Lanjutan)');
-    }
+    if (needsNewPage(y, 130)) halamanBaru();
 
     const sigW = 190;
     const sigX = PAGE_WIDTH - MARGIN - sigW;
@@ -396,55 +399,36 @@ function generateLaporanPDF(res, data) {
     y += 58;
 
     if (namaKepsek) {
-        // Nama Kepala Sekolah (tebal, digarisbawahi) lalu NIP di bawahnya
         doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORS.text)
             .text(namaKepsek, sigX - 25, y, { width: sigW + 50, align: 'center', lineBreak: false });
 
         const lebarNama = doc.widthOfString(namaKepsek);
         const garisX = sigX + (sigW - lebarNama) / 2;
         doc.moveTo(garisX, y + 12).lineTo(garisX + lebarNama, y + 12)
-            .lineWidth(0.6).strokeColor(COLORS.text).stroke();
+            .lineWidth(0.6).strokeColor(COLORS.line).stroke();
 
         y += 17;
         doc.font('Helvetica').fontSize(9).fillColor(COLORS.text)
             .text(`NIP. ${nipKepsek || '-'}`, sigX, y, { width: sigW, align: 'center', lineBreak: false });
     } else {
         // Tidak ada kepsek aktif: tetap tampilkan garis kosong seperti semula
-        doc.moveTo(sigX + 15, y).lineTo(sigX + sigW - 15, y).lineWidth(0.6).strokeColor(COLORS.text).stroke();
+        doc.moveTo(sigX + 15, y).lineTo(sigX + sigW - 15, y).lineWidth(0.6).strokeColor(COLORS.line).stroke();
         y += 5;
         doc.font('Helvetica').fontSize(9)
             .text('NIP. ', sigX + 15, y, { width: sigW - 30, align: 'left', lineBreak: false });
     }
 
-    // ===== FOOTER SEMUA HALAMAN (garis + identitas + nomor halaman) =====
-    const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
-        doc.switchToPage(range.start + i);
-        const fy = PAGE_HEIGHT - 32;
-        doc.moveTo(MARGIN, fy).lineTo(PAGE_WIDTH - MARGIN, fy)
-            .lineWidth(0.5).strokeColor(COLORS.borderLight).stroke();
-        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(7.5)
-            .text(
-                `Laporan Penempatan Siswa Kelas Digital  |  ${SEKOLAH_INFO.nama}  |  TA ${periode.tahun_ajaran}`,
-                MARGIN, fy + 7, { width: CONTENT_WIDTH - 90, align: 'left', lineBreak: false }
-            );
-        doc.text(
-            `Halaman ${i + 1} dari ${range.count}`,
-            PAGE_WIDTH - MARGIN - 90, fy + 7, { width: 90, align: 'right', lineBreak: false }
-        );
-    }
+    // ===== FOOTER SEMUA HALAMAN =====
+    drawFooters(
+        doc,
+        `Laporan Penempatan Siswa Kelas Digital  |  ${SEKOLAH_INFO.nama}  |  TA ${periode.tahun_ajaran}`
+    );
 
     doc.end();
 }
 
 function generateNilaiSiswaPDF(res, data) {
     const { periode, siswaList, kriteriaList } = data;
-
-    const L_WIDTH = 841.89;  // A4 landscape
-    const L_HEIGHT = 595.28;
-    const lMargin = 40;
-    const lContentWidth = L_WIDTH - lMargin * 2;
-    const lBottomLimit = L_HEIGHT - lMargin;
 
     const doc = new PDFDocument({ margin: 0, size: 'A4', layout: 'landscape', bufferPages: true });
     res.setHeader('Content-Type', 'application/pdf');
@@ -454,75 +438,84 @@ function generateNilaiSiswaPDF(res, data) {
     );
     doc.pipe(res);
 
-    function drawLandscapeHeader() {
-        const top = lMargin;
-        const logoSize = 46;
+    let y = drawLetterhead(
+        doc,
+        L_WIDTH,
+        'DATA NILAI SISWA PER KRITERIA',
+        `Tahun Ajaran ${periode.tahun_ajaran}`
+    );
 
-        if (fs.existsSync(LOGO_PATH)) {
-            try {
-                doc.image(LOGO_PATH, lMargin, top + 2, { width: logoSize, height: logoSize });
-            } catch (err) { /* lanjut tanpa logo */ }
-        }
+    doc.fillColor(COLORS.text).font('Helvetica').fontSize(9)
+        .text(`Jumlah siswa: ${siswaList.length}`, MARGIN, y, { width: L_CONTENT_WIDTH, lineBreak: false });
+    y += 18;
 
-        doc.fillColor(COLORS.ink).font('Helvetica-Bold').fontSize(13)
-            .text(SEKOLAH_INFO.nama, lMargin, top + 2, { width: lContentWidth, align: 'center' });
-        doc.fillColor(COLORS.textMuted).font('Helvetica').fontSize(8)
-            .text(`Data Nilai Siswa per Kriteria — Tahun Ajaran ${periode.tahun_ajaran}`, lMargin, doc.y + 3, {
-                width: lContentWidth, align: 'center'
-            });
+    // Kolom: No | NISN | Nama | kriteria...
+    const lebarNo = 30;
+    const lebarNisn = 75;
+    const lebarNama = 170;
+    const jumlahKriteria = kriteriaList.length;
+    const lebarKriteria = jumlahKriteria > 0
+        ? (L_CONTENT_WIDTH - lebarNo - lebarNisn - lebarNama) / jumlahKriteria
+        : 0;
 
-        const textBottom = doc.y + 6;
-        const lineY = Math.max(textBottom, top + logoSize + 6);
-        doc.moveTo(lMargin, lineY).lineTo(L_WIDTH - lMargin, lineY)
-            .lineWidth(1.2).strokeColor(COLORS.ink).stroke();
+    const bounds = [MARGIN, MARGIN + lebarNo, MARGIN + lebarNo + lebarNisn, MARGIN + lebarNo + lebarNisn + lebarNama];
+    kriteriaList.forEach((_, i) => {
+        bounds.push(bounds[3] + lebarKriteria * (i + 1));
+    });
+    bounds[bounds.length - 1] = L_WIDTH - MARGIN; // hindari selisih pembulatan
 
-        return lineY + 16;
+    const aligns = ['center', 'left', 'left'].concat(kriteriaList.map(() => 'center'));
+    const headerCells = ['No', 'NISN', 'Nama Siswa'].concat(kriteriaList.map((k) => String(k.nama_kriteria)));
+    const optsTabel = { fontSize: 8 };
+
+    const hHeader = measureRow(doc, headerCells, bounds, { header: true, minH: 24, fontSize: 8 });
+
+    function gambarHeader() {
+        drawRow(doc, y, hHeader, bounds, headerCells, headerCells.map(() => 'center'),
+            { header: true, fontSize: 8 });
+        y += hHeader;
     }
 
-    let y = drawLandscapeHeader();
-
-    const colWidth = (lContentWidth - 220) / kriteriaList.length;
-    const rowH = 18;
-
-    function drawTableHeader() {
-        doc.moveTo(lMargin, y).lineTo(L_WIDTH - lMargin, y).lineWidth(1).strokeColor(COLORS.text).stroke();
-        doc.fillColor(COLORS.text).font('Helvetica-Bold').fontSize(8);
-        doc.text('NISN', lMargin + 6, y + 5, { width: 70 });
-        doc.text('Nama', lMargin + 90, y + 5, { width: 150 });
-        let xKriteria = lMargin + 250;
-        kriteriaList.forEach(k => {
-            doc.text(k.nama_kriteria, xKriteria, y + 5, { width: colWidth - 5, align: 'center' });
-            xKriteria += colWidth;
-        });
-        y += rowH + 3;
-        doc.moveTo(lMargin, y).lineTo(L_WIDTH - lMargin, y).lineWidth(1).strokeColor(COLORS.text).stroke();
+    function halamanBaru() {
+        doc.addPage({ layout: 'landscape', margin: 0, size: 'A4' });
+        y = drawKopLanjutan(doc, L_WIDTH);
+        gambarHeader();
     }
 
-    drawTableHeader();
-    doc.font('Helvetica').fontSize(8);
+    if (needsNewPage(y, hHeader + 40, L_BOTTOM_LIMIT)) {
+        doc.addPage({ layout: 'landscape', margin: 0, size: 'A4' });
+        y = drawKopLanjutan(doc, L_WIDTH);
+    }
+    gambarHeader();
 
-    siswaList.forEach((s) => {
-        if (y + rowH > lBottomLimit) {
-            doc.addPage({ layout: 'landscape', margin: 0, size: 'A4' });
-            y = drawLandscapeHeader();
-            drawTableHeader();
-        }
+    if (siswaList.length === 0) {
+        drawRow(doc, y, 20, [bounds[0], bounds[bounds.length - 1]], ['Tidak ada data.'], ['center'], optsTabel);
+        y += 20;
+    }
 
-        doc.fillColor(COLORS.text);
-        doc.text(s.nisn, lMargin + 6, y + 4, { width: 70 });
-        doc.text(s.nama, lMargin + 90, y + 4, { width: 150 });
-
-        let xVal = lMargin + 250;
-        kriteriaList.forEach(k => {
+    siswaList.forEach((s, idx) => {
+        const cells = [
+            String(idx + 1),
+            String(s.nisn),
+            String(s.nama)
+        ].concat(kriteriaList.map((k) => {
             const nilai = (s.nilai && s.nilai[k.id_kriteria] !== undefined && s.nilai[k.id_kriteria] !== null)
                 ? s.nilai[k.id_kriteria] : '-';
-            doc.text(String(nilai), xVal, y + 4, { width: colWidth - 5, align: 'center' });
-            xVal += colWidth;
-        });
+            return String(nilai);
+        }));
 
-        y += rowH;
-        doc.moveTo(lMargin, y).lineTo(L_WIDTH - lMargin, y).lineWidth(0.4).strokeColor(COLORS.borderLight).stroke();
+        const h = measureRow(doc, cells, bounds, optsTabel);
+
+        if (needsNewPage(y, h, L_BOTTOM_LIMIT)) halamanBaru();
+
+        drawRow(doc, y, h, bounds, cells, aligns, optsTabel);
+        y += h;
     });
+
+    drawFooters(
+        doc,
+        `Data Nilai Siswa per Kriteria  |  ${SEKOLAH_INFO.nama}  |  TA ${periode.tahun_ajaran}`
+    );
 
     doc.end();
 }
