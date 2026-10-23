@@ -6,10 +6,36 @@
     <link rel="stylesheet" href="/css/fucom.css">
     <%# Semua style halaman ini ada di /css/layout.css. Jika partials/head belum memuat layout.css, aktifkan baris di bawah. %>
     <%# <link rel="stylesheet" href="/css/layout.css"> %>
+    <style>
+        /* Nama responden otomatis dari profil (hanya baca) */
+        .nama-otomatis-box {
+            display: flex; align-items: center; gap: 10px; background: #f4f7fb; border: 1.5px solid #dcdfe6;
+            border-radius: 10px; padding: 10px 14px; color: #0b2545; font-weight: 600; font-size: 15px;
+        }
+        .nama-otomatis-box i { color: #1d4ed8; }
+        .nama-otomatis-box .kunci { margin-left: auto; color: #9aa5b8; font-size: 13px; }
+        .nama-otomatis-catatan { font-size: 12px; color: #6b7685; margin-top: 6px; }
+
+        /* Responsif tambahan */
+        .tabel-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        @media (max-width: 640px) {
+            .panel-header-row { flex-wrap: wrap; gap: 10px; }
+            .panel-header-row .btn-primary { width: 100%; justify-content: center; }
+            .banner-inkonsisten { flex-direction: column; align-items: stretch; gap: 10px; }
+            .banner-inkonsisten .aksi { display: flex; gap: 8px; flex-wrap: wrap; }
+            .banner-inkonsisten .aksi button { flex: 1; }
+            .modal-footer { flex-wrap: wrap; gap: 8px; }
+        }
+    </style>
 </head>
 <body>
 <%
     const aman = function (obj) { return JSON.stringify(obj).replace(/</g, '\\u003c'); };
+
+    // Nama responden otomatis = nama profil akun yang sedang login (dikirim controller)
+    const namaResp = (typeof namaResponden !== 'undefined' && namaResponden)
+        ? namaResponden
+        : ((user && user.nama) ? user.nama : '');
 
     // Data untuk prefill modal edit (hanya 1 responden yang diizinkan).
     let dataEdit = null;
@@ -24,7 +50,6 @@
             if (!urutan.includes(last.id_kriteria_pembanding)) urutan.push(last.id_kriteria_pembanding);
         }
         dataEdit = {
-            nama: respondenList[0],
             urutan: urutan.map(String),
             nilai: rows.map(function (r) { return String(parseFloat(r.nilai_perbandingan)).replace('.', ','); })
         };
@@ -101,11 +126,12 @@
                     </div>
                     <div id="isiTutorial" class="tutorial-content">
                         <ol style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
-                            <li>Klik <strong>"Input Data Responden"</strong> dan isi nama pengambil keputusan resmi (misalnya Waka Kurikulum) yang menginput hasil kuesioner.</li>
+                            <li>Klik <strong>"Input Data Responden"</strong>. Nama responden <strong>otomatis diambil dari nama pada menu Profil</strong> akun yang sedang login (tidak perlu diketik). Pastikan nama di Profil sudah benar dan login memakai akun pengambil keputusan resmi (misalnya Waka Kurikulum).</li>
                             <li>Urutkan 6 kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>. Urutan dan nilai yang diinput merupakan hasil kesepakatan/musyawarah bersama guru-guru terkait, bukan opini pribadi satu orang saja.</li>
                             <li>Isi nilai perbandingan antar kriteria yang bersebelahan dengan <strong>mengetik angka</strong>, memakai tombol <strong>+ / −</strong> (tahan untuk menaik/menurunkan cepat), tombol panah atas/bawah di keyboard, atau tombol <strong>nilai cepat</strong>. Aturan pengisian:</li>
                         </ol>
 
+                        <div class="tabel-scroll">
                         <table class="data-table" style="margin: 10px 0 15px 20px; max-width: 620px;">
                             <thead>
                                 <tr><th style="width:190px;">Contoh Nilai</th><th>Keterangan</th></tr>
@@ -118,10 +144,11 @@
                                 <tr><td><strong style="color:#b3261e;">0, 0,0, 0,00, 10, huruf, minus</strong></td><td>Tidak diperbolehkan. Nilai harus lebih dari 0 dan paling besar 9</td></tr>
                             </tbody>
                         </table>
+                        </div>
 
                         <ol start="4" style="padding-left:20px; font-size:14px; color:#333; line-height:1.8;">
                             <li>Gunakan nilai yang <strong>moderat</strong> (misalnya 1 sampai 4, boleh desimal). Semakin besar lompatan nilai antar kriteria, semakin besar risiko hasil pembobotan menjadi tidak konsisten. Sistem akan memberi peringatan jika nilai melebihi 4.</li>
-                            <li>Data hanya diinput <strong>satu kali</strong> (1 responden). Selama bobot belum final, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
+                            <li>Data hanya diinput <strong>satu kali</strong> (1 responden). Jika dua orang menekan simpan di waktu yang hampir sama, hanya yang masuk lebih dulu yang tersimpan. Selama bobot belum final, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
                             <li>
                                 Setelah dihitung, sistem akan menampilkan nilai <strong>DFC (Deviation from Full Consistency)</strong> — semacam skor yang menunjukkan seberapa konsisten urutan dan nilai yang diinput tadi secara matematis.
                                 <ul style="margin-top:6px;">
@@ -193,11 +220,11 @@
                             <% } %>
                         </div>
                         <% if (respondenList.length === 0) { %>
-                            <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner (hasil musyawarah, diinput oleh 1 responden resmi).</p>
+                            <p class="empty-state">Belum ada data responden. Klik "Input Data Responden" untuk memasukkan hasil kuesioner (hasil musyawarah, diinput oleh 1 responden resmi: <strong><%= namaResp %></strong>).</p>
                         <% } else { %>
                             <% respondenList.forEach(function(nama) { %>
                                 <div style="margin-bottom:20px; padding:15px; background:#fafbfd; border-radius:10px;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
                                         <strong style="font-size:14px; color:#0b2545;"><i class="bi bi-person-fill"></i> <%= nama %></strong>
                                         <% if (!terkunci && (bobotFinal.length === 0 || !dfcKonsisten)) { %>
                                             <div style="display:flex; gap:6px;">
@@ -205,7 +232,6 @@
                                                     <i class="bi bi-pencil-fill"></i>
                                                 </button>
                                                 <form action="/admin/fucom/hapus" method="POST" onsubmit="return confirmDelete(this,'Hapus data responden ini?');">
-                                                    <input type="hidden" name="nama_responden" value="<%= nama %>">
                                                     <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
                                                         <i class="bi bi-trash-fill"></i>
                                                     </button>
@@ -215,6 +241,7 @@
                                             <span style="color:#999; font-size:12px;">Terkunci</span>
                                         <% } %>
                                     </div>
+                                    <div class="tabel-scroll">
                                     <table class="data-table">
                                         <thead><tr><th>Perbandingan</th><th>Nilai</th></tr></thead>
                                         <tbody>
@@ -236,6 +263,7 @@
                                             <% }); %>
                                         </tbody>
                                     </table>
+                                    </div>
                                 </div>
                             <% }); %>
                         <% } %>
@@ -337,6 +365,7 @@
                                 </div>
                             <% } %>
 
+                            <div class="tabel-scroll">
                             <table class="data-table">
                                 <thead><tr><th>Kriteria</th><th>Bobot</th><th>Nilai DFC (Tingkat Konsistensi)</th></tr></thead>
                                 <tbody>
@@ -354,6 +383,7 @@
                                     <% }); %>
                                 </tbody>
                             </table>
+                            </div>
                         <% } %>
                     </div>
                 </div>
@@ -373,13 +403,14 @@
             </div>
 
             <form class="form-fucom" data-mode="<%= m.mode %>" action="<%= m.action %>" method="POST" novalidate>
-                <% if (m.mode === 'edit') { %>
-                    <input type="hidden" name="nama_asli" value="<%= respondenList[0] %>">
-                <% } %>
 
-                <label>Nama Pengambil Keputusan Resmi (Hanya Huruf)</label>
-                <input type="text" name="nama_responden" required placeholder="Contoh: Desi Wahyuni" autocomplete="off">
-                <p class="peringatan-nama"></p>
+                <label>Nama Responden (otomatis dari Profil akun Anda)</label>
+                <div class="nama-otomatis-box">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span><%= namaResp %></span>
+                    <i class="bi bi-lock-fill kunci" title="Tidak dapat diubah di sini"></i>
+                </div>
+                <p class="nama-otomatis-catatan">Ingin mengganti nama? Ubah lewat menu Profil, lalu simpan ulang data ini.</p>
 
                 <p style="font-size:13px; color:#777; margin-top:15px; margin-bottom:6px;">
                     Urutkan kriteria dari yang <strong>paling penting</strong> ke yang <strong>paling kurang penting</strong>.
@@ -457,11 +488,9 @@
     (function () {
         // ==== DATA DARI SERVER ====
         var kriteriaMap = <%- aman(Object.fromEntries(kriteriaList.map(function (k) { return [String(k.id_kriteria), k.nama_kriteria]; }))) %>;
-        var daftarResponden = <%- aman(respondenList.map(function (n) { return n.trim().toLowerCase(); })) %>;
         var dataEditFucom = <%- aman(dataEdit) %>;
 
         // ==== ATURAN VALIDASI ====
-        var REGEX_NAMA = /^[A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
         var REGEX_SKALA = /^[0-9](,[0-9]{1,2})?$/;
         var LANGKAH = 0.5;
         var AMBANG_BESAR = 4;
@@ -486,17 +515,16 @@
         function formatAngka(n) { return String(n).replace('.', ','); }
 
         // ==== INISIALISASI SATU FORM (dipakai modal input & edit) ====
-        function initForm(form, opsi) {
+        function initForm(form) {
             var selects = Array.prototype.slice.call(form.querySelectorAll('.urutan-select'));
             var groups = Array.prototype.slice.call(form.querySelectorAll('.skala-group'));
-            var namaInput = form.querySelector('input[name="nama_responden"]');
-            var namaWarn = form.querySelector('.peringatan-nama');
             var formWarn = form.querySelector('.peringatan-form');
             var preview = form.querySelector('.urutan-preview');
             var progresTeks = form.querySelector('.progres-teks');
             var progresBar = form.querySelector('.progres-bar');
             var submitBtn = form.querySelector('button[type="submit"]');
-            var totalIsian = selects.length + groups.length + 1;
+            // Nama responden otomatis dari profil, jadi tidak dihitung sebagai isian.
+            var totalIsian = selects.length + groups.length;
 
             // Daftar lengkap kriteria (master), diambil sekali dari dropdown pertama saat halaman dimuat.
             var semuaOpsi = Array.prototype.slice.call(selects[0].options)
@@ -592,7 +620,6 @@
                 var terisi = 0;
                 selects.forEach(function (s) { if (s.value) terisi++; });
                 groups.forEach(function (g) { if (skalaValid(inputDari(g).value.trim())) terisi++; });
-                if (REGEX_NAMA.test(namaInput.value.trim())) terisi++;
                 progresTeks.textContent = 'Terisi ' + terisi + ' dari ' + totalIsian + ' isian';
                 progresBar.style.width = ((terisi / totalIsian) * 100) + '%';
                 progresBar.classList.toggle('penuh', terisi === totalIsian);
@@ -607,7 +634,6 @@
             }
 
             function sembunyikanPeringatan() {
-                namaWarn.style.display = 'none';
                 formWarn.style.display = 'none';
             }
 
@@ -635,14 +661,6 @@
                 hitungProgres();
                 return true;
             }
-
-            // ---- Event: nama ----
-            namaInput.addEventListener('input', function () {
-                var val = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '').replace(/\s{2,}/g, ' ');
-                this.value = val;
-                namaWarn.style.display = 'none';
-                hitungProgres();
-            });
 
             // ---- Event: dropdown urutan ----
             selects.forEach(function (s) {
@@ -727,7 +745,6 @@
             // ---- Kosongkan & isi ----
             function kosongkan() {
                 bukaSemuaOpsi();
-                namaInput.value = '';
                 selects.forEach(function (s) { s.value = ''; });
                 groups.forEach(function (g) {
                     var input = inputDari(g);
@@ -742,7 +759,6 @@
                 // Penting: kembalikan daftar lengkap dulu, baru set nilai,
                 // supaya semua kriteria bisa dipilih sebelum disaring ulang.
                 bukaSemuaOpsi();
-                namaInput.value = data.nama || '';
                 selects.forEach(function (s, i) { s.value = data.urutan[i] || ''; });
                 groups.forEach(function (g, i) {
                     var input = inputDari(g);
@@ -757,24 +773,13 @@
 
             // ---- Submit ----
             form.addEventListener('submit', function (e) {
-                var nama = namaInput.value.trim();
                 var pesanForm = null;
                 var fokus = null;
-
-                if (nama === '' || !REGEX_NAMA.test(nama)) {
-                    namaWarn.textContent = 'Nama responden hanya boleh berisi huruf dan spasi antar kata, tidak boleh angka/simbol/kosong.';
-                    namaWarn.style.display = 'block';
-                    fokus = namaInput;
-                } else if (opsi.cekDuplikat && daftarResponden.indexOf(nama.toLowerCase()) !== -1) {
-                    namaWarn.textContent = 'Nama responden ini sudah pernah diinput sebelumnya.';
-                    namaWarn.style.display = 'block';
-                    fokus = namaInput;
-                }
 
                 var kosong = selects.filter(function (s) { return !s.value; })[0];
                 if (kosong) {
                     pesanForm = 'Semua urutan kriteria harus dipilih terlebih dahulu.';
-                    if (!fokus) fokus = kosong;
+                    fokus = kosong;
                 }
 
                 var semuaSkalaValid = true;
@@ -796,7 +801,7 @@
                     return;
                 }
 
-                namaInput.value = nama;
+                // Cegah klik ganda: tombol dinonaktifkan begitu form dikirim.
                 if (submitBtn) submitBtn.disabled = true;
             });
 
@@ -805,7 +810,7 @@
         }
 
         Array.prototype.forEach.call(document.querySelectorAll('.form-fucom'), function (form) {
-            initForm(form, { cekDuplikat: form.dataset.mode === 'input' });
+            initForm(form);
         });
 
         // ==== MODAL ====

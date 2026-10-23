@@ -2,7 +2,45 @@
 <html lang="id">
 <head>
     <title>Dashboard Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <%- include('../partials/head') %>
+    <style>
+        .sa-page { min-width: 0; }
+
+        .sa-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+        .sa-toolbar small { color: #8a94a3; font-size: 12px; }
+        .sa-refresh {
+            border: 1px solid #d5dbe7; background: #fff; color: #334155; border-radius: 999px;
+            padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .sa-refresh:hover { border-color: #1d5fd6; color: #1d5fd6; }
+
+        .sa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-top: 22px; }
+        .sa-grid .stat-card { margin: 0; }
+
+        .sa-grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-top: 22px; }
+        .sa-grid-2 > .panel { margin-top: 0; min-width: 0; }
+        @media (max-width: 992px) { .sa-grid-2 { grid-template-columns: 1fr; } }
+
+        .sa-periode-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .sa-periode-box strong { font-size: 26px; color: #0b2545; }
+        .sa-periode-box small { display: block; color: #8a94a3; font-size: 12px; margin-top: 2px; }
+
+        .sa-aksi { display: flex; flex-direction: column; gap: 10px; }
+        .sa-aksi a {
+            display: flex; align-items: center; gap: 12px; text-decoration: none; color: #0b2545;
+            background: #f4f7fb; border: 1.5px solid #e6eaf2; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 600;
+            transition: transform .15s, border-color .15s, box-shadow .15s;
+        }
+        .sa-aksi a:hover { transform: translateY(-2px); border-color: #1d5fd6; box-shadow: 0 6px 16px rgba(15,23,42,.08); }
+        .sa-aksi a i:first-child { color: #1d5fd6; font-size: 18px; }
+        .sa-aksi a i:last-child { margin-left: auto; color: #9aa5b8; }
+
+        @media (max-width: 640px) {
+            .sa-periode-box strong { font-size: 22px; }
+        }
+    </style>
 </head>
 <body>
     <div class="app-layout">
@@ -11,87 +49,152 @@
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
-            <div class="welcome-banner">
-                <div class="welcome-icon">
-                    <i class="bi bi-shield-lock-fill"></i>
-                </div>
+            <div class="content-wrapper sa-page">
 
-                <div>
-                    <h2>
-                        <%= user.isFirstLogin ? 'Selamat datang' : 'Halo lagi' %>,
-                        <%= user.nama %>! 👋
-                    </h2>
-
-                    <p>
-                        Kelola akun operator, periode seleksi, dan kriteria penilaian
-                        sistem dari sini. Pantau seluruh aktivitas pengguna di menu
-                        <strong>Log Aktivitas</strong>.
-                    </p>
-                </div>
-            </div>
-
-            <div class="card-grid">
-
-                <div class="stat-card">
-                    <div class="stat-icon icon-blue">
-                        <i class="bi bi-person-badge-fill"></i>
+                <div class="welcome-banner">
+                    <div class="welcome-icon">
+                        <i class="bi bi-shield-lock-fill"></i>
                     </div>
 
                     <div>
-                        <h3>Total Operator</h3>
-                        <p class="stat-number"><%= stats.totalAdmin %></p>
-                        <p class="stat-desc">Akun operator aktif</p>
-                    </div>
-                </div>
+                        <h2>
+                            <%= user.isFirstLogin ? 'Selamat datang' : 'Halo lagi' %>,
+                            <%= user.nama %>! 👋
+                        </h2>
 
-                <div class="stat-card">
-                    <div class="stat-icon icon-green">
-                        <i class="bi bi-calendar-range"></i>
-                    </div>
-
-                    <div>
-                        <h3>Periode Aktif</h3>
-                        <p class="stat-number" style="font-size:20px;">
-                            <%= stats.periodeAktif %>
+                        <p>
+                            Kelola akun operator, periode seleksi, dan kriteria penilaian
+                            sistem dari sini. Pantau seluruh aktivitas pengguna di menu
+                            <strong>Log Aktivitas</strong>.
                         </p>
-                        <p class="stat-desc">Tahun ajaran berjalan</p>
                     </div>
                 </div>
 
-                <div class="stat-card">
-                    <div class="stat-icon icon-orange">
-                        <i class="bi bi-list-check"></i>
+                <div class="sa-toolbar">
+                    <small><i class="bi bi-clock"></i> Diperbarui: <span id="saJam">-</span></small>
+                    <button type="button" class="sa-refresh" onclick="window.location.reload()">
+                        <i class="bi bi-arrow-clockwise"></i> Muat ulang
+                    </button>
+                </div>
+
+                <div class="sa-grid">
+
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue">
+                            <i class="bi bi-person-badge-fill"></i>
+                        </div>
+
+                        <div>
+                            <h3>Total Operator</h3>
+                            <p class="stat-number"><%= stats.totalAdmin %></p>
+                            <p class="stat-desc">Akun operator aktif</p>
+                        </div>
                     </div>
 
-                    <div>
-                        <h3>Total Kriteria</h3>
-                        <p class="stat-number"><%= stats.totalKriteria %></p>
-                        <p class="stat-desc">Kriteria terdaftar di sistem</p>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-green">
+                            <i class="bi bi-calendar-range"></i>
+                        </div>
+
+                        <div>
+                            <h3>Periode Aktif</h3>
+                            <p class="stat-number" style="font-size:20px;">
+                                <%= stats.periodeAktif || '-' %>
+                            </p>
+                            <p class="stat-desc">Tahun ajaran berjalan</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon icon-orange">
+                            <i class="bi bi-list-check"></i>
+                        </div>
+
+                        <div>
+                            <h3>Total Kriteria</h3>
+                            <p class="stat-number"><%= stats.totalKriteria %></p>
+                            <p class="stat-desc">Kriteria terdaftar di sistem</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon icon-purple">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+
+                        <div>
+                            <h3>Log Aktivitas Hari Ini</h3>
+                            <p class="stat-number"><%= stats.logHariIni %></p>
+                            <p class="stat-desc">Aktivitas tercatat hari ini</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="sa-grid-2">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-green" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-calendar-check"></i></div>
+                            <h3>Periode Seleksi Saat Ini</h3>
+                        </div>
+
+                        <% if (stats.periodeAktif && stats.periodeAktif !== '-') { %>
+                            <div class="sa-periode-box">
+                                <div>
+                                    <strong><%= stats.periodeAktif %></strong>
+                                    <small>Periode yang sedang berjalan</small>
+                                </div>
+                                <span class="badge badge-green">Aktif</span>
+                            </div>
+                            <p style="font-size:13px; color:#667; margin-top:14px;">
+                                Tanggal mulai dan selesai periode hanya dapat berada di dalam tahun ajaran tersebut.
+                                Atur atau perpanjang tanggal lewat menu <strong>Kelola Periode</strong>.
+                            </p>
+                        <% } else { %>
+                            <p class="empty-state">Belum ada periode seleksi yang aktif. Buka periode baru lewat menu Kelola Periode.</p>
+                        <% } %>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-lightning-charge-fill"></i></div>
+                            <h3>Aksi Cepat</h3>
+                        </div>
+                        <div class="sa-aksi">
+                            <a href="/superadmin/periode">
+                                <i class="bi bi-calendar-range"></i>
+                                <span>Kelola Periode Seleksi</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <%# Tambahkan link lain sesuai route Anda, contoh:
+                            <a href="/superadmin/operator"><i class="bi bi-person-badge-fill"></i><span>Kelola Operator</span><i class="bi bi-chevron-right"></i></a>
+                            <a href="/superadmin/log"><i class="bi bi-clock-history"></i><span>Log Aktivitas</span><i class="bi bi-chevron-right"></i></a>
+                            %>
+                        </div>
                     </div>
                 </div>
 
-                <div class="stat-card">
-                    <div class="stat-icon icon-purple">
-                        <i class="bi bi-clock-history"></i>
-                    </div>
-
-                    <div>
-                        <h3>Log Aktivitas Hari Ini</h3>
-                        <p class="stat-number"><%= stats.logHariIni %></p>
-                        <p class="stat-desc">Aktivitas tercatat hari ini</p>
-                    </div>
-                </div>
-
+                <%- include('../partials/footer') %>
             </div>
-
-            <%- include('../partials/footer') %>
         </div>
     </div>
 
     <script>
-        setTimeout(() => {
+        (function () {
+            var el = document.getElementById('saJam');
+            if (!el) return;
+            var d = new Date();
+            el.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+        })();
+
+        // Refresh otomatis tiap 60 detik, tapi dilewati kalau tab tidak aktif atau sedang mengetik.
+        setInterval(function () {
+            if (document.hidden) return;
+            var aktif = document.activeElement;
+            var tag = aktif && aktif.tagName ? aktif.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
             window.location.reload();
-        }, 60000); // refresh otomatis tiap 60 detik
+        }, 60000);
     </script>
 
 </body>

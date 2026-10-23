@@ -22,28 +22,54 @@
         .ta-slash { font-size: 28px; color: #9aa5b8; font-weight: 300; line-height: 1; user-select: none; }
         .ta-bantuan { font-size: 12px; color: #6b7685; margin-top: 6px; }
         .ta-bantuan strong { color: #1d4ed8; }
+        /* tahun ajaran terkunci (otomatis, tidak bisa diubah) */
+        .ta-field.ta-tetap { background: #f3f5f9; border-color: #dcdfe6; cursor: not-allowed; padding: 10px 18px; }
+        .ta-field.ta-tetap:focus-within { border-color: #dcdfe6; box-shadow: none; }
+        .ta-teks { font-size: 22px; font-weight: 600; letter-spacing: 3px; color: #0b2545; user-select: none; }
+        .ta-ikon-kunci { font-size: 16px; color: #9aa5b8; }
         /* badge kedaluwarsa */
         .badge-orange { background: #fdf1de; color: #b35c00; }
         /* teks bantuan aturan tanggal */
         .tgl-bantuan { font-size: 12px; color: #6b7685; margin-top: 4px; }
+        /* kotak info rentang tanggal otomatis sesuai tahun ajaran */
+        .rentang-info {
+            font-size: 12px; color: #1d4ed8; background: #eef4ff; border-radius: 8px;
+            padding: 8px 10px; margin-top: 10px; display: flex; gap: 6px; align-items: flex-start;
+        }
         /* tombol aksi terkunci (abu-abu, tidak bisa diklik) */
         .btn-icon.terkunci, .btn-icon:disabled {
             opacity: .35; cursor: not-allowed; pointer-events: none;
         }
         .aksi-wrap { display: inline-block; }
+
+        /* ===== Responsif ===== */
+        .tabel-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tabel-scroll .data-table { min-width: 640px; }
+        .modal-box { max-width: 560px; width: calc(100% - 24px); max-height: 92vh; overflow-y: auto; }
+        .modal-box input[type="date"], .modal-box input[type="number"] { width: 100%; box-sizing: border-box; }
+        @media (max-width: 640px) {
+            .panel-header-row { flex-wrap: wrap; gap: 10px; }
+            .panel-header-row .btn-primary { width: 100%; justify-content: center; }
+            .ta-field input { width: 64px !important; font-size: 18px; letter-spacing: 3px; }
+            .ta-teks { font-size: 18px; letter-spacing: 2px; }
+            .modal-footer { flex-wrap: wrap; gap: 8px; }
+            .modal-footer button { flex: 1; }
+        }
     </style>
 </head>
 <body>
     <%
-    function formatTgl(val) {
-        if (!val) return '-';
-        const iso = (val instanceof Date) ? val.toISOString() : String(val);
-        const [y, m, d] = iso.split('T')[0].split('-');
+    // tglStr = string 'YYYY-MM-DD' (sudah disiapkan controller), ditampilkan jadi DD/MM/YYYY
+    function formatTgl(tglStr) {
+        if (!tglStr) return '-';
+        const [y, m, d] = String(tglStr).split('-');
         return `${d}/${m}/${y}`;
     }
 
     const saranTahun = (typeof tahunSaran !== 'undefined' && tahunSaran) ? tahunSaran : '';
     const terakhirTahun = (typeof tahunTerakhir !== 'undefined' && tahunTerakhir) ? tahunTerakhir : '';
+    // Tahun ajaran otomatis = tahun sekarang (dihitung di controller)
+    const sekarangTahun = (typeof tahunSekarang !== 'undefined' && tahunSekarang) ? tahunSekarang : '';
     %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
@@ -72,6 +98,7 @@
                             <i class="bi bi-plus-lg"></i> Buka Periode Baru
                         </button>
                     </div>
+                    <div class="tabel-scroll">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -91,8 +118,8 @@
                                 <tr>
                                     <td><%= p.tahun_ajaran %></td>
                                     <td><%= p.kuota_kelas_digital %></td>
-                                    <td><%= p.tanggal_mulai ? formatTgl(p.tanggal_mulai) : '-' %></td>
-                                    <td><%= p.tanggal_selesai ? formatTgl(p.tanggal_selesai) : '-' %></td>
+                                    <td><%= formatTgl(p.tgl_mulai_str) %></td>
+                                    <td><%= formatTgl(p.tgl_selesai_str) %></td>
                                     <td>
                                         <span class="badge <%= p.display_status.badgeClass %>">
                                             <%= p.display_status.label %>
@@ -161,6 +188,7 @@
                             <% }); %>
                         </tbody>
                     </table>
+                    </div>
                 </div>
                 <%- include('../partials/footer') %>
             </div>
@@ -178,24 +206,27 @@
                     <i class="bi bi-info-circle-fill"></i> Membuat periode baru akan otomatis menutup periode yang sedang aktif dan menonaktifkan akun siswa pada periode tersebut.
                 </p>
                 <label>Tahun Ajaran</label>
-                <input type="hidden" name="tahun_ajaran" id="tahun_ajaran_tambah">
-                <div class="ta-field" id="ta_field_tambah">
-                    <input type="text" id="ta_awal_tambah" inputmode="numeric" maxlength="4" placeholder="____" autocomplete="off" aria-label="Tahun awal">
-                    <span class="ta-slash">/</span>
-                    <input type="text" id="ta_akhir_tambah" inputmode="numeric" maxlength="4" placeholder="____" autocomplete="off" aria-label="Tahun akhir">
+                <input type="hidden" name="tahun_ajaran" id="tahun_ajaran_tambah" value="<%= sekarangTahun %>">
+                <div class="ta-field ta-tetap" id="ta_field_tambah" title="Tahun ajaran otomatis mengikuti tahun sekarang dan tidak dapat diubah.">
+                    <span class="ta-teks" id="ta_label_tambah"><%= sekarangTahun %></span>
+                    <i class="bi bi-lock-fill ta-ikon-kunci"></i>
                 </div>
+                <p class="ta-bantuan">Tahun ajaran otomatis mengikuti tahun sekarang dan tidak dapat diubah.</p>
                 <% if (terakhirTahun) { %>
-                    <p class="ta-bantuan">Periode terakhir: <strong><%= terakhirTahun %></strong>. Tahun ajaran baru harus lebih baru dari ini.</p>
+                    <p class="ta-bantuan">Periode terakhir: <strong><%= terakhirTahun %></strong>.</p>
                 <% } %>
-                <p id="peringatan_tahun_tambah" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;">Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.</p>
+                <p id="peringatan_tahun_tambah" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
                 <label>Kuota Kelas Digital (Minimal 30)</label>
                 <input type="number" name="kuota_kelas_digital" min="30" required placeholder="Minimal 30">
+
+                <div class="rentang-info"><i class="bi bi-calendar-check"></i><span id="rentang_info_tambah"></span></div>
+
                 <label>Tanggal Mulai</label>
                 <input type="date" name="tanggal_mulai" id="tambah_tgl_mulai">
-                <p class="tgl-bantuan">Minimal hari ini.</p>
+                <p class="tgl-bantuan">Minimal hari ini, dan harus di dalam tahun ajaran.</p>
                 <label>Tanggal Selesai</label>
                 <input type="date" name="tanggal_selesai" id="tambah_tgl_selesai">
-                <p class="tgl-bantuan">Minimal 7 hari dari hari ini.</p>
+                <p class="tgl-bantuan">Minimal 7 hari dari hari ini, dan harus di dalam tahun ajaran.</p>
                 <p id="peringatan_tanggal_tambah" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalTambah').style.display='none'">Batal</button>
@@ -215,20 +246,22 @@
                 <input type="hidden" name="id_periode" id="edit_id_periode">
                 <label>Tahun Ajaran</label>
                 <input type="hidden" name="tahun_ajaran" id="edit_tahun_ajaran">
-                <div class="ta-field" id="ta_field_edit">
-                    <input type="text" id="ta_awal_edit" inputmode="numeric" maxlength="4" placeholder="____" autocomplete="off" aria-label="Tahun awal">
-                    <span class="ta-slash">/</span>
-                    <input type="text" id="ta_akhir_edit" inputmode="numeric" maxlength="4" placeholder="____" autocomplete="off" aria-label="Tahun akhir">
+                <div class="ta-field ta-tetap" id="ta_field_edit" title="Tahun ajaran tidak dapat diubah.">
+                    <span class="ta-teks" id="ta_label_edit">-</span>
+                    <i class="bi bi-lock-fill ta-ikon-kunci"></i>
                 </div>
-                <p id="peringatan_tahun_edit" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;">Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.</p>
+                <p class="ta-bantuan">Tahun ajaran tidak dapat diubah.</p>
                 <label>Kuota Kelas Digital</label>
                 <input type="number" name="kuota_kelas_digital" id="edit_kuota" min="30" required>
+
+                <div class="rentang-info"><i class="bi bi-calendar-check"></i><span id="rentang_info_edit"></span></div>
+
                 <label>Tanggal Mulai</label>
                 <input type="date" name="tanggal_mulai" id="edit_tgl_mulai">
-                <p class="tgl-bantuan">Jika diubah, minimal hari ini.</p>
+                <p class="tgl-bantuan">Jika diubah, minimal hari ini, dan harus di dalam tahun ajaran.</p>
                 <label>Tanggal Selesai</label>
                 <input type="date" name="tanggal_selesai" id="edit_tgl_selesai">
-                <p class="tgl-bantuan">Jika diubah, minimal 7 hari dari hari ini.</p>
+                <p class="tgl-bantuan">Jika diubah, minimal 7 hari dari hari ini, dan harus di dalam tahun ajaran.</p>
                 <p id="peringatan_tanggal_edit" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalEdit').style.display='none'">Batal</button>
@@ -254,12 +287,15 @@
                 </p>
                 <label>Tahun Ajaran</label>
                 <p style="font-size:18px; font-weight:600; color:#0b2545; margin: 4px 0 12px;" id="perpanjang_tahun_label">-</p>
+
+                <div class="rentang-info"><i class="bi bi-calendar-check"></i><span id="rentang_info_perpanjang"></span></div>
+
                 <label>Tanggal Mulai</label>
                 <input type="date" name="tanggal_mulai" id="perpanjang_tgl_mulai">
-                <p class="tgl-bantuan">Jika diubah, minimal hari ini.</p>
+                <p class="tgl-bantuan">Jika diubah, minimal hari ini, dan harus di dalam tahun ajaran.</p>
                 <label>Tanggal Selesai Baru</label>
                 <input type="date" name="tanggal_selesai" id="perpanjang_tgl_selesai" required>
-                <p class="tgl-bantuan">Minimal 7 hari dari hari ini.</p>
+                <p class="tgl-bantuan">Minimal 7 hari dari hari ini, dan harus di dalam tahun ajaran.</p>
                 <p id="peringatan_perpanjang" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="document.getElementById('modalPerpanjang').style.display='none'">Batal</button>
@@ -272,6 +308,8 @@
     // Data dari server: tahun awal periode terbesar (null jika belum ada periode).
     const TAHUN_SARAN = <%- JSON.stringify(saranTahun) %>;
     const TAHUN_TERAKHIR = <%- JSON.stringify(terakhirTahun) %>;
+    // Tahun ajaran otomatis = tahun sekarang (dari server). Tidak bisa diubah pengguna.
+    const TAHUN_SEKARANG = <%- JSON.stringify(sekarangTahun) %>;
 
     // Jarak minimal (hari) antara hari ini dan tanggal selesai. Harus sama dengan di controller.
     const MIN_JARAK_HARI_SELESAI = 7;
@@ -302,13 +340,42 @@
         return `${parseInt(d)} ${bulan[parseInt(m) - 1]} ${y}`;
     }
 
+    // Ambil yang lebih besar dari dua string tanggal (string kosong dianggap tidak ada).
+    function maksTgl(a, b) {
+        if (!a) return b || '';
+        if (!b) return a;
+        return a > b ? a : b;
+    }
+
+    // ==== RENTANG TANGGAL YANG DIIZINKAN UNTUK SATU TAHUN AJARAN ====
+    // Tahun ajaran 2026/2027 => 1 Januari 2026 sampai 31 Desember 2027.
+    // Kalau mau pakai tahun ajaran sekolah (1 Juli - 30 Juni), ubah dua baris return di bawah
+    // dan fungsi yang sama di controller.
+    function rentangTahunAjaran(ta) {
+        const m = String(ta || '').match(/^(\d{4})\/(\d{4})$/);
+        if (!m) return null;
+        return { min: m[1] + '-01-01', max: m[2] + '-12-31' };
+    }
+
     // Validasi rentang tanggal di sisi browser. Mengembalikan pesan error atau null.
-    // mulaiLama/selesaiLama: tanggal yang tidak diubah tidak divalidasi ulang (dipakai saat edit/perpanjang).
-    function validasiTanggal(mulai, selesai, mulaiLama, selesaiLama) {
+    // mulaiLama/selesaiLama: tanggal yang tidak diubah tidak divalidasi aturan "minimal hari ini"
+    // (dipakai saat edit/perpanjang). Aturan "harus di dalam tahun ajaran" SELALU dicek.
+    function validasiTanggal(mulai, selesai, mulaiLama, selesaiLama, tahunAjaran) {
         const today = getTodayStr();
         const minSelesai = tambahHariStr(today, MIN_JARAK_HARI_SELESAI);
         const mulaiBerubah = (mulai || '') !== (mulaiLama || '');
         const selesaiBerubah = (selesai || '') !== (selesaiLama || '');
+        const r = rentangTahunAjaran(tahunAjaran);
+
+        if (r) {
+            const teksRentang = 'tahun ajaran ' + tahunAjaran + ' (' + formatTanggalIndo(r.min) + ' sampai ' + formatTanggalIndo(r.max) + ')';
+            if (mulai && (mulai < r.min || mulai > r.max)) {
+                return 'Tanggal mulai harus berada di dalam ' + teksRentang + '.';
+            }
+            if (selesai && (selesai < r.min || selesai > r.max)) {
+                return 'Tanggal selesai harus berada di dalam ' + teksRentang + '.';
+            }
+        }
 
         if (mulai && mulaiBerubah && mulai < today) {
             return 'Tanggal mulai tidak boleh sebelum hari ini (' + formatTanggalIndo(today) + ').';
@@ -333,47 +400,109 @@
         }
     }
 
-    function bukaModalTambah() {
-        // Isi otomatis dengan tahun ajaran berikutnya (bisa diubah operator).
-        if (TAHUN_SARAN) tahunFields.tambah.set(TAHUN_SARAN);
-
-        // Batas minimal pemilih tanggal + bersihkan peringatan lama
+    // Atur batas (min/max) kedua kolom tanggal otomatis mengikuti tahun ajaran.
+    // mode: 'tambah' | 'edit' | 'perpanjang'
+    function terapkanBatas(mode, tahun, elMulai, elSelesai, elInfo) {
         const today = getTodayStr();
-        document.getElementById('tambah_tgl_mulai').min = today;
-        document.getElementById('tambah_tgl_selesai').min = tambahHariStr(today, MIN_JARAK_HARI_SELESAI);
+        const minSelesaiHari = tambahHariStr(today, MIN_JARAK_HARI_SELESAI);
+        const r = isTahunAjaranValid(tahun) ? rentangTahunAjaran(tahun) : null;
+
+        let minMulai = r ? r.min : '';
+        let minSelesai = r ? r.min : '';
+        const batasMaks = r ? r.max : '';
+
+        if (mode === 'tambah') {
+            minMulai = maksTgl(minMulai, today);
+            minSelesai = maksTgl(minSelesai, minSelesaiHari);
+        } else if (mode === 'perpanjang') {
+            minSelesai = maksTgl(minSelesai, minSelesaiHari);
+        }
+
+        elMulai.min = minMulai;
+        elMulai.max = batasMaks;
+        elSelesai.min = minSelesai;
+        elSelesai.max = batasMaks;
+
+        // Kosongkan tanggal yang keluar dari batas supaya tidak lolos tanpa sadar.
+        [elMulai, elSelesai].forEach(function (el) {
+            if (!el.value) return;
+            if ((el.min && el.value < el.min) || (el.max && el.value > el.max)) el.value = '';
+        });
+
+        // Periode baru: tanggal mulai terisi otomatis (hari ini, atau awal tahun ajaran kalau belum sampai).
+        if (mode === 'tambah' && r && !elMulai.value && minMulai <= r.max) {
+            elMulai.value = minMulai;
+        }
+
+        if (elInfo) {
+            elInfo.textContent = r
+                ? 'Tahun ajaran ' + tahun + ': tanggal hanya boleh dari ' + formatTanggalIndo(r.min) + ' sampai ' + formatTanggalIndo(r.max) + '. Batas pemilih tanggal menyesuaikan otomatis.'
+                : 'Isi tahun ajaran dengan benar dulu, batas tanggal akan menyesuaikan otomatis.';
+        }
+    }
+
+    function terapkanTambah() {
+        terapkanBatas('tambah',
+            document.getElementById('tahun_ajaran_tambah').value,
+            document.getElementById('tambah_tgl_mulai'),
+            document.getElementById('tambah_tgl_selesai'),
+            document.getElementById('rentang_info_tambah'));
+    }
+
+    function terapkanEdit() {
+        terapkanBatas('edit',
+            document.getElementById('edit_tahun_ajaran').value,
+            document.getElementById('edit_tgl_mulai'),
+            document.getElementById('edit_tgl_selesai'),
+            document.getElementById('rentang_info_edit'));
+    }
+
+    function bukaModalTambah() {
+        // Kosongkan tanggal lama. Tahun ajaran otomatis = tahun sekarang dan tidak bisa diubah.
+        document.getElementById('tambah_tgl_mulai').value = '';
+        document.getElementById('tambah_tgl_selesai').value = '';
+        document.getElementById('tahun_ajaran_tambah').value = TAHUN_SEKARANG;
+        document.getElementById('ta_label_tambah').textContent = TAHUN_SEKARANG;
+        tampilPeringatan('peringatan_tahun_tambah', null);
         tampilPeringatan('peringatan_tanggal_tambah', null);
+        terapkanTambah();
 
         document.getElementById('modalTambah').style.display = 'flex';
     }
 
     function bukaModalEdit(p) {
         document.getElementById('edit_id_periode').value = p.id_periode;
-        tahunFields.edit.set(p.tahun_ajaran);
         document.getElementById('edit_kuota').value = p.kuota_kelas_digital;
-        document.getElementById('edit_tgl_mulai').value = p.tanggal_mulai || '';
-        document.getElementById('edit_tgl_selesai').value = p.tanggal_selesai || '';
 
-        // Simpan nilai awal supaya validasi hanya berlaku untuk tanggal yang diubah
+        // Set tahun dulu (memicu batas tanggal), baru isi tanggal dari server (string YYYY-MM-DD).
+        // Tahun ajaran hanya ditampilkan (terkunci), tidak bisa diubah.
+        document.getElementById('edit_tahun_ajaran').value = p.tahun_ajaran;
+        document.getElementById('ta_label_edit').textContent = p.tahun_ajaran;
+        document.getElementById('edit_tgl_mulai').value = p.tgl_mulai_str || '';
+        document.getElementById('edit_tgl_selesai').value = p.tgl_selesai_str || '';
+
+        // Simpan nilai awal supaya aturan "minimal hari ini" hanya berlaku untuk tanggal yang diubah
         document.getElementById('edit_tgl_mulai').dataset.awal = document.getElementById('edit_tgl_mulai').value;
         document.getElementById('edit_tgl_selesai').dataset.awal = document.getElementById('edit_tgl_selesai').value;
         tampilPeringatan('peringatan_tanggal_edit', null);
+        terapkanEdit();
 
         document.getElementById('modalEdit').style.display = 'flex';
     }
 
     // ==== MODAL PERPANJANG PERIODE KEDALUWARSA ====
     function bukaModalPerpanjang(p) {
-        const today = getTodayStr();
         document.getElementById('perpanjang_id_periode').value = p.id_periode;
         document.getElementById('perpanjang_tahun_label').textContent = p.tahun_ajaran;
 
         const inputMulai = document.getElementById('perpanjang_tgl_mulai');
-        inputMulai.value = p.tanggal_mulai ? String(p.tanggal_mulai).split('T')[0] : '';
+        inputMulai.value = p.tgl_mulai_str || '';
         inputMulai.dataset.awal = inputMulai.value; // tanggal mulai lama boleh dibiarkan
 
         const inputSelesai = document.getElementById('perpanjang_tgl_selesai');
-        inputSelesai.value = '';                                         // dikosongkan supaya admin wajib memilih tanggal baru
-        inputSelesai.min = tambahHariStr(today, MIN_JARAK_HARI_SELESAI); // minimal 7 hari dari hari ini
+        inputSelesai.value = ''; // dikosongkan supaya admin wajib memilih tanggal baru
+
+        terapkanBatas('perpanjang', p.tahun_ajaran, inputMulai, inputSelesai, document.getElementById('rentang_info_perpanjang'));
 
         document.getElementById('peringatan_perpanjang').style.display = 'none';
         document.getElementById('modalPerpanjang').style.display = 'flex';
@@ -383,6 +512,7 @@
         const warn = document.getElementById('peringatan_perpanjang');
         const mulai = form.tanggal_mulai.value;
         const selesai = form.tanggal_selesai.value;
+        const tahun = document.getElementById('perpanjang_tahun_label').textContent.trim();
 
         function tampilkan(pesan) {
             warn.textContent = pesan;
@@ -395,7 +525,7 @@
         }
 
         // Tanggal selesai selalu divalidasi (selesaiLama = null), tanggal mulai hanya jika diubah
-        const pesan = validasiTanggal(mulai, selesai, form.tanggal_mulai.dataset.awal || '', null);
+        const pesan = validasiTanggal(mulai, selesai, form.tanggal_mulai.dataset.awal || '', null, tahun);
         if (pesan) {
             return tampilkan(pesan);
         }
@@ -413,89 +543,13 @@
         return y2 === y1 + 1; // tahun kedua harus persis tahun pertama + 1
     }
 
-    // ==== INPUT TAHUN AJARAN MODEL ____ / ____ (2 KOTAK, HIDDEN INPUT TETAP MENGIRIM "YYYY/YYYY") ====
-    function setupTahunField(prefix) {
-        const awal = document.getElementById('ta_awal_' + prefix);
-        const akhir = document.getElementById('ta_akhir_' + prefix);
-        const field = document.getElementById('ta_field_' + prefix);
-        const hidden = document.getElementById(prefix === 'tambah' ? 'tahun_ajaran_tambah' : 'edit_tahun_ajaran');
-        const warn = document.getElementById('peringatan_tahun_' + prefix);
-        const teksAwal = warn.textContent;
-
-        function sync() {
-            hidden.value = (awal.value || akhir.value) ? (awal.value + '/' + akhir.value) : '';
-        }
-
-        function reset() {
-            field.classList.remove('tidak-valid');
-            warn.style.display = 'none';
-            warn.textContent = teksAwal;
-        }
-
-        function bersihkan(input) {
-            input.value = input.value.replace(/\D/g, '').slice(0, 4);
-        }
-
-        awal.addEventListener('input', function() {
-            bersihkan(this);
-            sync(); reset();
-            if (this.value.length === 4) akhir.focus();
-        });
-        akhir.addEventListener('input', function() {
-            bersihkan(this);
-            sync(); reset();
-        });
-
-        awal.addEventListener('keydown', function(e) {
-            if (e.key === '/') { e.preventDefault(); akhir.focus(); }
-        });
-        akhir.addEventListener('keydown', function(e) {
-            if (e.key === 'Backspace' && this.value === '') { e.preventDefault(); awal.focus(); }
-            if (e.key === '/') e.preventDefault();
-        });
-
-        // Paste "2027/2028" langsung terpisah ke dua kotak
-        [awal, akhir].forEach(function(el) {
-            el.addEventListener('paste', function(e) {
-                const teks = (e.clipboardData || window.clipboardData).getData('text');
-                const m = teks.match(/(\d{4})\s*\/\s*(\d{4})/);
-                if (m) {
-                    e.preventDefault();
-                    awal.value = m[1];
-                    akhir.value = m[2];
-                    sync(); reset();
-                }
-            });
-        });
-
-        return {
-            sync: sync,
-            set: function(val) {
-                const parts = String(val || '').split('/');
-                awal.value = (parts[0] || '').replace(/\D/g, '').slice(0, 4);
-                akhir.value = (parts[1] || '').replace(/\D/g, '').slice(0, 4);
-                sync(); reset();
-            },
-            tandaiSalah: function(pesan) {
-                field.classList.add('tidak-valid');
-                if (pesan) warn.textContent = pesan;
-                warn.style.display = 'block';
-                awal.focus();
-            }
-        };
-    }
-
-    const tahunFields = {
-        tambah: setupTahunField('tambah'),
-        edit: setupTahunField('edit')
-    };
-
     function handleTambahSubmit(form) {
-        tahunFields.tambah.sync();
-        const tahunVal = form.tahun_ajaran.value.trim();
+        // Tahun ajaran selalu otomatis tahun sekarang (nilai dari server), tidak bisa diubah.
+        document.getElementById('tahun_ajaran_tambah').value = TAHUN_SEKARANG;
+        const tahunVal = TAHUN_SEKARANG;
 
         if (!isTahunAjaranValid(tahunVal)) {
-            tahunFields.tambah.tandaiSalah('Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.');
+            tampilPeringatan('peringatan_tahun_tambah', 'Tahun ajaran otomatis tidak valid. Muat ulang halaman lalu coba lagi.');
             return false;
         }
 
@@ -504,14 +558,16 @@
         const awalTerakhir = tahunAwalDari(TAHUN_TERAKHIR);
 
         if (awalTerakhir !== null && awalBaru <= awalTerakhir) {
-            tahunFields.tambah.tandaiSalah(
-                'Tahun ajaran harus lebih baru dari periode terakhir (' + TAHUN_TERAKHIR + '). Gunakan ' + TAHUN_SARAN + ' atau yang lebih besar.'
+            tampilPeringatan(
+                'peringatan_tahun_tambah',
+                'Periode tahun ajaran ' + tahunVal + ' sudah dibuat. Tahun ajaran otomatis mengikuti tahun sekarang dan tidak dapat diubah.'
             );
             return false;
         }
+        tampilPeringatan('peringatan_tahun_tambah', null);
 
-        // Validasi rentang tanggal: mulai minimal hari ini, selesai minimal 7 hari dari hari ini
-        const pesanTanggal = validasiTanggal(form.tanggal_mulai.value, form.tanggal_selesai.value, '', '');
+        // Validasi tanggal: di dalam tahun ajaran, mulai minimal hari ini, selesai minimal 7 hari dari hari ini
+        const pesanTanggal = validasiTanggal(form.tanggal_mulai.value, form.tanggal_selesai.value, '', '', tahunVal);
         if (pesanTanggal) {
             tampilPeringatan('peringatan_tanggal_tambah', pesanTanggal);
             return false;
@@ -531,19 +587,20 @@
     }
 
     function handleEditSubmit(form) {
-        tahunFields.edit.sync();
+        // Tahun ajaran dikunci, hanya dibaca dari nilai periode yang sedang diedit.
         const tahunVal = form.tahun_ajaran.value.trim();
         if (!isTahunAjaranValid(tahunVal)) {
-            tahunFields.edit.tandaiSalah('Format harus 4 digit angka, garis miring, lalu 4 digit angka tahun berikutnya. Contoh: 2027/2028.');
+            tampilPeringatan('peringatan_tanggal_edit', 'Tahun ajaran periode tidak valid. Muat ulang halaman lalu coba lagi.');
             return false;
         }
 
-        // Validasi rentang tanggal; tanggal yang tidak diubah tidak divalidasi ulang
+        // Tanggal harus di dalam tahun ajaran; aturan "minimal hari ini" hanya untuk tanggal yang diubah
         const pesanTanggal = validasiTanggal(
             form.tanggal_mulai.value,
             form.tanggal_selesai.value,
             form.tanggal_mulai.dataset.awal || '',
-            form.tanggal_selesai.dataset.awal || ''
+            form.tanggal_selesai.dataset.awal || '',
+            tahunVal
         );
         if (pesanTanggal) {
             tampilPeringatan('peringatan_tanggal_edit', pesanTanggal);

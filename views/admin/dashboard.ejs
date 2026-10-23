@@ -2,11 +2,27 @@
 <html lang="id">
 <head>
     <title>Dashboard Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <%- include('../partials/head') %>
     <style>
-        /* ===== Dashboard progres periode (prefix dash- supaya tidak bentrok dengan layout.css) ===== */
-        .dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 25px; }
-        .dash-grid-2 > .panel { margin-top: 0; }
+        /* ===== Dashboard operator (prefix dash- supaya tidak bentrok dengan layout.css) ===== */
+        .dash-page { min-width: 0; }
+        .dash-page .panel { margin-top: 22px; }
+        .dash-page .panel-header-row { flex-wrap: wrap; gap: 10px; }
+
+        .dash-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+        .dash-toolbar small { color: #8a94a3; font-size: 12px; }
+        .dash-refresh {
+            border: 1px solid #d5dbe7; background: #fff; color: #334155; border-radius: 999px;
+            padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .dash-refresh:hover { border-color: #1d5fd6; color: #1d5fd6; }
+
+        .dash-section-title { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8a94a3; margin: 30px 0 -10px; }
+
+        .dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 22px; }
+        .dash-grid-2 > .panel { margin-top: 0; min-width: 0; }
         @media (max-width: 992px) { .dash-grid-2 { grid-template-columns: 1fr; } }
 
         .dash-hero { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
@@ -65,7 +81,7 @@
         }
         .dash-aksi-link:hover { background: #fff; text-decoration: underline; }
 
-        .dash-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 25px; }
+        .dash-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 22px; }
         .dash-kpi {
             display: block; text-decoration: none; background: #fff; border-radius: 12px; padding: 16px;
             border-left: 5px solid #94b8f0; box-shadow: 0 4px 14px rgba(0,0,0,.05);
@@ -82,7 +98,7 @@
         .dash-kpi.warn { border-left-color: #f39c12; background: #fffaf0; }
 
         .dash-bar-wrap { margin-bottom: 14px; }
-        .dash-bar-top { display: flex; justify-content: space-between; font-size: 13px; color: #44505f; margin-bottom: 5px; gap: 10px; }
+        .dash-bar-top { display: flex; justify-content: space-between; font-size: 13px; color: #44505f; margin-bottom: 5px; gap: 10px; flex-wrap: wrap; }
         .dash-bar-top b { color: #0b2545; }
         .dash-bar { height: 10px; background: #e6eaf2; border-radius: 999px; overflow: hidden; }
         .dash-bar > span { display: block; height: 100%; width: 0; background: #1d5fd6; border-radius: 999px; transition: width .5s ease; }
@@ -98,9 +114,9 @@
         .dash-kuota-angka .merah strong { color: #e74c3c; }
         .dash-kuota-angka .hijau strong { color: #27ae60; }
 
-        .dash-tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid #e6eaf2; margin-bottom: 18px; }
+        .dash-tabs { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: 1px solid #e6eaf2; margin-bottom: 18px; }
         .dash-tab {
-            background: none; border: none; padding: 10px 16px; font-size: 14px; font-weight: 600;
+            background: none; border: none; padding: 10px 16px; font-size: 14px; font-weight: 600; white-space: nowrap;
             color: #6b7685; cursor: pointer; border-bottom: 3px solid transparent; font-family: inherit;
         }
         .dash-tab:hover { color: #1d5fd6; }
@@ -139,7 +155,47 @@
         .dash-btn-teks { background: none; border: none; color: #1d5fd6; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
         .dash-btn-teks:hover { text-decoration: underline; }
         .dash-status-baris { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-        .dash-canvas-box { position: relative; height: 240px; }
+        .dash-canvas-box { position: relative; height: 240px; width: 100%; }
+        .dash-canvas-box.tinggi { height: 300px; }
+
+        .dash-statgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 22px; }
+        .dash-statgrid .stat-card { margin: 0; }
+
+        .dash-bobot-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+        .dash-bobot-wrap .dash-pie { width: 200px; height: 200px; flex-shrink: 0; margin: 0 auto; }
+        .dash-legend { list-style: none; padding: 0; margin: 0; flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #44505f; }
+        .dash-legend li { display: flex; align-items: center; gap: 8px; }
+        .dash-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .dash-legend b { margin-left: auto; color: #0b2545; }
+
+        .dash-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* ===== Responsif ===== */
+        @media (max-width: 768px) {
+            .dash-hero { gap: 18px; justify-content: center; text-align: center; }
+            .dash-hero-info { min-width: 0; width: 100%; }
+            .dash-meta { justify-content: center; }
+            .dash-steps { grid-template-columns: repeat(2, 1fr); }
+            .dash-kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .dash-kpi .angka { font-size: 22px; }
+            .dash-aksi-link { width: 100%; text-align: center; }
+            .dash-page .search-input { width: 100%; }
+        }
+        @media (max-width: 480px) {
+            .dash-steps { grid-template-columns: 1fr; }
+            .dash-kuota-angka > div { min-width: 90px; }
+        }
+
+        /* Tabel siswa jadi kartu di layar kecil */
+        @media (max-width: 700px) {
+            .dash-table thead { display: none; }
+            .dash-table, .dash-table tbody, .dash-table tr, .dash-table td { display: block; width: 100%; box-sizing: border-box; }
+            .dash-table tr { border: 1px solid #e6eaf2; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; background: #fff; }
+            .dash-table td { border: none !important; padding: 6px 0 !important; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; }
+            .dash-table td::before { content: attr(data-label); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #8a94a3; text-align: left; flex-shrink: 0; }
+            .dash-table td.empty-state { display: block; text-align: center; }
+            .dash-table td.empty-state::before { content: none; }
+        }
     </style>
 </head>
 <body>
@@ -157,13 +213,17 @@
     const maksBobot = (P && P.fucom.bobot.length > 0)
         ? Math.max.apply(null, P.fucom.bobot.map(function (b) { return b.persen; }))
         : 0;
+    const hrefPerankingan = (P && P.langkah && P.langkah.length)
+        ? (P.langkah[5] || P.langkah[P.langkah.length - 1]).href
+        : '#';
+    const warnaPie = ['#1d5fd6','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e74c3c'];
 %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
-            <div class="content-wrapper">
+            <div class="content-wrapper dash-page">
                 <div class="welcome-banner">
                     <div class="welcome-icon"><i class="bi bi-bar-chart-fill"></i></div>
                     <div>
@@ -180,8 +240,13 @@
                     </div>
                 </div>
 
+                <div class="dash-toolbar">
+                    <small><i class="bi bi-clock"></i> Diperbarui: <span id="dashJam">-</span> &middot; otomatis menyegarkan tiap 60 detik saat Anda tidak sedang mengetik</small>
+                    <button type="button" class="dash-refresh" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise"></i> Muat ulang</button>
+                </div>
+
                 <% if (gagalMuat) { %>
-                    <div class="alert alert-danger" style="margin-top:25px;">
+                    <div class="alert alert-danger" style="margin-top:22px;">
                         <i class="bi bi-exclamation-circle-fill"></i>
                         Progres periode berjalan gagal dimuat. Periksa log server, lalu muat ulang halaman. Bagian lain dashboard tetap tampil di bawah.
                     </div>
@@ -264,6 +329,7 @@
                 </div>
 
                 <!-- ===== KPI SISWA (klik untuk membuka daftar terfilter) ===== -->
+                <h2 class="dash-section-title">Ringkasan Siswa</h2>
                 <div class="dash-kpi-row">
                     <a class="dash-kpi biru" href="/admin/siswa">
                         <div class="angka"><%= P.siswa.total %></div>
@@ -492,7 +558,7 @@
                                 <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-graph-up-arrow"></i></div>
                                 <h3>Status Perankingan</h3>
                             </div>
-                            <a href="<%= P.langkah[5].href %>" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                            <a href="<%= hrefPerankingan %>" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                                 <i class="bi bi-box-arrow-up-right"></i> Buka
                             </a>
                         </div>
@@ -552,8 +618,8 @@
                         <button type="button" class="dash-chip" data-f="semua">Semua siswa <span class="n">0</span></button>
                     </div>
 
-                    <div class="table-scroll">
-                        <table class="data-table">
+                    <div class="dash-table-wrap">
+                        <table class="data-table dash-table">
                             <thead>
                                 <tr>
                                     <th>No</th>
@@ -578,9 +644,10 @@
                 <% } %>
 
                 <!-- ====================================================== -->
-                <!-- BAGIAN DI BAWAH INI TIDAK DIUBAH (kartu & grafik lama) -->
+                <!-- RINGKASAN SISTEM + GRAFIK                              -->
                 <!-- ====================================================== -->
-                <div class="card-grid">
+                <h2 class="dash-section-title">Ringkasan Sistem &amp; Grafik</h2>
+                <div class="dash-statgrid">
                     <div class="stat-card">
                         <div class="stat-icon icon-blue"><i class="bi bi-people-fill"></i></div>
                         <div>
@@ -615,7 +682,7 @@
                     </div>
                 </div>
 
-                <!-- CHART RIWAYAT ANTAR PERIODE (SELALU ADA DATA WALAU PERIODE BARU KOSONG) -->
+                <!-- CHART RIWAYAT ANTAR PERIODE -->
                 <div class="panel">
                     <div class="panel-header">
                         <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clock-history"></i></div>
@@ -624,38 +691,44 @@
                     <% if (riwayatPeriode.length === 0) { %>
                         <p class="empty-state">Belum ada data periode.</p>
                     <% } else { %>
-                        <canvas id="chartRiwayat" height="90"></canvas>
+                        <div class="dash-canvas-box tinggi"><canvas id="chartRiwayat"></canvas></div>
                     <% } %>
                 </div>
 
-                <!-- CHART PERIODE TERAKHIR (bisa kosong kalau periode baru belum diproses) -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bar-chart-fill"></i></div>
-                        <h3>Sebaran Nilai Siswa <% if (latestPeriode) { %>(<%= latestPeriode.tahun_ajaran %> — Periode Terbaru)<% } %></h3>
-                    </div>
-                    <canvas id="chartSebaranAdmin" height="90"></canvas>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
-                        <h3>Bobot Kriteria (Hasil FUCOM) <% if (latestPeriode) { %>— <%= latestPeriode.tahun_ajaran %><% } %></h3>
-                    </div>
-                    <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
-                        <div class="chart-with-legend">
-                            <div style="width:200px; height:200px; flex-shrink:0;">
-                                <canvas id="chartBobotAdmin"></canvas>
-                            </div>
-                            <ul class="legend-list">
-                                <% chartData.bobotKriteria.forEach(function(k) { %>
-                                    <li><span class="dot"></span> <%= k.nama_kriteria %> <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b></li>
-                                <% }); %>
-                            </ul>
+                <div class="dash-grid-2">
+                    <!-- CHART PERIODE TERAKHIR -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bar-chart-fill"></i></div>
+                            <h3>Sebaran Nilai Siswa <% if (latestPeriode) { %>(<%= latestPeriode.tahun_ajaran %>)<% } %></h3>
                         </div>
-                    <% } else { %>
-                        <p class="empty-state">Bobot kriteria untuk periode terbaru belum tersedia. Lihat grafik riwayat di atas untuk data periode sebelumnya.</p>
-                    <% } %>
+                        <div class="dash-canvas-box"><canvas id="chartSebaranAdmin"></canvas></div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
+                            <h3>Bobot Kriteria (FUCOM) <% if (latestPeriode) { %>— <%= latestPeriode.tahun_ajaran %><% } %></h3>
+                        </div>
+                        <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
+                            <div class="dash-bobot-wrap">
+                                <div class="dash-pie">
+                                    <canvas id="chartBobotAdmin"></canvas>
+                                </div>
+                                <ul class="dash-legend">
+                                    <% chartData.bobotKriteria.forEach(function(k, i) { %>
+                                        <li>
+                                            <span class="dot" style="background:<%= warnaPie[i % warnaPie.length] %>;"></span>
+                                            <%= k.nama_kriteria %>
+                                            <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b>
+                                        </li>
+                                    <% }); %>
+                                </ul>
+                            </div>
+                        <% } else { %>
+                            <p class="empty-state">Bobot kriteria untuk periode terbaru belum tersedia. Lihat grafik riwayat di atas untuk data periode sebelumnya.</p>
+                        <% } %>
+                    </div>
                 </div>
 
                 <%- include('../partials/footer') %>
@@ -665,6 +738,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // ----- Jam "diperbarui" -----
+        (function () {
+            var el = document.getElementById('dashJam');
+            if (!el) return;
+            var d = new Date();
+            el.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+        })();
+
         // Chart Riwayat Antar Periode
         <% if (riwayatPeriode.length > 0) { %>
         new Chart(document.getElementById('chartRiwayat'), {
@@ -691,6 +772,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: { legend: { display: true, position: 'bottom' } },
                 scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { stepSize: 1 } } }
             }
@@ -704,7 +786,12 @@
                 labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
                 datasets: [{ label: 'Jumlah Siswa', data: <%- JSON.stringify(chartData.sebaranNilai) %>, backgroundColor: '#1d5fd6', borderRadius: 6 }]
             },
-            options: { plugins: { legend: { display: false } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
         });
 
         <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
@@ -714,7 +801,7 @@
                 labels: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nama_kriteria)) %>,
                 datasets: [{ data: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nilai_bobot)) %>, backgroundColor: ['#1d5fd6','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e74c3c'] }]
             },
-            options: { maintainAspectRatio: true, plugins: { legend: { display: false } } }
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }
         });
         <% } %>
     </script>
@@ -822,7 +909,7 @@
                 var sub = s.belumGantiPassword
                     ? 'Belum ganti password'
                     : (s.lastLogin ? 'Login terakhir: ' + s.lastLogin : 'Belum pernah login');
-                return badge + '<span class="dash-sub">' + esc(sub) + '</span>';
+                return '<span>' + badge + '<span class="dash-sub">' + esc(sub) + '</span></span>';
             }
 
             function badgeMinat(s) {
@@ -870,13 +957,13 @@
                 } else {
                     body.innerHTML = tampil.map(function (s, i) {
                         return '<tr>' +
-                            '<td>' + (i + 1) + '</td>' +
-                            '<td>' + esc(s.nisn) + '</td>' +
-                            '<td>' + esc(s.nama) + '</td>' +
-                            '<td>' + badgeAkun(s) + '</td>' +
-                            '<td>' + badgeMinat(s) + '</td>' +
-                            '<td>' + selNilai(s) + '</td>' +
-                            '<td>' + selAksi(s) + '</td>' +
+                            '<td data-label="No">' + (i + 1) + '</td>' +
+                            '<td data-label="NISN">' + esc(s.nisn) + '</td>' +
+                            '<td data-label="Nama">' + esc(s.nama) + '</td>' +
+                            '<td data-label="Akun">' + badgeAkun(s) + '</td>' +
+                            '<td data-label="Kesediaan">' + badgeMinat(s) + '</td>' +
+                            '<td data-label="Nilai">' + selNilai(s) + '</td>' +
+                            '<td data-label="Aksi">' + selAksi(s) + '</td>' +
                             '</tr>';
                     }).join('');
                 }
@@ -919,7 +1006,17 @@
     <% } %>
 
     <script>
-        setTimeout(() => { window.location.reload(); }, 60000);
+        // Refresh otomatis yang tidak mengganggu: dilewati kalau tab sedang tidak dilihat,
+        // kalau Anda sedang mengetik/memilih sesuatu, atau kalau kolom pencarian terisi.
+        setInterval(function () {
+            if (document.hidden) return;
+            var aktif = document.activeElement;
+            var tag = aktif && aktif.tagName ? aktif.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+            var cari = document.getElementById('dashCari');
+            if (cari && cari.value.trim() !== '') return;
+            window.location.reload();
+        }, 60000);
     </script>
 </body>
 </html>
