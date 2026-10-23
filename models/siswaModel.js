@@ -91,6 +91,64 @@ const siswaModel = {
         }
     },
 
+    // BARU: hapus BANYAK siswa sekaligus (checklist) beserta data turunannya, satu transaksi.
+    // Hanya siswa milik periode yang diberikan yang dihapus; id lain dilewati.
+    // Ditolak jika periode sudah difinalisasi (status_penyelesaian = 'selesai').
+    // Return { ok: true, dihapus, dilewati } atau { ok: false, alasan }.
+    async deleteSiswaMassal(daftarId, id_periode) {
+        if (!Array.isArray(daftarId) || daftarId.length === 0) {
+            return { ok: false, alasan: 'TIDAK_ADA_PILIHAN' };
+        }
+
+        const conn = await db.getConnection();
+
+        try {
+            await conn.beginTransaction();
+
+            // Kunci bersama baris periode: finalisasi akan menunggu transaksi ini.
+            const [[periode]] = await conn.query(
+                'SELECT status_penyelesaian FROM periode_seleksi WHERE id_periode = ? LOCK IN SHARE MODE',
+                [id_periode]
+            );
+
+            if (!periode || periode.status_penyelesaian === 'selesai') {
+                await conn.rollback();
+                return { ok: false, alasan: 'PERIODE_FINAL' };
+            }
+
+            // Hanya siswa yang benar-benar milik periode ini.
+            const [rows] = await conn.query(
+                'SELECT id_siswa FROM siswa WHERE id_periode = ? AND id_siswa IN (?) FOR UPDATE',
+                [id_periode, daftarId]
+            );
+
+            if (rows.length === 0) {
+                await conn.rollback();
+                return { ok: false, alasan: 'SISWA_TIDAK_DITEMUKAN' };
+            }
+
+            const idValid = rows.map(r => r.id_siswa);
+
+            await conn.query('DELETE FROM hasil_waspas WHERE id_siswa IN (?)', [idValid]);
+            await conn.query('DELETE FROM nilai_siswa WHERE id_siswa IN (?)', [idValid]);
+            await conn.query('DELETE FROM akun_siswa WHERE id_siswa IN (?)', [idValid]);
+            await conn.query('DELETE FROM siswa WHERE id_siswa IN (?)', [idValid]);
+
+            await conn.commit();
+
+            return {
+                ok: true,
+                dihapus: idValid.length,
+                dilewati: daftarId.length - idValid.length
+            };
+        } catch (err) {
+            await conn.rollback();
+            throw err;
+        } finally {
+            conn.release();
+        }
+    },
+
     async checkNisnExists(nisn, id_periode, excludeId = null) {
         let query = 'SELECT id_siswa FROM siswa WHERE nisn = ? AND id_periode = ?';
         const params = [bersihkan(nisn), id_periode];

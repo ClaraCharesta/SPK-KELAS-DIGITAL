@@ -109,7 +109,7 @@
                                     <% kriteriaList.forEach(function(k) {
                                         var namaLower = (k.nama_kriteria || '').toLowerCase();
                                         var isSkor100 = namaLower.indexOf('akademik') !== -1 || namaLower.indexOf('psikotes') !== -1;
-                                        var minVal = isSkor100 ? 10 : 1;
+                                        var minVal = isSkor100 ? 0 : 1;
                                         var maxVal = isSkor100 ? 100 : 5;
                                         var stepVal = isSkor100 ? '0.01' : '1';
                                     %>
@@ -127,6 +127,7 @@
                                                     min="<%= minVal %>"
                                                     max="<%= maxVal %>"
                                                     name="nilai_mentah"
+                                                    inputmode="<%= isSkor100 ? 'decimal' : 'numeric' %>"
                                                     data-skala="<%= isSkor100 ? '100' : '5' %>"
                                                     value="<%= k.nilai_mentah !== null && k.nilai_mentah !== undefined ? k.nilai_mentah : '' %>"
                                                     style="width:150px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;"
@@ -134,7 +135,7 @@
                                                     <%= bolehIsi ? '' : 'disabled' %>>
                                                 <div style="font-size:11px; color:#999; margin-top:4px;">
                                                     <% if (isSkor100) { %>
-                                                        Skala 10 - 100
+                                                        Skala 0 - 100 (hanya angka, boleh desimal maksimal 2 digit)
                                                     <% } else { %>
                                                         Skala 1 - 5 (bulat, tanpa desimal)
                                                     <% } %>
@@ -172,6 +173,25 @@
             const form = document.getElementById('formNilai');
             if (!form) return;
 
+            // Hanya angka: blokir e, +, - (dan titik/koma untuk skala 1-5), serta paste non-angka.
+            form.querySelectorAll('input[name="nilai_mentah"]').forEach(function (inp) {
+                inp.addEventListener('keydown', function (e) {
+                    const terlarang = ['e', 'E', '+', '-'];
+                    if (this.getAttribute('data-skala') === '5') {
+                        terlarang.push('.', ',');
+                    }
+                    if (terlarang.indexOf(e.key) !== -1) e.preventDefault();
+                });
+
+                inp.addEventListener('paste', function (e) {
+                    const teks = ((e.clipboardData || window.clipboardData).getData('text') || '').trim();
+                    const pola = this.getAttribute('data-skala') === '5'
+                        ? /^[0-9]+$/
+                        : /^[0-9]+([.,][0-9]+)?$/;
+                    if (!pola.test(teks)) e.preventDefault();
+                });
+            });
+
             form.addEventListener('submit', function(e) {
                 const inputs = this.querySelectorAll('input[name="nilai_mentah"]:not([disabled])');
                 let invalid = false;
@@ -193,7 +213,7 @@
 
                 if (invalid) {
                     e.preventDefault();
-                    alert('Ada nilai yang belum valid. Skala Akademik/Psikotes harus 10-100, kriteria lain harus 1-5 dan bilangan bulat. Kolom bertanda merah perlu diperbaiki.');
+                    alert('Ada nilai yang belum valid. Akademik/Psikotes harus angka 0-100 (boleh desimal), kriteria lain harus bilangan bulat 1-5. Kolom bertanda merah perlu diperbaiki.');
                 }
             });
         })();

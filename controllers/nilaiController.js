@@ -18,16 +18,21 @@ const PESAN_BELUM_ADA_SISWA =
     'Input nilai belum dapat dilakukan karena belum ada data siswa. ' +
     'Tambahkan data siswa terlebih dahulu di menu Data Siswa.';
 
+// Nilai dari form hanya boleh angka murni: digit, lalu (opsional) titik dan 1-2 digit desimal.
+// Menolak huruf, spasi di tengah, tanda minus/plus, dan notasi seperti "1e2" atau "0x10".
+const REGEX_ANGKA_NILAI = /^\d+(\.\d{1,2})?$/;
+
 function hapusFileUpload(req) {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
         try { fs.unlinkSync(req.file.path); } catch (e) { /* abaikan */ }
     }
 }
 
+// Akademik & Psikotes: skala 0-100 (boleh desimal). Kriteria lain: bilangan bulat 1-5.
 function skalaKriteria(nama) {
     const n = String(nama || '').toLowerCase();
     const isSkor100 = n.includes('akademik') || n.includes('psikotes');
-    return { isSkor100, minVal: isSkor100 ? 10 : 1, maxVal: isSkor100 ? 100 : 5 };
+    return { isSkor100, minVal: isSkor100 ? 0 : 1, maxVal: isSkor100 ? 100 : 5 };
 }
 
 // Jumlah siswa yang masih "Belum merespons" (termasuk yang belum punya akun).
@@ -328,7 +333,14 @@ const nilaiController = {
                     return redirectError('Semua kriteria wajib memiliki nilai.');
                 }
 
-                const nilai = Number(raw);
+                const teksNilai = String(raw).trim();
+
+                // Hanya angka murni. Huruf, simbol, minus, dan notasi eksponen ditolak.
+                if (!REGEX_ANGKA_NILAI.test(teksNilai)) {
+                    return redirectError('Nilai hanya boleh berupa angka (tanpa huruf atau simbol), desimal maksimal 2 digit.');
+                }
+
+                const nilai = Number(teksNilai);
 
                 if (!Number.isFinite(nilai)) {
                     return redirectError('Nilai harus berupa angka yang valid.');

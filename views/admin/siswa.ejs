@@ -22,6 +22,85 @@
             line-height: 1.5;
         }
         .rincian-pesan li { margin-bottom: 4px; word-break: break-word; }
+
+        /* Tutorial makin panjang: beri ruang agar tidak terpotong. */
+        #tutorialSiswa.show { max-height: 1500px; }
+
+        /* Tombol hapus massal (header) */
+        .btn-hapus-massal {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #fdecea;
+            color: #b3261e;
+            border: 1px solid #f5c2bd;
+            padding: 11px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+        }
+        .btn-hapus-massal:hover:not(:disabled) { background: #fbd9d5; }
+        .btn-hapus-massal:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* Tombol hapus di bar aksi massal */
+        .btn-massal-hapus {
+            background: #b3261e;
+            color: #fff;
+            border: 1px solid #b3261e;
+        }
+        .btn-massal-hapus:hover { background: #8f1d17; }
+
+        /* ===== Bar pemberitahuan di bagian bawah layar (footer) ===== */
+        .notif-footer {
+            position: fixed;
+            left: 50%;
+            bottom: 0;
+            transform: translate(-50%, 110%);
+            z-index: 3000;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            width: calc(100% - 32px);
+            max-width: 720px;
+            padding: 14px 16px;
+            border-radius: 12px 12px 0 0;
+            background: #fdf1de;
+            color: #8a4b00;
+            border: 1px solid #f3d9a4;
+            border-bottom: none;
+            box-shadow: 0 -6px 24px rgba(15, 23, 42, .18);
+            font-size: 14px;
+            line-height: 1.5;
+            opacity: 0;
+            pointer-events: none;
+            transition: transform .3s ease, opacity .3s ease;
+        }
+        .notif-footer.tampil {
+            transform: translate(-50%, 0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .notif-footer.error {
+            background: #fdecea;
+            color: #b3261e;
+            border-color: #f5c2bd;
+        }
+        .notif-footer .notif-ikon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .notif-footer .notif-teks { flex: 1; min-width: 0; word-break: break-word; }
+        .notif-footer .notif-tutup {
+            background: none;
+            border: none;
+            font-size: 22px;
+            line-height: 1;
+            color: inherit;
+            opacity: .6;
+            cursor: pointer;
+            padding: 0 4px;
+            flex-shrink: 0;
+        }
+        .notif-footer .notif-tutup:hover { opacity: 1; }
     </style>
 </head>
 
@@ -53,8 +132,12 @@
         ? 'Nonaktif: belum ada data siswa'
         : 'Nonaktif: masih ada siswa yang belum merespons';
 
-    // Ada minimal satu siswa yang bisa dicentang (punya akun + belum merespons)?
-    // Checklist massal ikut mati jika bobot belum final.
+    // Checkbox muncul untuk SEMUA siswa jika data belum final dan bobot FUCOM sudah final.
+    // Dipakai untuk hapus massal dan (khusus yang memenuhi syarat) konfirmasi minat massal.
+    const bisaCentang = !sudahTerkunci && !blokirSiswa && daftarSiswa.length > 0;
+
+    // Ada minimal satu siswa yang bisa diubah status minatnya (punya akun + belum merespons)?
+    // Tombol Konfirmasi Berminat/Tidak Berminat hanya ditampilkan jika ada.
     const adaYangBisaDicentang = !sudahTerkunci && !blokirSiswa && daftarSiswa.some(function(x) {
         return Boolean(x.punya_akun) && (x.status_minat || 'belum_respon') === 'belum_respon';
     });
@@ -146,6 +229,12 @@
                             <strong>Konfirmasi Berminat</strong> atau <strong>Konfirmasi Tidak Berminat</strong>.
                             Siswa yang dikonfirmasi "Tidak berminat" tidak ikut perankingan dan akunnya dinonaktifkan.
                             Gunakan filter "Belum merespons" agar pilihan lebih mudah.
+                        </li>
+                        <li>
+                            Untuk <strong>menghapus banyak siswa sekaligus</strong>, centang siswa yang dimaksud
+                            (atau centang kotak di header tabel untuk memilih semua yang tampil), lalu klik <strong>Hapus Terpilih</strong>.
+                            Akan muncul konfirmasi. Penghapusan bersifat <strong>permanen</strong> (data siswa, akun, dan nilainya ikut terhapus)
+                            dan <strong>tidak bisa dilakukan lagi setelah hasil difinalisasi</strong>.
                         </li>
                         <li>
                             Pengisian nilai oleh operator (Input/Edit Nilai dan Import Nilai) <strong>tidak berkaitan dengan FUCOM</strong>.
@@ -254,38 +343,6 @@
                 <% } %>
             <% } %>
 
-            <!-- Ringkasan -->
-            <div class="stat-row">
-                <div class="stat-mini biru" data-filter="" data-minat="">
-                    <div class="angka"><%= R.total || 0 %></div>
-                    <div class="label">Total siswa</div>
-                </div>
-                <div class="stat-mini abu" data-filter="tanpa_akun">
-                    <div class="angka"><%= R.tanpaAkun || 0 %></div>
-                    <div class="label">Belum punya akun</div>
-                </div>
-                <div class="stat-mini hijau" data-filter="aktif">
-                    <div class="angka"><%= R.aktif || 0 %></div>
-                    <div class="label">Akun aktif</div>
-                </div>
-                <div class="stat-mini merah" data-filter="nonaktif">
-                    <div class="angka"><%= R.nonaktif || 0 %></div>
-                    <div class="label">Akun nonaktif</div>
-                </div>
-                <div class="stat-mini hijau" data-minat="berminat">
-                    <div class="angka"><%= R.berminat || 0 %></div>
-                    <div class="label">Berminat (ikut seleksi)</div>
-                </div>
-                <div class="stat-mini <%= R.belumKonfirmasi > 0 ? 'warn' : 'abu' %>" data-minat="belum_respon">
-                    <div class="angka"><%= R.belumKonfirmasi || 0 %></div>
-                    <div class="label">Belum merespons</div>
-                </div>
-                <div class="stat-mini merah" data-minat="tidak_berminat">
-                    <div class="angka"><%= R.tidakBerminat || 0 %></div>
-                    <div class="label">Tidak berminat</div>
-                </div>
-            </div>
-
             <!-- Tabel -->
             <div class="panel">
                 <div class="panel-header-row">
@@ -316,6 +373,10 @@
                                         title="<%= alasanBlokirSiswa %>">
                                     <i class="bi bi-plus-lg"></i> Tambah Siswa
                                 </button>
+                                <button type="button" class="btn-hapus-massal btn-off" disabled
+                                        title="<%= alasanBlokirSiswa %>">
+                                    <i class="bi bi-trash-fill"></i> Hapus Terpilih
+                                </button>
                             <% } else { %>
                                 <button type="button" class="btn-secondary" onclick="bukaModal('modalImport')">
                                     <i class="bi bi-file-earmark-excel-fill"></i> Import Excel
@@ -323,6 +384,16 @@
                                 <button type="button" class="btn-primary" onclick="bukaModal('modalTambah')">
                                     <i class="bi bi-plus-lg"></i> Tambah Siswa
                                 </button>
+                                <% if (daftarSiswa.length === 0) { %>
+                                    <button type="button" class="btn-hapus-massal" disabled title="Nonaktif: belum ada data siswa">
+                                        <i class="bi bi-trash-fill"></i> Hapus Terpilih
+                                    </button>
+                                <% } else { %>
+                                    <button type="button" class="btn-hapus-massal" onclick="hapusTerpilih()"
+                                            title="Hapus siswa yang dicentang di tabel">
+                                        <i class="bi bi-trash-fill"></i> Hapus Terpilih <span id="jumlahHapusHeader"></span>
+                                    </button>
+                                <% } %>
                             <% } %>
                         <% } %>
                     </div>
@@ -381,7 +452,7 @@
                     <% } %>
                 </div>
 
-                <% if (adaYangBisaDicentang) { %>
+                <% if (bisaCentang) { %>
                     <!-- Bar aksi checklist massal (muncul otomatis saat ada yang dicentang) -->
                     <form id="formMassal" class="bulk-bar" action="/admin/siswa/minat-massal" method="POST" onsubmit="return kirimMassal(this)">
                         <span class="bulk-info">
@@ -389,7 +460,7 @@
                             <strong id="jumlahDipilih">0</strong> siswa dipilih
                         </span>
 
-                        <button type="button" class="btn-kecil" onclick="pilihSemuaBelumRespon()">
+                        <button type="button" class="btn-kecil" onclick="pilihSemuaTampil()">
                             <i class="bi bi-check-all"></i> Pilih semua yang tampil
                         </button>
 
@@ -400,14 +471,24 @@
                         <span class="spacer"></span>
 
                         <div class="bulk-aksi">
-                            <button type="submit" class="btn-massal btn-massal-ya" onclick="setStatusMassal('berminat')">
-                                <i class="bi bi-check-lg"></i> Konfirmasi Berminat
-                            </button>
-                            <button type="submit" class="btn-massal btn-massal-tidak" onclick="setStatusMassal('tidak_berminat')">
-                                <i class="bi bi-x-lg"></i> Konfirmasi Tidak Berminat
+                            <% if (adaYangBisaDicentang) { %>
+                                <button type="submit" class="btn-massal btn-massal-ya" onclick="setStatusMassal('berminat')">
+                                    <i class="bi bi-check-lg"></i> Konfirmasi Berminat
+                                </button>
+                                <button type="submit" class="btn-massal btn-massal-tidak" onclick="setStatusMassal('tidak_berminat')">
+                                    <i class="bi bi-x-lg"></i> Konfirmasi Tidak Berminat
+                                </button>
+                            <% } %>
+                            <!-- Tombol ini milik form hapus di bawah (atribut form), bukan form bar ini -->
+                            <button type="submit" form="formHapusMassal" class="btn-massal btn-massal-hapus">
+                                <i class="bi bi-trash-fill"></i> Hapus Terpilih
                             </button>
                         </div>
                     </form>
+
+                    <!-- Form hapus massal (tersembunyi). Id siswa diisi lewat JS saat submit. -->
+                    <form id="formHapusMassal" action="/admin/siswa/hapus-massal" method="POST"
+                          onsubmit="return kirimHapusMassal(this)" style="display:none;"></form>
                 <% } %>
 
                 <div class="table-scroll">
@@ -415,8 +496,8 @@
                         <thead>
                             <tr>
                                 <th class="col-cek">
-                                    <% if (adaYangBisaDicentang) { %>
-                                        <input type="checkbox" id="cekSemua" title="Pilih semua siswa yang tampil dan belum merespons" aria-label="Pilih semua">
+                                    <% if (bisaCentang) { %>
+                                        <input type="checkbox" id="cekSemua" title="Pilih semua siswa yang tampil" aria-label="Pilih semua">
                                     <% } %>
                                 </th>
                                 <th>No</th>
@@ -457,8 +538,10 @@
                                     data-minat="<%= minat %>">
 
                                     <td class="col-cek">
-                                        <% if (bisaUbahMinat && !blokirSiswa) { %>
+                                        <% if (bisaCentang) { %>
                                             <input type="checkbox" class="cek-siswa" value="<%= s.id_siswa %>"
+                                                   data-minat-ok="<%= (bisaUbahMinat && !blokirSiswa) ? '1' : '0' %>"
+                                                   data-nama-siswa="<%= s.nama || '' %>"
                                                    aria-label="Pilih <%= s.nama %>">
                                         <% } %>
                                     </td>
@@ -786,7 +869,50 @@
 </div>
 <% } %>
 
+<!-- Bar pemberitahuan di bagian bawah layar (menggantikan alert() bawaan browser) -->
+<div id="notifFooter" class="notif-footer" role="alert" aria-live="assertive">
+    <i id="notifIkon" class="bi bi-exclamation-triangle-fill notif-ikon"></i>
+    <div id="notifTeks" class="notif-teks"></div>
+    <button type="button" class="notif-tutup" onclick="tutupPemberitahuan()" aria-label="Tutup pemberitahuan">&times;</button>
+</div>
+
 <script>
+    // ===== PEMBERITAHUAN DI FOOTER =====
+    // Menggantikan alert(). tipe: 'peringatan' (kuning) atau 'error' (merah).
+    let timerNotif = null;
+
+    function tampilPemberitahuan(pesan, tipe) {
+        const bar = document.getElementById('notifFooter');
+        const teks = document.getElementById('notifTeks');
+        const ikon = document.getElementById('notifIkon');
+
+        // Jika elemen tidak ada (seharusnya tidak terjadi), jatuh kembali ke alert bawaan.
+        if (!bar || !teks) {
+            alert(pesan);
+            return;
+        }
+
+        const adalahError = tipe === 'error';
+
+        teks.textContent = pesan;
+        bar.classList.toggle('error', adalahError);
+
+        if (ikon) {
+            ikon.className = 'bi notif-ikon ' + (adalahError ? 'bi-x-octagon-fill' : 'bi-exclamation-triangle-fill');
+        }
+
+        bar.classList.add('tampil');
+
+        clearTimeout(timerNotif);
+        timerNotif = setTimeout(tutupPemberitahuan, 7000);
+    }
+
+    function tutupPemberitahuan() {
+        const bar = document.getElementById('notifFooter');
+        if (bar) bar.classList.remove('tampil');
+        clearTimeout(timerNotif);
+    }
+
     // ===== MODAL =====
     function bukaModal(id) {
         const modal = document.getElementById(id);
@@ -829,6 +955,7 @@
     function perbaruiPilihan() {
         const bar = document.getElementById('formMassal');
         const hitungEl = document.getElementById('jumlahDipilih');
+        const hitungHeader = document.getElementById('jumlahHapusHeader');
         const cekSemua = document.getElementById('cekSemua');
 
         const terlihat = cekboxTerlihat();
@@ -840,7 +967,11 @@
         });
 
         if (hitungEl) hitungEl.textContent = dipilih.length;
+        if (hitungHeader) hitungHeader.textContent = dipilih.length > 0 ? '(' + dipilih.length + ')' : '';
         if (bar) bar.classList.toggle('tampil', dipilih.length > 0);
+
+        // Pemberitahuan "belum ada yang dicentang" tidak relevan lagi setelah ada yang dipilih.
+        if (dipilih.length > 0) tutupPemberitahuan();
 
         if (cekSemua) {
             const terlihatDipilih = terlihat.filter(function(cb) { return cb.checked; }).length;
@@ -849,7 +980,7 @@
         }
     }
 
-    function pilihSemuaBelumRespon() {
+    function pilihSemuaTampil() {
         cekboxTerlihat().forEach(function(cb) { cb.checked = true; });
         perbaruiPilihan();
     }
@@ -867,14 +998,24 @@
         statusMassalDipilih = status === 'tidak_berminat' ? 'tidak_berminat' : 'berminat';
     }
 
+    // Konfirmasi minat massal: hanya siswa yang punya akun dan masih "Belum merespons"
+    // (data-minat-ok = 1) yang dikirim. Sisanya dilewati.
     function kirimMassal(form) {
         // Hapus input lama (jika sebelumnya batal), lalu isi ulang dari checkbox yang dicentang.
         form.querySelectorAll('input[name="id_siswa"], input[name="status_minat"]').forEach(function(el) { el.remove(); });
 
-        const dipilih = semuaCekboxSiswa().filter(function(cb) { return cb.checked; });
+        const dipilihSemua = semuaCekboxSiswa().filter(function(cb) { return cb.checked; });
+
+        if (dipilihSemua.length === 0) {
+            tampilPemberitahuan('Centang minimal satu siswa terlebih dahulu.', 'peringatan');
+            return false;
+        }
+
+        const dipilih = dipilihSemua.filter(function(cb) { return cb.getAttribute('data-minat-ok') === '1'; });
+        const dilewati = dipilihSemua.length - dipilih.length;
 
         if (dipilih.length === 0) {
-            alert('Centang minimal satu siswa terlebih dahulu.');
+            tampilPemberitahuan('Tidak ada siswa terpilih yang bisa diubah status minatnya. Hanya siswa yang punya akun dan masih "Belum merespons" yang bisa diubah.', 'peringatan');
             return false;
         }
 
@@ -895,13 +1036,70 @@
         inputStatus.value = status;
         form.appendChild(inputStatus);
 
-        const pesan = status === 'tidak_berminat'
+        let pesan = status === 'tidak_berminat'
             ? 'Yakin mengonfirmasi ' + dipilih.length + ' siswa ini sebagai TIDAK BERMINAT? ' +
               'Mereka tidak ikut perankingan, akun mereka dinonaktifkan, dan status ini tidak dapat diubah lagi.'
             : 'Yakin mengonfirmasi ' + dipilih.length + ' siswa ini sebagai BERMINAT? ' +
               'Mereka akan ikut perankingan dan status ini tidak dapat diubah lagi.';
 
+        if (dilewati > 0) {
+            pesan += ' (' + dilewati + ' siswa lain yang dicentang tidak memenuhi syarat dan akan dilewati.)';
+        }
+
         return confirmDelete(form, pesan);
+    }
+
+    // ===== HAPUS MASSAL =====
+    // Dipanggil dari onsubmit #formHapusMassal. Mengisi id siswa yang dicentang,
+    // lalu meminta konfirmasi lewat dialog yang sama dengan tombol hapus per baris.
+    function kirimHapusMassal(form) {
+        form.querySelectorAll('input[name="id_siswa"]').forEach(function(el) { el.remove(); });
+
+        const dipilih = semuaCekboxSiswa().filter(function(cb) { return cb.checked; });
+
+        if (dipilih.length === 0) {
+            tampilPemberitahuan('Centang minimal satu siswa yang ingin dihapus.', 'peringatan');
+            return false;
+        }
+
+        dipilih.forEach(function(cb) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'id_siswa';
+            input.value = cb.value;
+            form.appendChild(input);
+        });
+
+        const contoh = dipilih.slice(0, 3).map(function(cb) { return cb.getAttribute('data-nama-siswa'); }).join(', ');
+        const sisa = dipilih.length - 3;
+        const daftarNama = sisa > 0 ? contoh + ' dan ' + sisa + ' lainnya' : contoh;
+
+        const pesan = 'PERHATIAN: ' + dipilih.length + ' siswa terpilih (' + daftarNama + ') akan dihapus PERMANEN ' +
+            'beserta akun dan seluruh nilainya. Hasil ranking sebelumnya juga dikosongkan. ' +
+            'Tindakan ini tidak dapat dibatalkan. Lanjutkan menghapus?';
+
+        return confirmDelete(form, pesan);
+    }
+
+    // Tombol "Hapus Terpilih" di header: sama dengan tombol di bar aksi massal.
+    function hapusTerpilih() {
+        const form = document.getElementById('formHapusMassal');
+        if (!form) return;
+
+        const adaDipilih = semuaCekboxSiswa().some(function(cb) { return cb.checked; });
+
+        if (!adaDipilih) {
+            tampilPemberitahuan('Centang dulu siswa yang ingin dihapus pada tabel di bawah, atau gunakan kotak di header tabel untuk memilih semua yang tampil.', 'peringatan');
+            const tabel = document.getElementById('tabelSiswa');
+            if (tabel && tabel.scrollIntoView) tabel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+        } else if (kirimHapusMassal(form) === true) {
+            form.submit();
+        }
     }
 
     (function() {
@@ -949,7 +1147,7 @@
                     const nomor = row.querySelector('.no-urut');
                     if (nomor) nomor.textContent = tampil;
                 } else {
-                    // Baris yang tersembunyi tidak boleh ikut terkirim.
+                    // Baris yang tersembunyi tidak boleh ikut terkirim (minat maupun hapus).
                     const cb = row.querySelector('.cek-siswa');
                     if (cb) cb.checked = false;
                 }
@@ -965,15 +1163,16 @@
         selectFilter.addEventListener('change', terapkanFilter);
         selectMinat.addEventListener('change', terapkanFilter);
 
-        document.querySelectorAll('.stat-mini').forEach(function(kartu) {
-            kartu.addEventListener('click', function() {
-                selectFilter.value = kartu.dataset.filter || '';
-                selectMinat.value = kartu.dataset.minat || '';
-                terapkanFilter();
-            });
-        });
-
         selectFilter.value = <%- JSON.stringify(filterAwalVal) %>;
+
+        // Filter status minat dari tautan dashboard, contoh: /admin/siswa?minat=belum_respon
+        try {
+            const minatAwal = new URLSearchParams(window.location.search).get('minat');
+            if (minatAwal && Array.prototype.some.call(selectMinat.options, function(o) { return o.value === minatAwal; })) {
+                selectMinat.value = minatAwal;
+            }
+        } catch (e) { /* abaikan */ }
+
         terapkanFilter();
     })();
 
@@ -984,7 +1183,7 @@
         try {
             s = JSON.parse(decodeURIComponent(button.dataset.siswa));
         } catch (error) {
-            alert('Data siswa tidak dapat dibaca. Muat ulang halaman.');
+            tampilPemberitahuan('Data siswa tidak dapat dibaca. Muat ulang halaman.', 'error');
             return;
         }
 

@@ -171,6 +171,13 @@ const PESAN_UBAH_MINAT = {
     TIDAK_ADA_PILIHAN: 'Pilih minimal satu siswa.'
 };
 
+// Pesan untuk hapus massal (checklist).
+const PESAN_HAPUS_MASSAL = {
+    PERIODE_FINAL: 'Hasil seleksi sudah difinalisasi. Data siswa tidak dapat dihapus.',
+    SISWA_TIDAK_DITEMUKAN: 'Siswa yang dipilih tidak ditemukan pada periode aktif.',
+    TIDAK_ADA_PILIHAN: 'Pilih minimal satu siswa yang ingin dihapus.'
+};
+
 const siswaController = {
 
     // GET /admin/siswa
@@ -514,6 +521,75 @@ const siswaController = {
             return redirectSuccess(res, pesan);
         } catch (error) {
             console.error('ERROR UBAH MINAT MASSAL:', error);
+            return redirectError(res, 'Terjadi kesalahan sistem.');
+        }
+    },
+
+    // POST /admin/siswa/hapus-massal
+    // Operator menghapus BANYAK siswa sekaligus (checklist) beserta akun dan nilainya.
+    // Aturannya sama dengan tombol input: hanya bisa jika bobot FUCOM sudah final dan konsisten,
+    // dan TIDAK bisa lagi setelah hasil seleksi difinalisasi.
+    async hapusMassal(req, res) {
+        try {
+            let ids = req.body.id_siswa;
+
+            if (ids === undefined || ids === null || ids === '') {
+                return redirectError(res, PESAN_HAPUS_MASSAL.TIDAK_ADA_PILIHAN);
+            }
+
+            if (!Array.isArray(ids)) ids = [ids];
+
+            ids = [...new Set(ids.map(v => String(v).trim()))];
+
+            if (ids.length === 0) {
+                return redirectError(res, PESAN_HAPUS_MASSAL.TIDAK_ADA_PILIHAN);
+            }
+
+            if (ids.length > BATAS_MASSAL) {
+                return redirectError(res, `Terlalu banyak siswa dipilih sekaligus (maksimal ${BATAS_MASSAL}).`);
+            }
+
+            if (ids.some(v => !/^[1-9]\d*$/.test(v))) {
+                return redirectError(res, 'Data siswa yang dipilih tidak valid.');
+            }
+
+            const periode = await periodeModel.getActivePeriode();
+
+            if (!periode || !isPeriodeSudahMulai(periode)) {
+                return redirectError(res, !periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode));
+            }
+
+            if (await cekTerkunci(periode.id_periode)) {
+                return redirectError(res, PESAN_HAPUS_MASSAL.PERIODE_FINAL);
+            }
+
+            if (!(await cekBobotFinal(periode.id_periode))) {
+                return redirectError(res, PESAN_BOBOT_BELUM_FINAL_AKSI);
+            }
+
+            const hasil = await siswaModel.deleteSiswaMassal(ids.map(Number), periode.id_periode);
+
+            if (!hasil.ok) {
+                return redirectError(res, PESAN_HAPUS_MASSAL[hasil.alasan] || 'Data siswa gagal dihapus.');
+            }
+
+            await userModel.logActivity(
+                req.session.user.id_user,
+                `Admin menghapus ${hasil.dihapus} data siswa beserta akun dan nilainya (checklist massal)`
+            );
+
+            // Peserta seleksi berubah, hasil ranking lama tidak valid lagi.
+            await waspasModel.invalidateHasilJikaAda(periode.id_periode);
+
+            let pesan = `${hasil.dihapus} siswa berhasil dihapus beserta akun dan nilainya.`;
+
+            if (hasil.dilewati > 0) {
+                pesan += ` ${hasil.dilewati} siswa dilewati karena tidak ditemukan pada periode aktif.`;
+            }
+
+            return redirectSuccess(res, pesan);
+        } catch (error) {
+            console.error('ERROR HAPUS SISWA MASSAL:', error);
             return redirectError(res, 'Terjadi kesalahan sistem.');
         }
     },

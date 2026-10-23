@@ -48,6 +48,7 @@ router.get('/waspas', waspasController.index);
 router.post('/waspas/hitung', waspasController.hitung);
 router.post('/waspas/hapus', waspasController.hapusHasil);
 router.post('/waspas/finalisasi', waspasController.finalisasi);
+router.post('/siswa/hapus-massal', siswaController.hapusMassal);
 
 // Laporan
 router.get('/laporan', laporanController.index);
