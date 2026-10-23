@@ -226,7 +226,7 @@ const periodeController = {
             const id_periode_baru = await periodeModel.create({ tahun_ajaran: tahun_ajaran.trim(), kuota_kelas_digital, tanggal_mulai, tanggal_selesai });
 
             await kriteriaModel.createDefault(id_periode_baru);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin membuka periode seleksi baru: ${tahun_ajaran}`);
+            await userModel.logActivity(req.session.user.id_user, `Admin membuka periode seleksi baru: ${tahun_ajaran}`);
 
             // Periode lama otomatis ditutup, jadi akun siswanya ikut dinonaktifkan.
             const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
@@ -268,7 +268,7 @@ const periodeController = {
             // Perubahan kuota membuat hasil ranking lama tidak valid.
             await waspasModel.invalidateHasilJikaAda(id_periode);
 
-            await userModel.logActivity(req.session.user.id_user, `Super Admin mengubah kuota periode ID ${id_periode} menjadi ${kuota_kelas_digital}`);
+            await userModel.logActivity(req.session.user.id_user, `Admin mengubah kuota periode ID ${id_periode} menjadi ${kuota_kelas_digital}`);
             res.redirect('/superadmin/periode?success=' + encodeURIComponent('Kuota berhasil diperbarui. Hasil ranking sebelumnya dikosongkan, silakan hitung ulang WASPAS.'));
         } catch (error) {
             console.error(error);
@@ -298,7 +298,7 @@ const periodeController = {
 
             await userModel.logActivity(
                 req.session.user.id_user,
-                `Super Admin mengaktifkan periode ID ${id_periode} (${diaktifkan} akun siswa diaktifkan, ${dinonaktifkan} akun periode lain dinonaktifkan)`
+                `Admin mengaktifkan periode ID ${id_periode} (${diaktifkan} akun siswa diaktifkan, ${dinonaktifkan} akun periode lain dinonaktifkan)`
             );
             res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode berhasil diaktifkan.'));
         } catch (error) {
@@ -361,7 +361,7 @@ const periodeController = {
             // Kuota bisa ikut berubah, jadi hasil ranking lama dikosongkan.
             await waspasModel.invalidateHasilJikaAda(id_periode);
 
-            await userModel.logActivity(req.session.user.id_user, `Super Admin memperbarui periode: ${tahun_ajaran}`);
+            await userModel.logActivity(req.session.user.id_user, `Admin memperbarui periode: ${tahun_ajaran}`);
 
             picuPengingat();
 
@@ -426,7 +426,7 @@ const periodeController = {
 
             await userModel.logActivity(
                 req.session.user.id_user,
-                `Super Admin memperpanjang periode ${p.tahun_ajaran} hingga ${tanggal_selesai} (${diaktifkan} akun siswa diaktifkan kembali)`
+                `Admin memperpanjang periode ${p.tahun_ajaran} hingga ${tanggal_selesai} (${diaktifkan} akun siswa diaktifkan kembali)`
             );
 
             picuPengingat();
@@ -460,7 +460,7 @@ const periodeController = {
             }
 
             await periodeModel.deleteCascade(id_periode);
-            await userModel.logActivity(req.session.user.id_user, `Super Admin menghapus periode ID ${id_periode} beserta seluruh data terkait`);
+            await userModel.logActivity(req.session.user.id_user, `Admin menghapus periode ID ${id_periode} beserta seluruh data terkait`);
             res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode beserta seluruh data terkait berhasil dihapus.'));
         } catch (error) {
             console.error(error);
@@ -482,7 +482,7 @@ const periodeController = {
 
             await userModel.logActivity(
                 req.session.user.id_user,
-                `Super Admin menutup periode ID ${id_periode} secara manual (${dinonaktifkan} akun siswa dinonaktifkan)`
+                `Admin menutup periode ID ${id_periode} secara manual (${dinonaktifkan} akun siswa dinonaktifkan)`
             );
             res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode berhasil ditutup. Akun siswa pada periode ini dinonaktifkan.'));
         } catch (error) {

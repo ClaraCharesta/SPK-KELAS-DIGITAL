@@ -25,7 +25,7 @@ async function sendDefaultPasswordEmail(toEmail, namaUser, passwordBaru) {
                 </p>
                 <p>Silakan login menggunakan password ini, lalu segera ganti password kamu sendiri lewat menu <strong>Profil &gt; Ubah Password</strong> agar akun kamu tetap aman.</p>
                 <p style="margin-top:30px; font-size:12px; color:#999;">
-                    Jika kamu tidak merasa meminta reset password, segera hubungi Super Admin karena ada kemungkinan orang lain mencoba mengakses akun kamu.
+                    Jika kamu tidak merasa meminta reset password, segera hubungi Admin karena ada kemungkinan orang lain mencoba mengakses akun kamu.
                 </p>
             </div>
         `

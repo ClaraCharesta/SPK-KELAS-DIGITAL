@@ -509,7 +509,7 @@ const nilaiController = {
             const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
 
             if (kriteriaList.length === 0) {
-                return res.status(400).send('Belum ada kriteria terdaftar. Hubungi Super Admin.');
+                return res.status(400).send('Belum ada kriteria terdaftar. Hubungi Admin.');
             }
 
             return await generateTemplateNilai(res, siswaList, kriteriaList);

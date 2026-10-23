@@ -255,7 +255,7 @@ async function bangunProgres(periodeAktif) {
 
     if (!terkunci && sisaHari !== null) {
         if (sisaHari < 0) {
-            tambah('bahaya', 'Tanggal selesai periode sudah lewat. Hubungi Super Admin untuk memperpanjang periode.');
+            tambah('bahaya', 'Tanggal selesai periode sudah lewat. Hubungi Admin untuk memperpanjang periode.');
         } else if (sisaHari <= 7) {
             tambah('peringatan', 'Periode berakhir ' + (sisaHari === 0 ? 'hari ini' : 'dalam ' + sisaHari + ' hari') + ' (' + formatTanggalIndo(periodeAktif.tanggal_selesai) + ').');
         }

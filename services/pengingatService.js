@@ -10,7 +10,7 @@ const HARI_PENGINGAT = [7, 6, 5, 4, 3, 2, 1, 0];
 
 const PESAN_PER_ROLE = {
     superadmin: {
-        peran: 'Super Admin',
+        peran: 'Admin',
         tugas: [
             'Ingatkan Operator agar data siswa dan nilai segera dilengkapi.',
             'Pastikan pembobotan FUCOM dan perankingan WASPAS sudah dijalankan sebelum periode berakhir.',
