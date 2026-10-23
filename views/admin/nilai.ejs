@@ -15,6 +15,30 @@
         .sel-nilai { text-align:center; font-weight:600; white-space:nowrap; }
         .sel-nilai.kosong { color:#aaa; font-weight:400; }
         .teks-kunci { color:#8a6d3b; font-size:12px; white-space:nowrap; }
+
+        /* ===== Pencarian & filter ===== */
+        .toolbar-nilai { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+        .cari-wrap { position:relative; flex:1; min-width:240px; max-width:400px; }
+        .cari-wrap > i.bi-search { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9aa5b8; font-size:14px; pointer-events:none; }
+        .cari-wrap input {
+            width:100%; padding:10px 34px 10px 36px; border:1px solid #ddd; border-radius:8px;
+            font-size:14px; outline:none; font-family:inherit;
+        }
+        .cari-wrap input:focus { border-color:#1d5fd6; box-shadow:0 0 0 3px rgba(29,95,214,.12); }
+        .btn-bersih-cari {
+            position:absolute; right:6px; top:50%; transform:translateY(-50%);
+            background:none; border:none; font-size:20px; line-height:1; color:#9aa5b8; cursor:pointer; padding:2px 8px;
+        }
+        .btn-bersih-cari:hover { color:#e74c3c; }
+        .toolbar-nilai select {
+            padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px;
+            background:#fff; outline:none; font-family:inherit;
+        }
+        .toolbar-nilai select:focus { border-color:#1d5fd6; }
+        .info-hitung-nilai { font-size:13px; color:#667; }
+        .hint-cari { font-size:12px; color:#9aa5b8; margin-bottom:14px; }
+        .cari-kecil { margin-bottom:10px; max-width:340px; }
+        .cari-kecil input { padding-top:8px; padding-bottom:8px; }
     </style>
 </head>
 <body>
@@ -80,6 +104,7 @@
                             <li>Pastikan <strong>data siswa sudah ada</strong> di menu Data Siswa.</li>
                             <li>Pastikan <strong>tidak ada siswa yang Belum merespons</strong>. Selesaikan di menu Data Siswa (operator dapat mengubah statusnya menjadi Berminat atau Tidak berminat).</li>
                             <li>Klik <strong>Unduh Template</strong>, isi nilai sesuai NISN, lalu <strong>Import Nilai (Excel)</strong>. Atau klik ikon pensil untuk mengisi satu per satu.</li>
+                            <li>Gunakan kotak <strong>cari NISN atau nama</strong> di atas tabel untuk menemukan siswa dengan cepat. Jika hasil tinggal satu siswa, tekan <strong>Enter</strong> untuk langsung membuka form nilainya.</li>
                             <li>Siswa yang berstatus <strong>tidak berminat</strong> tidak bisa dinilai dan tidak ikut perankingan.</li>
                             <li>Nilai masih bisa diubah sampai hasil seleksi difinalisasi. Setiap perubahan mengosongkan hasil ranking, jadi perlu dihitung ulang.</li>
                             <li>Setelah finalisasi, nilai setiap siswa tampil langsung di tabel di bawah, tetapi terkunci dan tidak bisa diubah lagi.</li>
@@ -123,11 +148,17 @@
                         <i class="bi bi-chevron-down" id="iconBelumLengkap"></i>
                     </div>
                     <div id="belumLengkapContent" style="display:none; max-height:420px; overflow-y:auto; margin-top:10px;">
+                        <div class="cari-wrap cari-kecil">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="cariBelumLengkap" placeholder="Cari NISN atau nama..." autocomplete="off">
+                        </div>
                         <table class="data-table">
                             <thead><tr><th>NISN</th><th>Nama</th><th>Kelengkapan</th><th>Aksi</th></tr></thead>
-                            <tbody>
+                            <tbody id="bodyBelumLengkap">
                                 <% belumLengkap.forEach(function(s) { %>
-                                    <tr>
+                                    <tr class="baris-bl"
+                                        data-nisn="<%= s.nisn %>"
+                                        data-nama="<%= (s.nama || '').toLowerCase() %>">
                                         <td><%= s.nisn %></td>
                                         <td><%= s.nama %></td>
                                         <td><span class="badge badge-red"><%= s.jumlah_terisi %> / <%= s.total_kriteria %></span></td>
@@ -142,6 +173,9 @@
                                         </td>
                                     </tr>
                                 <% }); %>
+                                <tr id="barisKosongBL" style="display:none;">
+                                    <td colspan="4" class="empty-state">Tidak ada siswa yang cocok dengan pencarian.</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -174,8 +208,34 @@
                         </div>
                     </div>
 
+                    <!-- Pencarian & filter -->
+                    <div class="toolbar-nilai">
+                        <div class="cari-wrap">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="cariNilai" placeholder="Cari NISN atau nama siswa..." autocomplete="off" inputmode="search" aria-label="Cari NISN atau nama siswa">
+                            <button type="button" id="bersihCari" class="btn-bersih-cari" title="Bersihkan pencarian" aria-label="Bersihkan pencarian" style="display:none;">&times;</button>
+                        </div>
+
+                        <select id="filterKelengkapan" aria-label="Filter kelengkapan nilai">
+                            <option value="">Semua kelengkapan</option>
+                            <option value="lengkap">Nilai lengkap</option>
+                            <option value="belum">Belum lengkap</option>
+                        </select>
+
+                        <select id="filterMinatNilai" aria-label="Filter status minat">
+                            <option value="">Semua status minat</option>
+                            <option value="berminat">Berminat</option>
+                            <option value="belum_respon">Belum merespons</option>
+                            <option value="tidak_berminat">Tidak berminat</option>
+                            <option value="tanpa_akun">Belum ada akun</option>
+                        </select>
+
+                        <span id="hitungNilai" class="info-hitung-nilai"></span>
+                    </div>
+                    <p class="hint-cari"><i class="bi bi-lightbulb-fill"></i> Tekan <strong>Enter</strong> saat hasil tinggal satu siswa untuk langsung membuka form nilainya.</p>
+
                     <div class="table-scroll-x">
-                        <table class="data-table">
+                        <table class="data-table" id="tabelNilai">
                             <thead>
                                 <tr>
                                     <th>No</th>
@@ -191,19 +251,26 @@
                                     <th>Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="bodyNilai">
                                 <% if (siswaList.length === 0) { %>
                                     <tr><td colspan="<%= jumlahKolom %>" class="empty-state">Belum ada data siswa. Tambahkan siswa terlebih dahulu di menu Data Siswa.</td></tr>
                                 <% } %>
 
-                                <% siswaList.forEach(function(s, index) { const k = kunciMinat(s); %>
-                                    <tr>
-                                        <td><%= index + 1 %></td>
+                                <% siswaList.forEach(function(s, index) {
+                                    const k = kunciMinat(s);
+                                    const lengkapSemua = s.total_kriteria > 0 && s.jumlah_terisi >= s.total_kriteria;
+                                %>
+                                    <tr class="baris-nilai"
+                                        data-nisn="<%= s.nisn %>"
+                                        data-nama="<%= (s.nama || '').toLowerCase() %>"
+                                        data-minat="<%= k %>"
+                                        data-lengkap="<%= lengkapSemua ? '1' : '0' %>">
+                                        <td class="no-urut"><%= index + 1 %></td>
                                         <td><%= s.nisn %></td>
                                         <td><%= s.nama %></td>
                                         <td><span class="badge-st <%= k %>"><%= labelMinat[k] %></span></td>
                                         <td>
-                                            <span class="badge badge-<%= s.jumlah_terisi >= s.total_kriteria && s.total_kriteria > 0 ? 'green' : 'red' %>">
+                                            <span class="badge badge-<%= lengkapSemua ? 'green' : 'red' %>">
                                                 <%= s.jumlah_terisi %> / <%= s.total_kriteria %> kriteria
                                             </span>
                                         </td>
@@ -235,6 +302,10 @@
                                         </td>
                                     </tr>
                                 <% }); %>
+
+                                <tr id="barisKosongNilai" style="display:none;">
+                                    <td colspan="<%= jumlahKolom %>" class="empty-state">Tidak ada siswa yang cocok dengan pencarian atau filter.</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -275,6 +346,107 @@
             el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
             icon.classList.toggle('bi-chevron-up');
         }
+
+        // ===== Pencarian & filter tabel utama =====
+        (function () {
+            const input = document.getElementById('cariNilai');
+            if (!input) return;
+
+            const tombolBersih = document.getElementById('bersihCari');
+            const selLengkap = document.getElementById('filterKelengkapan');
+            const selMinat = document.getElementById('filterMinatNilai');
+            const hitungEl = document.getElementById('hitungNilai');
+            const barisKosong = document.getElementById('barisKosongNilai');
+            const rows = Array.prototype.slice.call(document.querySelectorAll('#bodyNilai tr.baris-nilai'));
+
+            function terapkan() {
+                const kata = input.value.trim().toLowerCase();
+                const lengkap = selLengkap.value;
+                const minat = selMinat.value;
+                let tampil = 0;
+
+                rows.forEach(function (row) {
+                    const nisn = (row.dataset.nisn || '').toLowerCase();
+                    const nama = row.dataset.nama || '';
+
+                    const cocokKata = !kata || nisn.indexOf(kata) !== -1 || nama.indexOf(kata) !== -1;
+                    const cocokLengkap =
+                        !lengkap ||
+                        (lengkap === 'lengkap' && row.dataset.lengkap === '1') ||
+                        (lengkap === 'belum' && row.dataset.lengkap !== '1');
+                    const cocokMinat = !minat || row.dataset.minat === minat;
+
+                    const cocok = cocokKata && cocokLengkap && cocokMinat;
+                    row.style.display = cocok ? '' : 'none';
+
+                    if (cocok) {
+                        tampil++;
+                        const nomor = row.querySelector('.no-urut');
+                        if (nomor) nomor.textContent = tampil;
+                    }
+                });
+
+                if (barisKosong) barisKosong.style.display = (rows.length > 0 && tampil === 0) ? '' : 'none';
+                if (hitungEl) hitungEl.textContent = rows.length > 0 ? tampil + ' dari ' + rows.length + ' siswa ditampilkan' : '';
+                if (tombolBersih) tombolBersih.style.display = input.value ? '' : 'none';
+            }
+
+            input.addEventListener('input', terapkan);
+            selLengkap.addEventListener('change', terapkan);
+            selMinat.addEventListener('change', terapkan);
+
+            if (tombolBersih) {
+                tombolBersih.addEventListener('click', function () {
+                    input.value = '';
+                    terapkan();
+                    input.focus();
+                });
+            }
+
+            // Enter: jika hanya satu siswa yang tampil dan bisa diisi, langsung buka form nilainya.
+            input.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+
+                const terlihat = rows.filter(function (r) { return r.style.display !== 'none'; });
+                if (terlihat.length !== 1) return;
+
+                const link = terlihat[0].querySelector('a[href^="/admin/nilai/"]');
+                if (link) window.location.href = link.getAttribute('href');
+            });
+
+            // Dukungan tautan, contoh: /admin/nilai?q=0095924661
+            try {
+                const q = new URLSearchParams(window.location.search).get('q');
+                if (q) input.value = q;
+            } catch (e) { /* abaikan */ }
+
+            terapkan();
+        })();
+
+        // ===== Pencarian di panel "Siswa Belum Lengkap Nilai" =====
+        (function () {
+            const input = document.getElementById('cariBelumLengkap');
+            if (!input) return;
+
+            const rows = Array.prototype.slice.call(document.querySelectorAll('#bodyBelumLengkap tr.baris-bl'));
+            const kosong = document.getElementById('barisKosongBL');
+
+            input.addEventListener('input', function () {
+                const kata = input.value.trim().toLowerCase();
+                let tampil = 0;
+
+                rows.forEach(function (row) {
+                    const cocok = !kata ||
+                        (row.dataset.nisn || '').toLowerCase().indexOf(kata) !== -1 ||
+                        (row.dataset.nama || '').indexOf(kata) !== -1;
+                    row.style.display = cocok ? '' : 'none';
+                    if (cocok) tampil++;
+                });
+
+                if (kosong) kosong.style.display = tampil === 0 ? '' : 'none';
+            });
+        })();
     </script>
 </body>
 </html>

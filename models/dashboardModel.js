@@ -106,6 +106,93 @@ const dashboardModel = {
             ORDER BY p.id_periode ASC
         `);
         return rows;
+    },
+
+    // ======================================================================
+    // BARU: data mentah untuk bagian "Progres Periode Berjalan" di dashboard operator.
+    // Hanya membaca data (SELECT), tidak mengubah apa pun.
+    // "Peserta" = siswa yang status minatnya 'berminat'.
+    // ======================================================================
+    async getProgresPeriode(id_periode) {
+        // Kelengkapan nilai per kriteria (dihitung dari peserta berminat saja)
+        const [kriteriaRows] = await db.query(
+            `SELECT k.id_kriteria, k.nama_kriteria, k.jenis,
+                    (SELECT COUNT(*)
+                     FROM nilai_siswa ns
+                     INNER JOIN siswa s ON s.id_siswa = ns.id_siswa
+                     INNER JOIN akun_siswa a ON a.id_siswa = ns.id_siswa
+                     WHERE ns.id_kriteria = k.id_kriteria
+                       AND s.id_periode = k.id_periode
+                       AND a.status_minat = 'berminat'
+                       AND ns.nilai_mentah IS NOT NULL) AS terisi
+             FROM kriteria k
+             WHERE k.id_periode = ?
+             ORDER BY k.id_kriteria ASC`,
+            [id_periode]
+        );
+
+        const kriteria = kriteriaRows.map(r => ({
+            id_kriteria: r.id_kriteria,
+            nama_kriteria: r.nama_kriteria,
+            jenis: r.jenis,
+            terisi: Number(r.terisi) || 0
+        }));
+
+        // Bobot FUCOM yang tersimpan
+        const [bobot] = await db.query(
+            `SELECT k.nama_kriteria, bk.nilai_bobot, bk.nilai_dfc
+             FROM bobot_kriteria bk
+             JOIN kriteria k ON k.id_kriteria = bk.id_kriteria
+             WHERE bk.id_periode = ?
+             ORDER BY bk.nilai_bobot DESC`,
+            [id_periode]
+        );
+
+        const [[responden]] = await db.query(
+            'SELECT COUNT(DISTINCT nama_responden) AS jumlah FROM perbandingan_fucom WHERE id_periode = ?',
+            [id_periode]
+        );
+
+        const [[waspas]] = await db.query(
+            'SELECT COUNT(*) AS jumlah FROM hasil_waspas WHERE id_periode = ?',
+            [id_periode]
+        );
+
+        // Akun aktif yang belum pernah login / belum mengganti password awal
+        const [[akun]] = await db.query(
+            `SELECT
+                SUM(CASE WHEN a.last_login IS NULL THEN 1 ELSE 0 END) AS belumLogin,
+                SUM(CASE WHEN a.wajib_ganti_password = 1 THEN 1 ELSE 0 END) AS belumGantiPassword
+             FROM akun_siswa a
+             INNER JOIN siswa s ON s.id_siswa = a.id_siswa
+             WHERE s.id_periode = ? AND a.status_akun = 'aktif'`,
+            [id_periode]
+        );
+
+        // Jumlah kriteria yang sudah terisi untuk tiap siswa
+        const [nilaiRows] = await db.query(
+            `SELECT ns.id_siswa, COUNT(DISTINCT ns.id_kriteria) AS terisi
+             FROM nilai_siswa ns
+             INNER JOIN siswa s ON s.id_siswa = ns.id_siswa
+             INNER JOIN kriteria k ON k.id_kriteria = ns.id_kriteria AND k.id_periode = s.id_periode
+             WHERE s.id_periode = ? AND ns.nilai_mentah IS NOT NULL
+             GROUP BY ns.id_siswa`,
+            [id_periode]
+        );
+
+        const nilaiPerSiswa = {};
+        nilaiRows.forEach(r => { nilaiPerSiswa[String(r.id_siswa)] = Number(r.terisi) || 0; });
+
+        return {
+            totalKriteria: kriteria.length,
+            kriteria,
+            bobot,
+            jumlahResponden: Number(responden && responden.jumlah) || 0,
+            jumlahHasilWaspas: Number(waspas && waspas.jumlah) || 0,
+            belumLogin: Number(akun && akun.belumLogin) || 0,
+            belumGantiPassword: Number(akun && akun.belumGantiPassword) || 0,
+            nilaiPerSiswa
+        };
     }
 };
 

@@ -1,19 +1,3 @@
-/**
- * FUCOM (Full Consistency Method)
- *
- * Input:
- *   kriteriaOrder    : [{ id_kriteria, nama }, ...] urut dari PALING penting ke paling kurang penting
- *   comparisonValues : [φ1, φ2, ...] nilai perbandingan antar kriteria berurutan (panjang = n - 1),
- *                      φk = w_k / w_(k+1), sehingga setiap φ harus >= 1
- *
- * Bobot dihitung langsung (closed form) dari rantai rasio, tanpa iterasi:
- *   w_k / w_(k+1) = φk      -> rantai rasio dari kriteria terpenting
- *   w_k / w_(k+2) = φk·φ(k+1) otomatis terpenuhi oleh rantai yang sama
- * Jadi solusi ini sudah optimal (DFC = 0) dan tidak perlu dicari lewat hill-climbing.
- *
- * DFC (χ) = deviasi MAKSIMUM antara rasio bobot aktual dan rasio targetnya.
- */
-
 const PEMBULATAN_DFC = 6;
 
 function formatAngka(v) {
@@ -100,50 +84,6 @@ function hitungFUCOM(kriteriaOrder, comparisonValues) {
     return { bobot: hasilBobot, dfc: dfc };
 }
 
-/**
- * Agregasi bobot dari N responden (minimal 2) menggunakan rata-rata geometris tertimbang.
- * Pengaruh tiap responden = kebalikan DFC-nya (semakin konsisten, semakin dipercaya).
- *
- * CATATAN: pembobotan sekarang memakai 1 responden saja, jadi fungsi ini tidak dipakai
- * oleh fucomController. Hapus jika memang tidak dipakai di tempat lain.
- *
- * @param {Array} semuaHasilResponden - [{ dfc, bobot: [{ id_kriteria, nama_kriteria, bobot }, ...] }, ...]
- */
-function agregasiBobot(semuaHasilResponden) {
-    if (!Array.isArray(semuaHasilResponden) || semuaHasilResponden.length < 2) {
-        throw new Error('Agregasi bobot membutuhkan minimal 2 responden.');
-    }
 
-    const EPSILON = 0.0001;
 
-    const bobotPengaruh = semuaHasilResponden.map(function (r) { return 1 / ((r.dfc || 0) + EPSILON); });
-    const totalPengaruh = bobotPengaruh.reduce(function (a, b) { return a + b; }, 0);
-    const bobotPengaruhNormal = bobotPengaruh.map(function (b) { return b / totalPengaruh; });
-
-    const peta = {};
-    semuaHasilResponden.forEach(function (responden, idx) {
-        responden.bobot.forEach(function (item) {
-            if (!peta[item.id_kriteria]) {
-                peta[item.id_kriteria] = { nama_kriteria: item.nama_kriteria, nilaiTertimbang: [] };
-            }
-            peta[item.id_kriteria].nilaiTertimbang.push({
-                nilai: item.bobot,
-                pengaruh: bobotPengaruhNormal[idx]
-            });
-        });
-    });
-
-    const hasil = Object.keys(peta).map(function (id) {
-        const d = peta[id];
-        // Rata-rata geometris tertimbang: exp( sum( pengaruh_i * ln(nilai_i) ) )
-        const logSum = d.nilaiTertimbang.reduce(function (sum, item) {
-            return sum + item.pengaruh * Math.log(item.nilai);
-        }, 0);
-        return { id_kriteria: parseInt(id, 10), nama_kriteria: d.nama_kriteria, bobot: Math.exp(logSum) };
-    });
-
-    const total = hasil.reduce(function (s, i) { return s + i.bobot; }, 0);
-    return hasil.map(function (i) { return Object.assign({}, i, { bobot: i.bobot / total }); });
-}
-
-module.exports = { hitungFUCOM, hitungDFC, agregasiBobot };
+module.exports = { hitungFUCOM, hitungDFC };
