@@ -44,7 +44,7 @@ async function sendPengingatPeriodeEmail(toEmail, namaUser, data) {
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
                 <h2 style="color:#0b2545;">Pengingat Periode Seleksi</h2>
-                <p>Halo <strong>${esc(namaUser)}</strong>,</p>
+                <p>Halo <strong>${esc(namaUser)}</strong> (${esc(data.peran)}),</p>
                 <p>${kalimatWaktu}</p>
                 <p>Hal yang perlu kamu perhatikan:</p>
                 <ul style="padding-left:20px;">${daftarTugas}</ul>
