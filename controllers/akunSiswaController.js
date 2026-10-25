@@ -25,7 +25,7 @@ const akunSiswaController = {
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
                 setFlashError(req, !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode));
-                return res.redirect('/admin/siswa');
+                return res.redirect('/operator/siswa');
             }
 
             const hasil = await akunSiswaService.generateAkunUntukPeriode(
@@ -34,11 +34,11 @@ const akunSiswaController = {
             );
 
             req.session.akunSiswaFlash = akunSiswaService.buatFlash(hasil);
-            return res.redirect('/admin/siswa');
+            return res.redirect('/operator/siswa');
         } catch (error) {
             console.error('ERROR GENERATE AKUN SISWA:', error);
             setFlashError(req, error.message || 'Terjadi kesalahan saat membuat akun siswa.');
-            return res.redirect('/admin/siswa');
+            return res.redirect('/operator/siswa');
         }
     },
 
@@ -51,7 +51,7 @@ const akunSiswaController = {
 
             if (!periode) {
                 setFlashError(req, 'Belum ada periode seleksi aktif.');
-                return res.redirect('/admin/siswa');
+                return res.redirect('/operator/siswa');
             }
 
             const hasil = await akunSiswaService.resetPasswordSiswa(
@@ -61,17 +61,17 @@ const akunSiswaController = {
 
             if (!hasil) {
                 setFlashError(req, 'Akun siswa tidak ditemukan.');
-                return res.redirect('/admin/siswa');
+                return res.redirect('/operator/siswa');
             }
 
             if (hasil.error) {
                 setFlashError(req, hasil.error);
-                return res.redirect('/admin/siswa');
+                return res.redirect('/operator/siswa');
             }
 
             const kartu = await akunSiswaModel.getDataKartu(req.params.id_siswa);
 
-            return res.render('admin/kartu-akun', {
+            return res.render('operator/kartu-akun', {
                 pageTitle: 'Kartu Akun Siswa',
                 periode,
                 urlLogin: urlLogin(req),
@@ -81,7 +81,7 @@ const akunSiswaController = {
         } catch (error) {
             console.error('ERROR RESET PASSWORD SISWA:', error);
             setFlashError(req, 'Terjadi kesalahan saat mereset password.');
-            return res.redirect('/admin/siswa');
+            return res.redirect('/operator/siswa');
         }
     },
 
@@ -92,12 +92,12 @@ const akunSiswaController = {
 
             if (!periode) {
                 setFlashError(req, 'Belum ada periode seleksi aktif.');
-                return res.redirect('/admin/siswa');
+                return res.redirect('/operator/siswa');
             }
 
             if (await waspasModel.isFinal(periode.id_periode)) {
                 setFlashError(req, PESAN_KARTU_TERKUNCI);
-                return res.redirect('/admin/siswa');
+                return res.redirect('/operator/siswa');
             }
 
             const kartuList = await akunSiswaModel.getDataKartuSemua(periode.id_periode);
@@ -107,7 +107,7 @@ const akunSiswaController = {
                 `${req.session.user.nama} mencetak ${kartuList.length} kartu akun siswa`
             );
 
-            return res.render('admin/kartu-akun', {
+            return res.render('operator/kartu-akun', {
                 pageTitle: 'Kartu Akun Siswa',
                 periode,
                 urlLogin: urlLogin(req),
@@ -127,12 +127,12 @@ const akunSiswaController = {
 
             if (!periode) {
                 setFlashError(req, 'Belum ada periode seleksi aktif.');
-                return res.redirect('/admin/siswa');
+                return res.redirect('/operator/siswa');
             }
 
             if (await waspasModel.isFinal(periode.id_periode)) {
                 setFlashError(req, PESAN_KARTU_TERKUNCI);
-                return res.redirect('/admin/siswa');
+                return res.redirect('/operator/siswa');
             }
 
             const kartu = await akunSiswaModel.getDataKartu(req.params.id);
@@ -146,7 +146,7 @@ const akunSiswaController = {
                 `${req.session.user.nama} mencetak kartu akun siswa: ${kartu.nama}`
             );
 
-            return res.render('admin/kartu-akun', {
+            return res.render('operator/kartu-akun', {
                 pageTitle: 'Kartu Akun Siswa',
                 periode,
                 urlLogin: urlLogin(req),

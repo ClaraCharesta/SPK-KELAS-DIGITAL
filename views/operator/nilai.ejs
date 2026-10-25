@@ -120,14 +120,14 @@
                     <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
                         <i class="bi bi-exclamation-triangle-fill"></i>
                         Import nilai dan input nilai dinonaktifkan karena <strong>belum ada data siswa</strong>.
-                        Tambahkan di menu <a href="/admin/siswa" style="font-weight:600;">Data Siswa</a>.
+                        Tambahkan di menu <a href="/operator/siswa" style="font-weight:600;">Data Siswa</a>.
                     </div>
                 <% } else if (belumRespon > 0) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:15px;">
                         <i class="bi bi-exclamation-triangle-fill"></i>
                         Import nilai dan input nilai dinonaktifkan karena masih ada
                         <strong><%= belumRespon %> siswa</strong> yang belum merespons.
-                        Selesaikan di menu <a href="/admin/siswa" style="font-weight:600;">Data Siswa</a>.
+                        Selesaikan di menu <a href="/operator/siswa" style="font-weight:600;">Data Siswa</a>.
                     </div>
                 <% } %>
 
@@ -164,7 +164,7 @@
                                         <td><span class="badge badge-red"><%= s.jumlah_terisi %> / <%= s.total_kriteria %></span></td>
                                         <td>
                                             <% if (bisaIsi(s)) { %>
-                                                <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Lengkapi"><i class="bi bi-pencil-square"></i></a>
+                                                <a href="/operator/nilai/<%= s.id_siswa %>" class="btn-icon" title="Lengkapi"><i class="bi bi-pencil-square"></i></a>
                                             <% } else if (terblokir) { %>
                                                 <span class="btn-icon btn-nonaktif" title="<%= alasanBlokir %>"><i class="bi bi-pencil-square"></i></span>
                                             <% } else { %>
@@ -189,7 +189,7 @@
                             <h3><%= terkunci ? 'Nilai Siswa per Kriteria (Terkunci)' : 'Input Nilai Siswa per Kriteria' %></h3>
                         </div>
                         <div style="display:flex; gap:10px;">
-                            <a href="/admin/nilai/template" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
+                            <a href="/operator/nilai/template" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
                                 <i class="bi bi-download"></i> Unduh Template
                             </a>
                             <% if (!terkunci) { %>
@@ -297,7 +297,7 @@
                                                     <i class="bi bi-pencil-square"></i>
                                                 </span>
                                             <% } else { %>
-                                                <a href="/admin/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai"><i class="bi bi-pencil-square"></i></a>
+                                                <a href="/operator/nilai/<%= s.id_siswa %>" class="btn-icon" title="Isi Nilai"><i class="bi bi-pencil-square"></i></a>
                                             <% } %>
                                         </td>
                                     </tr>
@@ -323,7 +323,7 @@
                 <h3><i class="bi bi-file-earmark-excel-fill"></i> Import Nilai dari Excel</h3>
                 <button type="button" class="modal-close" onclick="document.getElementById('modalImportNilai').style.display='none'">&times;</button>
             </div>
-            <form action="/admin/nilai/import" method="POST" enctype="multipart/form-data">
+            <form action="/operator/nilai/import" method="POST" enctype="multipart/form-data">
                 <p style="font-size:13px; color:#777; margin-bottom:15px;">
                     Nilai dicocokkan berdasarkan kolom <strong>NISN</strong>.
                     Siswa yang tidak berminat dilewati.
@@ -411,11 +411,11 @@
                 const terlihat = rows.filter(function (r) { return r.style.display !== 'none'; });
                 if (terlihat.length !== 1) return;
 
-                const link = terlihat[0].querySelector('a[href^="/admin/nilai/"]');
+                const link = terlihat[0].querySelector('a[href^="/operator/nilai/"]');
                 if (link) window.location.href = link.getAttribute('href');
             });
 
-            // Dukungan tautan, contoh: /admin/nilai?q=0095924661
+            // Dukungan tautan, contoh: /operator/nilai?q=0095924661
             try {
                 const q = new URLSearchParams(window.location.search).get('q');
                 if (q) input.value = q;

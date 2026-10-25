@@ -14,3 +14,14 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+echo.>> .gitignore
+echo node_modules/>> .gitignore
+echo .env>> .gitignore
+echo uploads/>> .gitignore
+echo backup_perbaikan/>> .gitignore
+echo *.ps1>> .gitignore
+echo hasil-cek.txt>> .gitignorebackup_perbaikan/
+backup_perbaikan/
+backup_fungsi/
+backup_fungsi/

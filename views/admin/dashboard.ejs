@@ -5,729 +5,172 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <%- include('../partials/head') %>
     <style>
-        /* ===== Dashboard operator (prefix dash- supaya tidak bentrok dengan layout.css) ===== */
-        .dash-page { min-width: 0; }
-        .dash-page .panel { margin-top: 22px; }
-        .dash-page .panel-header-row { flex-wrap: wrap; gap: 10px; }
+        .sa-page { min-width: 0; }
 
-        .dash-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
-        .dash-toolbar small { color: #8a94a3; font-size: 12px; }
-        .dash-refresh {
+        .sa-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+        .sa-toolbar small { color: #8a94a3; font-size: 12px; }
+        .sa-refresh {
             border: 1px solid #d5dbe7; background: #fff; color: #334155; border-radius: 999px;
             padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
             display: inline-flex; align-items: center; gap: 6px;
         }
-        .dash-refresh:hover { border-color: #1d5fd6; color: #1d5fd6; }
+        .sa-refresh:hover { border-color: #1d5fd6; color: #1d5fd6; }
 
-        .dash-section-title { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8a94a3; margin: 30px 0 -10px; }
+        .sa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-top: 22px; }
+        .sa-grid .stat-card { margin: 0; }
 
-        .dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 22px; }
-        .dash-grid-2 > .panel { margin-top: 0; min-width: 0; }
-        @media (max-width: 992px) { .dash-grid-2 { grid-template-columns: 1fr; } }
+        .sa-grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-top: 22px; }
+        .sa-grid-2 > .panel { margin-top: 0; min-width: 0; }
+        @media (max-width: 992px) { .sa-grid-2 { grid-template-columns: 1fr; } }
 
-        .dash-hero { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
-        .dash-ring {
-            --p: 0;
-            width: 130px; height: 130px; border-radius: 50%; flex-shrink: 0;
-            background: conic-gradient(#1d5fd6 calc(var(--p) * 1%), #e6eaf2 0);
-            display: flex; align-items: center; justify-content: center;
+        .sa-periode-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .sa-periode-box strong { font-size: 26px; color: #0b2545; }
+        .sa-periode-box small { display: block; color: #8a94a3; font-size: 12px; margin-top: 2px; }
+
+        .sa-aksi { display: flex; flex-direction: column; gap: 10px; }
+        .sa-aksi a {
+            display: flex; align-items: center; gap: 12px; text-decoration: none; color: #0b2545;
+            background: #f4f7fb; border: 1.5px solid #e6eaf2; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 600;
+            transition: transform .15s, border-color .15s, box-shadow .15s;
         }
-        .dash-ring-inner {
-            width: 98px; height: 98px; border-radius: 50%; background: #fff;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .dash-ring-inner strong { font-size: 26px; color: #0b2545; line-height: 1.1; }
-        .dash-ring-inner span { font-size: 11px; color: #8a94a3; }
-        .dash-hero-info { flex: 1; min-width: 240px; }
-        .dash-hero-info h3 { font-size: 18px; color: #0b2545; margin-bottom: 4px; }
-        .dash-hero-info p { font-size: 13px; color: #667; }
-        .dash-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-        .dash-meta-item {
-            background: #f4f7fb; color: #44505f; font-size: 12px; padding: 6px 12px;
-            border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;
-        }
+        .sa-aksi a:hover { transform: translateY(-2px); border-color: #1d5fd6; box-shadow: 0 6px 16px rgba(15,23,42,.08); }
+        .sa-aksi a i:first-child { color: #1d5fd6; font-size: 18px; }
+        .sa-aksi a i:last-child { margin-left: auto; color: #9aa5b8; }
 
-        .dash-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 22px; }
-        .dash-step {
-            display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit;
-            border: 1.5px solid #e6eaf2; border-radius: 12px; padding: 12px; background: #fff;
-            transition: transform .15s, box-shadow .15s, border-color .15s;
-        }
-        .dash-step:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(15,23,42,.08); border-color: #1d5fd6; }
-        .dash-step .no {
-            width: 28px; height: 28px; border-radius: 50%; background: #eef1f6; color: #6b7685;
-            display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
-        }
-        .dash-step strong { font-size: 13px; color: #0b2545; }
-        .dash-step small { font-size: 12px; color: #6b7685; line-height: 1.4; }
-        .dash-step.selesai { background: #f3fbf6; border-color: #bfe6cd; }
-        .dash-step.selesai .no { background: #27ae60; color: #fff; }
-        .dash-step.berjalan { background: #eef4ff; border-color: #1d5fd6; }
-        .dash-step.berjalan .no { background: #1d5fd6; color: #fff; }
-
-        .dash-aksi-list { display: flex; flex-direction: column; gap: 10px; }
-        .dash-aksi-item {
-            display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px;
-            font-size: 14px; flex-wrap: wrap;
-        }
-        .dash-aksi-item > span { flex: 1; min-width: 200px; }
-        .dash-aksi-item.bahaya { background: #fdecea; color: #b3261e; }
-        .dash-aksi-item.peringatan { background: #fdf1de; color: #8a4b00; }
-        .dash-aksi-item.info { background: #eef4ff; color: #1d4ed8; }
-        .dash-aksi-item.sukses { background: #e2f8ea; color: #1e8449; }
-        .dash-aksi-link {
-            font-size: 12px; font-weight: 600; text-decoration: none; color: inherit;
-            background: rgba(255,255,255,.7); padding: 5px 12px; border-radius: 999px; white-space: nowrap;
-        }
-        .dash-aksi-link:hover { background: #fff; text-decoration: underline; }
-
-        .dash-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 22px; }
-        .dash-kpi {
-            display: block; text-decoration: none; background: #fff; border-radius: 12px; padding: 16px;
-            border-left: 5px solid #94b8f0; box-shadow: 0 4px 14px rgba(0,0,0,.05);
-            transition: transform .15s, box-shadow .15s;
-        }
-        .dash-kpi:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,.1); }
-        .dash-kpi .angka { font-size: 26px; font-weight: 700; color: #0b2545; }
-        .dash-kpi .label { font-size: 12px; color: #667; margin-top: 2px; }
-        .dash-kpi .hint { font-size: 11px; color: #9aa5b8; margin-top: 4px; }
-        .dash-kpi.biru { border-left-color: #1d5fd6; }
-        .dash-kpi.hijau { border-left-color: #27ae60; }
-        .dash-kpi.merah { border-left-color: #e74c3c; }
-        .dash-kpi.abu { border-left-color: #9aa5b8; }
-        .dash-kpi.warn { border-left-color: #f39c12; background: #fffaf0; }
-
-        .dash-bar-wrap { margin-bottom: 14px; }
-        .dash-bar-top { display: flex; justify-content: space-between; font-size: 13px; color: #44505f; margin-bottom: 5px; gap: 10px; flex-wrap: wrap; }
-        .dash-bar-top b { color: #0b2545; }
-        .dash-bar { height: 10px; background: #e6eaf2; border-radius: 999px; overflow: hidden; }
-        .dash-bar > span { display: block; height: 100%; width: 0; background: #1d5fd6; border-radius: 999px; transition: width .5s ease; }
-        .dash-bar > span.hijau { background: #27ae60; }
-        .dash-bar > span.oranye { background: #f39c12; }
-        .dash-bar > span.merah { background: #e74c3c; }
-        .dash-bar > span.ungu { background: #8e44ad; }
-
-        .dash-kuota-angka { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-        .dash-kuota-angka > div { flex: 1; min-width: 100px; background: #f4f7fb; border-radius: 10px; padding: 12px 14px; }
-        .dash-kuota-angka strong { display: block; font-size: 24px; color: #0b2545; }
-        .dash-kuota-angka span { font-size: 12px; color: #667; }
-        .dash-kuota-angka .merah strong { color: #e74c3c; }
-        .dash-kuota-angka .hijau strong { color: #27ae60; }
-
-        .dash-tabs { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: 1px solid #e6eaf2; margin-bottom: 18px; }
-        .dash-tab {
-            background: none; border: none; padding: 10px 16px; font-size: 14px; font-weight: 600; white-space: nowrap;
-            color: #6b7685; cursor: pointer; border-bottom: 3px solid transparent; font-family: inherit;
-        }
-        .dash-tab:hover { color: #1d5fd6; }
-        .dash-tab.aktif { color: #1d5fd6; border-bottom-color: #1d5fd6; }
-        .dash-tabpane { display: none; }
-        .dash-tabpane.aktif { display: block; animation: dashFade .25s ease; }
-        @keyframes dashFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-
-        .dash-mini-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
-        .dash-mini { flex: 1; min-width: 120px; background: #f4f7fb; border-radius: 10px; padding: 12px; text-align: center; }
-        .dash-mini strong { display: block; font-size: 22px; color: #0b2545; }
-        .dash-mini span { font-size: 12px; color: #667; }
-        .dash-mini.hijau strong { color: #27ae60; }
-        .dash-mini.oranye strong { color: #e67e22; }
-        .dash-mini.merah strong { color: #e74c3c; }
-
-        .dash-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-        .dash-chip {
-            border: 1px solid #d5dbe7; background: #fff; color: #334155; border-radius: 999px;
-            padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
-            transition: all .15s;
-        }
-        .dash-chip:hover { border-color: #1d5fd6; color: #1d5fd6; }
-        .dash-chip.aktif { background: #1d5fd6; border-color: #1d5fd6; color: #fff; }
-        .dash-chip .n { margin-left: 6px; opacity: .85; }
-
-        .dash-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-        .dash-badge.hijau { background: #e2f8ea; color: #1e8449; }
-        .dash-badge.oranye { background: #fdf1de; color: #b35c00; }
-        .dash-badge.merah { background: #fde8e8; color: #b3261e; }
-        .dash-badge.abu { background: #eceff3; color: #5b6573; }
-        .dash-link-aksi { font-size: 12px; font-weight: 600; color: #1d5fd6; text-decoration: none; white-space: nowrap; }
-        .dash-link-aksi:hover { text-decoration: underline; }
-        .dash-sub { display: block; font-size: 11px; color: #9aa5b8; margin-top: 2px; }
-        .dash-tabel-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 13px; color: #667; flex-wrap: wrap; gap: 8px; }
-        .dash-btn-teks { background: none; border: none; color: #1d5fd6; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
-        .dash-btn-teks:hover { text-decoration: underline; }
-        .dash-status-baris { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-        .dash-canvas-box { position: relative; height: 240px; width: 100%; }
-        .dash-canvas-box.tinggi { height: 300px; }
-
-        .dash-statgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 22px; }
-        .dash-statgrid .stat-card { margin: 0; }
-
-        .dash-bobot-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-        .dash-bobot-wrap .dash-pie { width: 200px; height: 200px; flex-shrink: 0; margin: 0 auto; }
-        .dash-legend { list-style: none; padding: 0; margin: 0; flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #44505f; }
-        .dash-legend li { display: flex; align-items: center; gap: 8px; }
-        .dash-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-        .dash-legend b { margin-left: auto; color: #0b2545; }
-
-        .dash-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-        /* ===== Responsif ===== */
-        @media (max-width: 768px) {
-            .dash-hero { gap: 18px; justify-content: center; text-align: center; }
-            .dash-hero-info { min-width: 0; width: 100%; }
-            .dash-meta { justify-content: center; }
-            .dash-steps { grid-template-columns: repeat(2, 1fr); }
-            .dash-kpi-row { grid-template-columns: repeat(2, 1fr); }
-            .dash-kpi .angka { font-size: 22px; }
-            .dash-aksi-link { width: 100%; text-align: center; }
-            .dash-page .search-input { width: 100%; }
-        }
-        @media (max-width: 480px) {
-            .dash-steps { grid-template-columns: 1fr; }
-            .dash-kuota-angka > div { min-width: 90px; }
-        }
-
-        /* Tabel siswa jadi kartu di layar kecil */
-        @media (max-width: 700px) {
-            .dash-table thead { display: none; }
-            .dash-table, .dash-table tbody, .dash-table tr, .dash-table td { display: block; width: 100%; box-sizing: border-box; }
-            .dash-table tr { border: 1px solid #e6eaf2; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; background: #fff; }
-            .dash-table td { border: none !important; padding: 6px 0 !important; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; }
-            .dash-table td::before { content: attr(data-label); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #8a94a3; text-align: left; flex-shrink: 0; }
-            .dash-table td.empty-state { display: block; text-align: center; }
-            .dash-table td.empty-state::before { content: none; }
+        @media (max-width: 640px) {
+            .sa-periode-box strong { font-size: 22px; }
         }
     </style>
 </head>
 <body>
-<%
-    const aman = function (obj) { return JSON.stringify(obj).replace(/</g, '\\u003c'); };
-    const P = (typeof progres !== 'undefined' && progres) ? progres : null;
-    const gagalMuat = (typeof progresGagal !== 'undefined') && Boolean(progresGagal);
-    const ikonTindakan = {
-        bahaya: 'bi-x-octagon-fill',
-        peringatan: 'bi-exclamation-triangle-fill',
-        info: 'bi-info-circle-fill',
-        sukses: 'bi-check-circle-fill'
-    };
-    const koma = function (n) { return String(n).replace('.', ','); };
-    const maksBobot = (P && P.fucom.bobot.length > 0)
-        ? Math.max.apply(null, P.fucom.bobot.map(function (b) { return b.persen; }))
-        : 0;
-    const hrefPerankingan = (P && P.langkah && P.langkah.length)
-        ? (P.langkah[5] || P.langkah[P.langkah.length - 1]).href
-        : '#';
-    const warnaPie = ['#1d5fd6','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e74c3c'];
-%>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
-            <div class="content-wrapper dash-page">
+            <div class="content-wrapper sa-page">
+
                 <div class="welcome-banner">
-                    <div class="welcome-icon"><i class="bi bi-bar-chart-fill"></i></div>
+                    <div class="welcome-icon">
+                        <i class="bi bi-shield-lock-fill"></i>
+                    </div>
+
                     <div>
-                        <h2><%= user.isFirstLogin ? 'Selamat datang' : 'Selamat datang kembali' %>, <%= user.nama %>! 👋</h2>
+                        <h2>
+                            <%= user.isFirstLogin ? 'Selamat datang' : 'Halo lagi' %>,
+                            <%= user.nama %>! 👋
+                        </h2>
+
                         <p>
-                            <% if (stats.statusFucom === 'Belum') { %>
-                                Mulai dengan melengkapi pembobotan kriteria di menu <strong>Pembobotan Kriteria</strong> sebelum menjalankan perankingan.
-                            <% } else if (stats.statusWaspas === 'Belum') { %>
-                                Pembobotan kriteria sudah siap. Lanjutkan ke menu <strong>Perankingan</strong> untuk melihat hasil seleksi siswa.
-                            <% } else { %>
-                                Semua proses seleksi sudah berjalan. Cek menu <strong>Perankingan</strong> untuk meninjau hasil terbaru.
-                            <% } %>
+                            Kelola akun operator, periode seleksi, dan kriteria penilaian
+                            sistem dari sini. Pantau seluruh aktivitas pengguna di menu
+                            <strong>Log Aktivitas</strong>.
                         </p>
                     </div>
                 </div>
 
-                <div class="dash-toolbar">
-                    <small><i class="bi bi-clock"></i> Diperbarui: <span id="dashJam">-</span> &middot; otomatis menyegarkan tiap 60 detik saat Anda tidak sedang mengetik</small>
-                    <button type="button" class="dash-refresh" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise"></i> Muat ulang</button>
+                <div class="sa-toolbar">
+                    <small><i class="bi bi-clock"></i> Diperbarui: <span id="saJam">-</span></small>
+                    <button type="button" class="sa-refresh" onclick="window.location.reload()">
+                        <i class="bi bi-arrow-clockwise"></i> Muat ulang
+                    </button>
                 </div>
 
-                <% if (gagalMuat) { %>
-                    <div class="alert alert-danger" style="margin-top:22px;">
-                        <i class="bi bi-exclamation-circle-fill"></i>
-                        Progres periode berjalan gagal dimuat. Periksa log server, lalu muat ulang halaman. Bagian lain dashboard tetap tampil di bawah.
-                    </div>
-                <% } %>
+                <div class="sa-grid">
 
-                <% if (!P && !gagalMuat) { %>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue">
+                            <i class="bi bi-person-badge-fill"></i>
+                        </div>
+
+                        <div>
+                            <h3>Total Operator</h3>
+                            <p class="stat-number"><%= stats.totalOperator %></p>
+                            <p class="stat-desc">Akun operator aktif</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon icon-green">
+                            <i class="bi bi-calendar-range"></i>
+                        </div>
+
+                        <div>
+                            <h3>Periode Aktif</h3>
+                            <p class="stat-number" style="font-size:20px;">
+                                <%= stats.periodeAktif || '-' %>
+                            </p>
+                            <p class="stat-desc">Tahun ajaran berjalan</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon icon-orange">
+                            <i class="bi bi-list-check"></i>
+                        </div>
+
+                        <div>
+                            <h3>Total Kriteria</h3>
+                            <p class="stat-number"><%= stats.totalKriteria %></p>
+                            <p class="stat-desc">Kriteria terdaftar di sistem</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon icon-purple">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+
+                        <div>
+                            <h3>Log Aktivitas Hari Ini</h3>
+                            <p class="stat-number"><%= stats.logHariIni %></p>
+                            <p class="stat-desc">Aktivitas tercatat hari ini</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="sa-grid-2">
                     <div class="panel">
                         <div class="panel-header">
-                            <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-calendar-x"></i></div>
-                            <h3>Progres Periode Berjalan</h3>
+                            <div class="stat-icon icon-green" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-calendar-check"></i></div>
+                            <h3>Periode Seleksi Saat Ini</h3>
                         </div>
-                        <p class="empty-state">Belum ada periode seleksi yang aktif. Hubungi Super Admin untuk membuka atau mengaktifkan periode.</p>
-                    </div>
-                <% } %>
 
-                <% if (P) { %>
-
-                <!-- ===== HERO: progres keseluruhan + tahapan ===== -->
-                <div class="panel">
-                    <div class="dash-hero">
-                        <div class="dash-ring" style="--p:<%= P.persenTahap %>">
-                            <div class="dash-ring-inner">
-                                <strong><%= P.persenTahap %>%</strong>
-                                <span><%= P.tahapSelesai %> / <%= P.tahapTotal %> tahap</span>
+                        <% if (stats.periodeAktif && stats.periodeAktif !== '-') { %>
+                            <div class="sa-periode-box">
+                                <div>
+                                    <strong><%= stats.periodeAktif %></strong>
+                                    <small>Periode yang sedang berjalan</small>
+                                </div>
+                                <span class="badge badge-green">Aktif</span>
                             </div>
-                        </div>
-                        <div class="dash-hero-info">
-                            <h3>Progres Periode Berjalan <%= P.periode.tahunAjaran %></h3>
-                            <p>Klik salah satu tahapan di bawah untuk langsung menuju menu terkait.</p>
-                            <div class="dash-meta">
-                                <span class="badge <%= P.periode.statusKelas %>"><%= P.periode.statusLabel %></span>
-                                <span class="dash-meta-item"><i class="bi bi-calendar-event"></i> Mulai: <%= P.periode.tanggalMulai %></span>
-                                <span class="dash-meta-item"><i class="bi bi-calendar-check"></i> Selesai: <%= P.periode.tanggalSelesai %></span>
-                                <% if (P.periode.sisaHari !== null && !P.terkunci) { %>
-                                    <span class="dash-meta-item">
-                                        <i class="bi bi-hourglass-split"></i>
-                                        <% if (P.periode.sisaHari < 0) { %>
-                                            Lewat <%= Math.abs(P.periode.sisaHari) %> hari
-                                        <% } else if (P.periode.sisaHari === 0) { %>
-                                            Berakhir hari ini
-                                        <% } else { %>
-                                            Sisa <%= P.periode.sisaHari %> hari
-                                        <% } %>
-                                    </span>
-                                <% } %>
-                            </div>
-                        </div>
+                            <p style="font-size:13px; color:#667; margin-top:14px;">
+                                Tanggal mulai dan selesai periode hanya dapat berada di dalam tahun ajaran tersebut.
+                                Atur atau perpanjang tanggal lewat menu <strong>Kelola Periode</strong>.
+                            </p>
+                        <% } else { %>
+                            <p class="empty-state">Belum ada periode seleksi yang aktif. Buka periode baru lewat menu Kelola Periode.</p>
+                        <% } %>
                     </div>
 
-                    <div class="dash-steps">
-                        <% P.langkah.forEach(function (l) { %>
-                            <a class="dash-step <%= l.status %>" href="<%= l.href %>" title="<%= l.aksi %>">
-                                <span class="no">
-                                    <% if (l.status === 'selesai') { %><i class="bi bi-check-lg"></i><% } else { %><%= l.no %><% } %>
-                                </span>
-                                <strong><%= l.judul %></strong>
-                                <small><%= l.detail %></small>
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-lightning-charge-fill"></i></div>
+                            <h3>Aksi Cepat</h3>
+                        </div>
+                        <div class="sa-aksi">
+                            <a href="/admin/periode">
+                                <i class="bi bi-calendar-range"></i>
+                                <span>Kelola Periode Seleksi</span>
+                                <i class="bi bi-chevron-right"></i>
                             </a>
-                        <% }); %>
-                    </div>
-                </div>
-
-                <!-- ===== PERLU TINDAKAN ===== -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bell-fill"></i></div>
-                        <h3>Perlu Tindakan</h3>
-                    </div>
-                    <div class="dash-aksi-list">
-                        <% P.tindakan.forEach(function (t) { %>
-                            <div class="dash-aksi-item <%= t.tingkat %>">
-                                <i class="bi <%= ikonTindakan[t.tingkat] %>"></i>
-                                <span><%= t.teks %></span>
-                                <% if (t.href) { %>
-                                    <a class="dash-aksi-link" href="<%= t.href %>"><%= t.label %> <i class="bi bi-arrow-right"></i></a>
-                                <% } %>
-                            </div>
-                        <% }); %>
-                    </div>
-                </div>
-
-                <!-- ===== KPI SISWA (klik untuk membuka daftar terfilter) ===== -->
-                <h2 class="dash-section-title">Ringkasan Siswa</h2>
-                <div class="dash-kpi-row">
-                    <a class="dash-kpi biru" href="/admin/siswa">
-                        <div class="angka"><%= P.siswa.total %></div>
-                        <div class="label">Total siswa</div>
-                        <div class="hint">Lihat semua</div>
-                    </a>
-                    <a class="dash-kpi <%= P.siswa.tanpaAkun > 0 ? 'warn' : 'abu' %>" href="/admin/siswa?filter=tanpa_akun">
-                        <div class="angka"><%= P.siswa.tanpaAkun %></div>
-                        <div class="label">Belum punya akun</div>
-                        <div class="hint">Lihat daftar</div>
-                    </a>
-                    <a class="dash-kpi hijau" href="/admin/siswa?filter=aktif">
-                        <div class="angka"><%= P.siswa.akunAktif %></div>
-                        <div class="label">Akun aktif</div>
-                        <div class="hint">Lihat daftar</div>
-                    </a>
-                    <a class="dash-kpi merah" href="/admin/siswa?filter=nonaktif">
-                        <div class="angka"><%= P.siswa.akunNonaktif %></div>
-                        <div class="label">Akun nonaktif</div>
-                        <div class="hint">Lihat daftar</div>
-                    </a>
-                    <a class="dash-kpi hijau" href="/admin/siswa?minat=berminat">
-                        <div class="angka"><%= P.siswa.berminat %></div>
-                        <div class="label">Berminat (ikut seleksi)</div>
-                        <div class="hint">Lihat daftar</div>
-                    </a>
-                    <a class="dash-kpi <%= P.siswa.belumRespon > 0 ? 'warn' : 'abu' %>" href="/admin/siswa?minat=belum_respon">
-                        <div class="angka"><%= P.siswa.belumRespon %></div>
-                        <div class="label">Belum merespons</div>
-                        <div class="hint">Lihat daftar</div>
-                    </a>
-                    <a class="dash-kpi merah" href="/admin/siswa?minat=tidak_berminat">
-                        <div class="angka"><%= P.siswa.tidakBerminat %></div>
-                        <div class="label">Tidak berminat</div>
-                        <div class="hint">Lihat daftar</div>
-                    </a>
-                </div>
-
-                <!-- ===== KUOTA + DISTRIBUSI KESEDIAAN ===== -->
-                <div class="dash-grid-2">
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-green" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-speedometer2"></i></div>
-                            <h3>Kuota Kelas Digital</h3>
+                            <%# Tambahkan link lain sesuai route Anda, contoh:
+                            <a href="/admin/operator"><i class="bi bi-person-badge-fill"></i><span>Kelola Operator</span><i class="bi bi-chevron-right"></i></a>
+                            <a href="/admin/log"><i class="bi bi-clock-history"></i><span>Log Aktivitas</span><i class="bi bi-chevron-right"></i></a>
+                            %>
                         </div>
-                        <div class="dash-kuota-angka">
-                            <div>
-                                <strong><%= P.kuota.kuota %></strong>
-                                <span>Kuota</span>
-                            </div>
-                            <div>
-                                <strong><%= P.kuota.terisi %></strong>
-                                <span>Peserta berminat</span>
-                            </div>
-                            <div class="<%= P.kuota.melebihi ? 'merah' : 'hijau' %>">
-                                <strong><%= P.kuota.angkaSelisih %></strong>
-                                <span><%= P.kuota.labelSelisih %></span>
-                            </div>
-                        </div>
-                        <div class="dash-bar-wrap">
-                            <div class="dash-bar-top">
-                                <span>Peserta berminat terhadap kuota</span>
-                                <b><%= P.kuota.persen %>%</b>
-                            </div>
-                            <div class="dash-bar"><span class="<%= P.kuota.melebihi ? 'merah' : 'hijau' %>" data-w="<%= P.kuota.persen %>"></span></div>
-                        </div>
-                        <p style="font-size:12px; color:#8a94a3;">
-                            Sisa kuota dihitung dari kuota periode dikurangi jumlah siswa yang berstatus Berminat.
-                            <% if (P.siswa.belumRespon > 0) { %>
-                                Masih ada <%= P.siswa.belumRespon %> siswa yang belum merespons, jadi angka ini bisa berubah.
-                            <% } %>
-                        </p>
-                    </div>
-
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
-                            <h3>Distribusi Kesediaan Siswa</h3>
-                        </div>
-                        <% if (P.siswa.total === 0) { %>
-                            <p class="empty-state">Belum ada data siswa.</p>
-                        <% } else { %>
-                            <div class="dash-canvas-box"><canvas id="chartMinatDash"></canvas></div>
-                            <p style="font-size:12px; color:#8a94a3; margin-top:8px; text-align:center;">Klik bagian grafik untuk membuka daftar siswa terkait.</p>
-                        <% } %>
-                    </div>
-                </div>
-
-                <!-- ===== KELENGKAPAN (TAB) ===== -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clipboard2-check-fill"></i></div>
-                        <h3>Kelengkapan Data Periode Berjalan</h3>
-                    </div>
-
-                    <div class="dash-tabs" role="tablist">
-                        <button type="button" class="dash-tab aktif" role="tab" data-tabgrup="lengkap" data-tab="akun" onclick="dashPilihTab('lengkap','akun')">Akun &amp; Kesediaan</button>
-                        <button type="button" class="dash-tab" role="tab" data-tabgrup="lengkap" data-tab="kriteria" onclick="dashPilihTab('lengkap','kriteria')">Nilai per Kriteria</button>
-                        <button type="button" class="dash-tab" role="tab" data-tabgrup="lengkap" data-tab="peserta" onclick="dashPilihTab('lengkap','peserta')">Nilai per Peserta</button>
-                    </div>
-
-                    <!-- Tab 1: akun & kesediaan -->
-                    <div class="dash-tabpane aktif" data-tabgrup="lengkap" data-tab="akun">
-                        <div class="dash-bar-wrap">
-                            <div class="dash-bar-top">
-                                <span>Siswa yang sudah punya akun</span>
-                                <b><%= P.siswa.total - P.siswa.tanpaAkun %> / <%= P.siswa.total %> (<%= P.persen.akun %>%)</b>
-                            </div>
-                            <div class="dash-bar"><span data-w="<%= P.persen.akun %>"></span></div>
-                        </div>
-                        <div class="dash-bar-wrap">
-                            <div class="dash-bar-top">
-                                <span>Siswa yang sudah merespons kesediaan</span>
-                                <b><%= P.siswa.total - P.siswa.belumRespon %> / <%= P.siswa.total %> (<%= P.persen.respons %>%)</b>
-                            </div>
-                            <div class="dash-bar"><span class="oranye" data-w="<%= P.persen.respons %>"></span></div>
-                        </div>
-                        <div class="dash-mini-row">
-                            <div class="dash-mini <%= P.siswa.belumRespon > 0 ? 'oranye' : 'hijau' %>">
-                                <strong><%= P.siswa.belumRespon %></strong>
-                                <span>Belum merespons kesediaan</span>
-                            </div>
-                            <div class="dash-mini <%= P.siswa.belumLogin > 0 ? 'oranye' : 'hijau' %>">
-                                <strong><%= P.siswa.belumLogin %></strong>
-                                <span>Akun aktif belum pernah login</span>
-                            </div>
-                            <div class="dash-mini <%= P.siswa.belumGantiPassword > 0 ? 'oranye' : 'hijau' %>">
-                                <strong><%= P.siswa.belumGantiPassword %></strong>
-                                <span>Belum ganti password awal</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tab 2: nilai per kriteria -->
-                    <div class="dash-tabpane" data-tabgrup="lengkap" data-tab="kriteria">
-                        <% if (P.nilai.perKriteria.length === 0) { %>
-                            <p class="empty-state">Belum ada kriteria pada periode ini.</p>
-                        <% } else if (P.nilai.berminat === 0) { %>
-                            <p class="empty-state">Belum ada peserta berminat, sehingga belum ada nilai yang perlu diisi.</p>
-                        <% } else { %>
-                            <% P.nilai.perKriteria.forEach(function (k) { %>
-                                <div class="dash-bar-wrap">
-                                    <div class="dash-bar-top">
-                                        <span><%= k.nama %> <small style="color:#9aa5b8;">(<%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %>)</small></span>
-                                        <b><%= k.terisi %> / <%= P.nilai.berminat %> (<%= k.persen %>%)</b>
-                                    </div>
-                                    <div class="dash-bar"><span class="<%= k.persen >= 100 ? 'hijau' : 'ungu' %>" data-w="<%= k.persen %>"></span></div>
-                                </div>
-                            <% }); %>
-                        <% } %>
-                    </div>
-
-                    <!-- Tab 3: nilai per peserta -->
-                    <div class="dash-tabpane" data-tabgrup="lengkap" data-tab="peserta">
-                        <% if (P.nilai.berminat === 0) { %>
-                            <p class="empty-state">Belum ada peserta berminat.</p>
-                        <% } else { %>
-                            <div class="dash-bar-wrap">
-                                <div class="dash-bar-top">
-                                    <span>Peserta dengan nilai lengkap (<%= P.nilai.totalKriteria %> kriteria)</span>
-                                    <b><%= P.nilai.lengkap %> / <%= P.nilai.berminat %> (<%= P.persen.nilai %>%)</b>
-                                </div>
-                                <div class="dash-bar"><span class="hijau" data-w="<%= P.persen.nilai %>"></span></div>
-                            </div>
-                            <div class="dash-mini-row">
-                                <div class="dash-mini hijau">
-                                    <strong><%= P.nilai.lengkap %></strong>
-                                    <span>Nilai lengkap</span>
-                                </div>
-                                <div class="dash-mini oranye">
-                                    <strong><%= P.nilai.sebagian %></strong>
-                                    <span>Terisi sebagian</span>
-                                </div>
-                                <div class="dash-mini merah">
-                                    <strong><%= P.nilai.kosong %></strong>
-                                    <span>Belum diisi sama sekali</span>
-                                </div>
-                            </div>
-                            <p style="font-size:12px; color:#8a94a3; margin-top:12px;">Hanya peserta berstatus Berminat yang dihitung.</p>
-                        <% } %>
-                    </div>
-                </div>
-
-                <!-- ===== STATUS FUCOM + STATUS PERANKINGAN ===== -->
-                <div class="dash-grid-2">
-                    <div class="panel">
-                        <div class="panel-header-row">
-                            <div class="panel-header">
-                                <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-diagram-3-fill"></i></div>
-                                <h3>Status Pembobotan FUCOM</h3>
-                            </div>
-                            <a href="/admin/fucom" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                                <i class="bi bi-box-arrow-up-right"></i> Buka
-                            </a>
-                        </div>
-                        <div class="dash-status-baris">
-                            <% if (P.fucom.final) { %>
-                                <span class="badge badge-green"><i class="bi bi-lock-fill"></i> Final &amp; konsisten</span>
-                            <% } else if (P.fucom.bobot.length > 0) { %>
-                                <span class="badge badge-yellow">Sudah dihitung, belum final</span>
-                            <% } else if (P.fucom.responden > 0) { %>
-                                <span class="badge badge-yellow">Data terisi, belum dihitung</span>
-                            <% } else { %>
-                                <span class="badge badge-red">Data belum diisi</span>
-                            <% } %>
-                            <span class="dash-meta-item"><i class="bi bi-person-fill"></i> <%= P.fucom.responden %> responden</span>
-                            <% if (P.fucom.dfc !== null) { %>
-                                <span class="dash-meta-item"><i class="bi bi-activity"></i> DFC: <%= koma(P.fucom.dfc.toFixed(3)) %></span>
-                            <% } %>
-                        </div>
-                        <% if (P.fucom.bobot.length === 0) { %>
-                            <p class="empty-state" style="padding:14px 0;">Bobot kriteria belum tersedia.</p>
-                        <% } else { %>
-                            <% P.fucom.bobot.forEach(function (b) { %>
-                                <div class="dash-bar-wrap">
-                                    <div class="dash-bar-top"><span><%= b.nama %></span><b><%= koma(b.persen.toFixed(2)) %>%</b></div>
-                                    <div class="dash-bar"><span data-w="<%= maksBobot > 0 ? Math.round((b.persen / maksBobot) * 100) : 0 %>"></span></div>
-                                </div>
-                            <% }); %>
-                        <% } %>
-                    </div>
-
-                    <div class="panel">
-                        <div class="panel-header-row">
-                            <div class="panel-header">
-                                <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-graph-up-arrow"></i></div>
-                                <h3>Status Perankingan</h3>
-                            </div>
-                            <a href="<%= hrefPerankingan %>" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                                <i class="bi bi-box-arrow-up-right"></i> Buka
-                            </a>
-                        </div>
-                        <div class="dash-status-baris">
-                            <% if (P.waspas.sudah) { %>
-                                <span class="badge badge-green">WASPAS sudah dihitung</span>
-                            <% } else { %>
-                                <span class="badge badge-yellow">WASPAS belum dihitung</span>
-                            <% } %>
-                            <% if (P.terkunci) { %>
-                                <span class="badge badge-blue"><i class="bi bi-lock-fill"></i> Hasil difinalisasi</span>
-                            <% } else { %>
-                                <span class="badge badge-red">Belum difinalisasi</span>
-                            <% } %>
-                        </div>
-                        <div class="dash-mini-row">
-                            <div class="dash-mini">
-                                <strong><%= P.waspas.jumlah %></strong>
-                                <span>Siswa sudah diranking</span>
-                            </div>
-                            <div class="dash-mini">
-                                <strong><%= P.siswa.berminat %></strong>
-                                <span>Peserta berminat</span>
-                            </div>
-                            <div class="dash-mini <%= P.kuota.melebihi ? 'merah' : 'hijau' %>">
-                                <strong><%= P.kuota.angkaSelisih %></strong>
-                                <span><%= P.kuota.labelSelisih %></span>
-                            </div>
-                        </div>
-                        <p style="font-size:12px; color:#8a94a3; margin-top:12px;">
-                            <% if (P.terkunci) { %>
-                                Seluruh data periode terkunci dan siswa hanya melihat pengumuman hasil seleksi.
-                            <% } else if (P.waspas.sudah) { %>
-                                Hasil ranking akan dikosongkan jika ada perubahan data siswa, status minat, nilai, atau kuota.
-                            <% } else { %>
-                                Perankingan dapat dijalankan setelah bobot final dan nilai peserta lengkap.
-                            <% } %>
-                        </p>
-                    </div>
-                </div>
-
-                <!-- ===== TABEL SISWA PERLU TINDAK LANJUT ===== -->
-                <div class="panel">
-                    <div class="panel-header-row">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-list-check"></i></div>
-                            <h3>Daftar Siswa Perlu Tindak Lanjut</h3>
-                        </div>
-                        <input type="text" id="dashCari" class="search-input" placeholder="Cari nama atau NISN..." autocomplete="off" style="margin-bottom:0;">
-                    </div>
-
-                    <div class="dash-chips" id="dashChips">
-                        <button type="button" class="dash-chip aktif" data-f="perlu">Perlu tindak lanjut <span class="n">0</span></button>
-                        <button type="button" class="dash-chip" data-f="tanpa_akun">Belum punya akun <span class="n">0</span></button>
-                        <button type="button" class="dash-chip" data-f="belum_respon">Belum merespons <span class="n">0</span></button>
-                        <button type="button" class="dash-chip" data-f="nilai_kurang">Nilai belum lengkap <span class="n">0</span></button>
-                        <button type="button" class="dash-chip" data-f="semua">Semua siswa <span class="n">0</span></button>
-                    </div>
-
-                    <div class="dash-table-wrap">
-                        <table class="data-table dash-table">
-                            <thead>
-                                <tr>
-                                    <th>No</th>
-                                    <th>NISN</th>
-                                    <th>Nama</th>
-                                    <th>Akun</th>
-                                    <th>Kesediaan</th>
-                                    <th>Nilai</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dashBody"></tbody>
-                        </table>
-                    </div>
-
-                    <div class="dash-tabel-foot">
-                        <span id="dashHitung"></span>
-                        <button type="button" class="dash-btn-teks" id="dashSemua" style="display:none;"></button>
-                    </div>
-                </div>
-
-                <% } %>
-
-                <!-- ====================================================== -->
-                <!-- RINGKASAN SISTEM + GRAFIK                              -->
-                <!-- ====================================================== -->
-                <h2 class="dash-section-title">Ringkasan Sistem &amp; Grafik</h2>
-                <div class="dash-statgrid">
-                    <div class="stat-card">
-                        <div class="stat-icon icon-blue"><i class="bi bi-people-fill"></i></div>
-                        <div>
-                            <h3>Total Siswa</h3>
-                            <p class="stat-number"><%= stats.totalSiswa %></p>
-                            <p class="stat-desc">Jumlah keseluruhan siswa</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon icon-green"><i class="bi bi-clipboard2-check-fill"></i></div>
-                        <div>
-                            <h3>Kriteria Terisi</h3>
-                            <p class="stat-number"><%= stats.kriteriaTerisi %></p>
-                            <p class="stat-desc">Jumlah siswa dengan nilai terisi</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon icon-orange"><i class="bi bi-diagram-3-fill"></i></div>
-                        <div>
-                            <h3>Status FUCOM</h3>
-                            <p class="stat-number stat-status <%= stats.statusFucom === 'Sudah' ? 'status-ok' : 'status-pending' %>"><%= stats.statusFucom %></p>
-                            <p class="stat-desc">Perhitungan FUCOM <%= stats.statusFucom === 'Sudah' ? 'sudah' : 'belum' %> dilakukan</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon icon-purple"><i class="bi bi-graph-up-arrow"></i></div>
-                        <div>
-                            <h3>Status WASPAS</h3>
-                            <p class="stat-number stat-status <%= stats.statusWaspas === 'Sudah' ? 'status-ok' : 'status-pending' %>"><%= stats.statusWaspas %></p>
-                            <p class="stat-desc">Perhitungan WASPAS <%= stats.statusWaspas === 'Sudah' ? 'sudah' : 'belum' %> dilakukan</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- CHART RIWAYAT ANTAR PERIODE -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clock-history"></i></div>
-                        <h3>Riwayat Perkembangan Antar Periode</h3>
-                    </div>
-                    <% if (riwayatPeriode.length === 0) { %>
-                        <p class="empty-state">Belum ada data periode.</p>
-                    <% } else { %>
-                        <div class="dash-canvas-box tinggi"><canvas id="chartRiwayat"></canvas></div>
-                    <% } %>
-                </div>
-
-                <div class="dash-grid-2">
-                    <!-- CHART PERIODE TERAKHIR -->
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bar-chart-fill"></i></div>
-                            <h3>Sebaran Nilai Siswa <% if (latestPeriode) { %>(<%= latestPeriode.tahun_ajaran %>)<% } %></h3>
-                        </div>
-                        <div class="dash-canvas-box"><canvas id="chartSebaranAdmin"></canvas></div>
-                    </div>
-
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
-                            <h3>Bobot Kriteria (FUCOM) <% if (latestPeriode) { %>— <%= latestPeriode.tahun_ajaran %><% } %></h3>
-                        </div>
-                        <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
-                            <div class="dash-bobot-wrap">
-                                <div class="dash-pie">
-                                    <canvas id="chartBobotAdmin"></canvas>
-                                </div>
-                                <ul class="dash-legend">
-                                    <% chartData.bobotKriteria.forEach(function(k, i) { %>
-                                        <li>
-                                            <span class="dot" style="background:<%= warnaPie[i % warnaPie.length] %>;"></span>
-                                            <%= k.nama_kriteria %>
-                                            <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b>
-                                        </li>
-                                    <% }); %>
-                                </ul>
-                            </div>
-                        <% } else { %>
-                            <p class="empty-state">Bobot kriteria untuk periode terbaru belum tersedia. Lihat grafik riwayat di atas untuk data periode sebelumnya.</p>
-                        <% } %>
                     </div>
                 </div>
 
@@ -736,287 +179,23 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // ----- Jam "diperbarui" -----
         (function () {
-            var el = document.getElementById('dashJam');
+            var el = document.getElementById('saJam');
             if (!el) return;
             var d = new Date();
             el.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
         })();
 
-        // Chart Riwayat Antar Periode
-        <% if (riwayatPeriode.length > 0) { %>
-        new Chart(document.getElementById('chartRiwayat'), {
-            type: 'bar',
-            data: {
-                labels: <%- JSON.stringify(riwayatPeriode.map(p => p.tahun_ajaran)) %>,
-                datasets: [
-                    {
-                        label: 'Total Siswa',
-                        data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalSiswa)) %>,
-                        backgroundColor: '#94b8f0'
-                    },
-                    {
-                        label: 'Lulus',
-                        data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalLulus)) %>,
-                        backgroundColor: '#27ae60'
-                    },
-                    {
-                        label: 'Mengundurkan Diri',
-                        data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalMundur)) %>,
-                        backgroundColor: '#e74c3c'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: true, position: 'bottom' } },
-                scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-            }
-        });
-        <% } %>
-
-        // Chart Sebaran Nilai (Periode Terbaru)
-        new Chart(document.getElementById('chartSebaranAdmin'), {
-            type: 'bar',
-            data: {
-                labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
-                datasets: [{ label: 'Jumlah Siswa', data: <%- JSON.stringify(chartData.sebaranNilai) %>, backgroundColor: '#1d5fd6', borderRadius: 6 }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-            }
-        });
-
-        <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
-        new Chart(document.getElementById('chartBobotAdmin'), {
-            type: 'pie',
-            data: {
-                labels: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nama_kriteria)) %>,
-                datasets: [{ data: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nilai_bobot)) %>, backgroundColor: ['#1d5fd6','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e74c3c'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }
-        });
-        <% } %>
-    </script>
-
-    <% if (P) { %>
-    <!-- ===== Interaksi dashboard progres (tab, bar animasi, grafik kesediaan, tabel terfilter) ===== -->
-    <script>
-        // ----- Tab -----
-        function dashPilihTab(grup, nama) {
-            document.querySelectorAll('[data-tabgrup="' + grup + '"]').forEach(function (el) {
-                el.classList.toggle('aktif', el.getAttribute('data-tab') === nama);
-            });
-            try { sessionStorage.setItem('dashTab_' + grup, nama); } catch (e) {}
-        }
-
-        (function () {
-            var tersimpan = null;
-            try { tersimpan = sessionStorage.getItem('dashTab_lengkap'); } catch (e) {}
-            var ada = tersimpan && document.querySelector('.dash-tab[data-tab="' + tersimpan + '"]');
-            if (ada) dashPilihTab('lengkap', tersimpan);
-        })();
-
-        // ----- Animasi bar -----
-        window.addEventListener('load', function () {
-            document.querySelectorAll('.dash-bar > span[data-w]').forEach(function (el) {
-                var w = Number(el.getAttribute('data-w')) || 0;
-                if (w > 100) w = 100;
-                el.style.width = w + '%';
-            });
-        });
-
-        // ----- Grafik distribusi kesediaan (klik = buka daftar terfilter) -----
-        (function () {
-            var kanvas = document.getElementById('chartMinatDash');
-            if (!kanvas || typeof Chart === 'undefined') return;
-
-            var tautan = ['/admin/siswa?minat=berminat', '/admin/siswa?minat=belum_respon', '/admin/siswa?minat=tidak_berminat'];
-
-            new Chart(kanvas, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Berminat', 'Belum merespons', 'Tidak berminat'],
-                    datasets: [{
-                        data: [<%= P.siswa.berminat %>, <%= P.siswa.belumRespon %>, <%= P.siswa.tidakBerminat %>],
-                        backgroundColor: ['#27ae60', '#f39c12', '#e74c3c'],
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '62%',
-                    plugins: { legend: { position: 'bottom' } },
-                    onClick: function (evt, elemen) {
-                        if (elemen.length > 0) window.location.href = tautan[elemen[0].index];
-                    },
-                    onHover: function (evt, elemen) {
-                        if (evt.native && evt.native.target) {
-                            evt.native.target.style.cursor = elemen.length ? 'pointer' : 'default';
-                        }
-                    }
-                }
-            });
-        })();
-
-        // ----- Tabel siswa perlu tindak lanjut -----
-        (function () {
-            var DATA = <%- aman({ totalKriteria: P.nilai.totalKriteria, daftarSiswa: P.daftarSiswa }) %>;
-            var semua = DATA.daftarSiswa;
-            var BATAS = 15;
-
-            var body = document.getElementById('dashBody');
-            var inputCari = document.getElementById('dashCari');
-            var chips = Array.prototype.slice.call(document.querySelectorAll('#dashChips .dash-chip'));
-            var hitungEl = document.getElementById('dashHitung');
-            var tombolSemua = document.getElementById('dashSemua');
-
-            var chipAktif = 'perlu';
-            var tampilSemua = false;
-
-            try {
-                var f = sessionStorage.getItem('dashChip');
-                if (f && chips.some(function (c) { return c.getAttribute('data-f') === f; })) chipAktif = f;
-                var q = sessionStorage.getItem('dashCari');
-                if (q) inputCari.value = q;
-            } catch (e) {}
-
-            function esc(t) {
-                return String(t === null || t === undefined ? '' : t).replace(/[&<>"']/g, function (c) {
-                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-                });
-            }
-
-            function cocokChip(s, f) {
-                if (f === 'semua') return true;
-                if (f === 'perlu') return s.masalah.length > 0;
-                return s.masalah.indexOf(f) !== -1;
-            }
-
-            function badgeAkun(s) {
-                if (!s.punyaAkun) return '<span class="dash-badge abu">Belum ada akun</span>';
-                var badge = s.statusAkun === 'aktif'
-                    ? '<span class="dash-badge hijau">Aktif</span>'
-                    : '<span class="dash-badge merah">Nonaktif</span>';
-                var sub = s.belumGantiPassword
-                    ? 'Belum ganti password'
-                    : (s.lastLogin ? 'Login terakhir: ' + s.lastLogin : 'Belum pernah login');
-                return '<span>' + badge + '<span class="dash-sub">' + esc(sub) + '</span></span>';
-            }
-
-            function badgeMinat(s) {
-                if (s.minat === 'berminat') return '<span class="dash-badge hijau">Berminat</span>';
-                if (s.minat === 'tidak_berminat') return '<span class="dash-badge merah">Tidak berminat</span>';
-                return '<span class="dash-badge oranye">Belum merespons</span>';
-            }
-
-            function selNilai(s) {
-                if (s.minat === 'tidak_berminat') return '<span class="dash-sub" style="margin:0;">Tidak ikut</span>';
-                if (s.minat !== 'berminat') return '<span class="dash-sub" style="margin:0;">Menunggu respons</span>';
-                var kelas = s.nilaiLengkap ? 'hijau' : (s.terisi === 0 ? 'merah' : 'oranye');
-                return '<span class="dash-badge ' + kelas + '">' + s.terisi + ' / ' + DATA.totalKriteria + '</span>';
-            }
-
-            function selAksi(s) {
-                if (!s.aksiHref) return '<span class="dash-sub" style="margin:0;">-</span>';
-                return '<a class="dash-link-aksi" href="' + esc(s.aksiHref) + '">' + esc(s.aksiLabel) + ' &rarr;</a>';
-            }
-
-            function hitungChip() {
-                chips.forEach(function (c) {
-                    var f = c.getAttribute('data-f');
-                    var n = semua.filter(function (s) { return cocokChip(s, f); }).length;
-                    c.querySelector('.n').textContent = n;
-                    c.classList.toggle('aktif', f === chipAktif);
-                });
-            }
-
-            function render() {
-                var kata = inputCari.value.trim().toLowerCase();
-
-                var terfilter = semua.filter(function (s) {
-                    if (!cocokChip(s, chipAktif)) return false;
-                    if (!kata) return true;
-                    return String(s.nama).toLowerCase().indexOf(kata) !== -1 || String(s.nisn).indexOf(kata) !== -1;
-                });
-
-                var tampil = tampilSemua ? terfilter : terfilter.slice(0, BATAS);
-
-                if (tampil.length === 0) {
-                    body.innerHTML = '<tr><td colspan="7" class="empty-state">' +
-                        (semua.length === 0 ? 'Belum ada data siswa.' : 'Tidak ada siswa yang cocok dengan filter ini.') +
-                        '</td></tr>';
-                } else {
-                    body.innerHTML = tampil.map(function (s, i) {
-                        return '<tr>' +
-                            '<td data-label="No">' + (i + 1) + '</td>' +
-                            '<td data-label="NISN">' + esc(s.nisn) + '</td>' +
-                            '<td data-label="Nama">' + esc(s.nama) + '</td>' +
-                            '<td data-label="Akun">' + badgeAkun(s) + '</td>' +
-                            '<td data-label="Kesediaan">' + badgeMinat(s) + '</td>' +
-                            '<td data-label="Nilai">' + selNilai(s) + '</td>' +
-                            '<td data-label="Aksi">' + selAksi(s) + '</td>' +
-                            '</tr>';
-                    }).join('');
-                }
-
-                hitungEl.textContent = 'Menampilkan ' + tampil.length + ' dari ' + terfilter.length + ' siswa';
-
-                if (terfilter.length > BATAS) {
-                    tombolSemua.style.display = '';
-                    tombolSemua.textContent = tampilSemua ? 'Tampilkan lebih sedikit' : 'Tampilkan semua (' + terfilter.length + ')';
-                } else {
-                    tombolSemua.style.display = 'none';
-                }
-
-                hitungChip();
-            }
-
-            chips.forEach(function (c) {
-                c.addEventListener('click', function () {
-                    chipAktif = c.getAttribute('data-f');
-                    tampilSemua = false;
-                    try { sessionStorage.setItem('dashChip', chipAktif); } catch (e) {}
-                    render();
-                });
-            });
-
-            inputCari.addEventListener('input', function () {
-                tampilSemua = false;
-                try { sessionStorage.setItem('dashCari', inputCari.value); } catch (e) {}
-                render();
-            });
-
-            tombolSemua.addEventListener('click', function () {
-                tampilSemua = !tampilSemua;
-                render();
-            });
-
-            render();
-        })();
-    </script>
-    <% } %>
-
-    <script>
-        // Refresh otomatis yang tidak mengganggu: dilewati kalau tab sedang tidak dilihat,
-        // kalau Anda sedang mengetik/memilih sesuatu, atau kalau kolom pencarian terisi.
+        // Refresh otomatis tiap 60 detik, tapi dilewati kalau tab tidak aktif atau sedang mengetik.
         setInterval(function () {
             if (document.hidden) return;
             var aktif = document.activeElement;
             var tag = aktif && aktif.tagName ? aktif.tagName.toLowerCase() : '';
             if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
-            var cari = document.getElementById('dashCari');
-            if (cari && cari.value.trim() !== '') return;
             window.location.reload();
         }, 60000);
     </script>
+
 </body>
 </html>

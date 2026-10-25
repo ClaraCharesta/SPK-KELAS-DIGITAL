@@ -276,7 +276,7 @@
                             </div>
                             <% if (!terkunci) { %>
                             <div style="display:flex; gap:10px;">
-                                <form id="formHitung" class="form-inline" action="/admin/waspas/hitung" method="POST"
+                                <form id="formHitung" class="form-inline" action="/operator/waspas/hitung" method="POST"
                                       <% if (pesanHitung) { %>onsubmit='return confirmDelete(this, <%- JSON.stringify(pesanHitung) %>);'<% } %>>
                                     <button type="submit" class="btn-primary"
                                             <%= tombolHitungNonaktif ? 'disabled' : '' %>
@@ -309,7 +309,7 @@
                                     <td>
                                         <span class="badge badge-<%= belumKonfirmasi === 0 ? 'diterima' : 'tidak_diterima' %>"><%= belumKonfirmasi %> siswa</span>
                                         <% if (belumKonfirmasi > 0) { %>
-                                            <a href="/admin/siswa" style="margin-left:8px; font-size:12px;">Lihat &amp; hubungi</a>
+                                            <a href="/operator/siswa" style="margin-left:8px; font-size:12px;">Lihat &amp; hubungi</a>
                                         <% } %>
                                     </td>
                                 </tr>
@@ -329,7 +329,7 @@
                                     <td>
                                         <span class="badge badge-<%= infoAkun.belumAktif === 0 ? 'diterima' : 'tidak_diterima' %>"><%= infoAkun.belumAktif %> siswa</span>
                                         <% if (infoAkun.belumAktif > 0) { %>
-                                            <a href="/admin/siswa?filter=belum_aktif" style="margin-left:8px; font-size:12px;">Lihat &amp; hubungi</a>
+                                            <a href="/operator/siswa?filter=belum_aktif" style="margin-left:8px; font-size:12px;">Lihat &amp; hubungi</a>
                                         <% } %>
                                     </td>
                                 </tr>
@@ -544,7 +544,7 @@
                                 <h3>Hasil Perangkingan Siswa</h3>
                             </div>
                             <% if (tampilFinalisasi) { %>
-                                <form id="formFinalisasi" class="form-inline" action="/admin/waspas/finalisasi" method="POST"
+                                <form id="formFinalisasi" class="form-inline" action="/operator/waspas/finalisasi" method="POST"
                                       onsubmit='return confirmDelete(this, <%- JSON.stringify(pesanFinal) %>);'>
                                     <button type="submit" class="btn-primary btn-kecil">
                                         <i class="bi bi-check-circle-fill"></i> Finalisasi Hasil

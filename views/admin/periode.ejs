@@ -147,7 +147,7 @@
                                             <button class="btn-icon" title="Edit Periode" onclick='bukaModalEdit(<%- JSON.stringify(p) %>)'>
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
-                                            <form action="/superadmin/periode/delete/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Menghapus periode ini akan menghapus SELURUH data terkait (siswa, nilai, kriteria, bobot FUCOM, dan hasil perankingan) secara permanen. Tindakan ini tidak dapat dibatalkan. Lanjutkan?');">
+                                            <form action="/admin/periode/delete/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Menghapus periode ini akan menghapus SELURUH data terkait (siswa, nilai, kriteria, bobot FUCOM, dan hasil perankingan) secara permanen. Tindakan ini tidak dapat dibatalkan. Lanjutkan?');">
                                                 <button type="submit" class="btn-icon btn-icon-danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                                             </form>
                                         <% } else { %>
@@ -171,11 +171,11 @@
                                             </span>
                                             <span style="color:#999; font-size:12px;"><i class="bi bi-archive-fill"></i> Arsip</span>
                                         <% } else if (p.status_periode === 'aktif') { %>
-                                            <form action="/superadmin/periode/tutup/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Tutup periode ini sekarang? Akun siswa pada periode ini akan dinonaktifkan. Anda perlu mengaktifkan periode baru untuk melanjutkan proses seleksi berikutnya.');">
+                                            <form action="/admin/periode/tutup/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Tutup periode ini sekarang? Akun siswa pada periode ini akan dinonaktifkan. Anda perlu mengaktifkan periode baru untuk melanjutkan proses seleksi berikutnya.');">
                                                 <button type="submit" class="btn-icon" title="Tutup Periode"><i class="bi bi-lock-fill"></i></button>
                                             </form>
                                         <% } else { %>
-                                            <form action="/superadmin/periode/set-active/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Aktifkan periode ini?');">
+                                            <form action="/admin/periode/set-active/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Aktifkan periode ini?');">
                                                 <button type="submit" class="btn-icon" title="Aktifkan"><i class="bi bi-toggle-off"></i></button>
                                             </form>
                                         <% } %>
@@ -201,7 +201,7 @@
                 <h3><i class="bi bi-calendar-plus-fill"></i> Buka Periode Seleksi Baru</h3>
                 <button class="modal-close" onclick="document.getElementById('modalTambah').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/periode/create" method="POST" onsubmit="return handleTambahSubmit(this)">
+            <form action="/admin/periode/create" method="POST" onsubmit="return handleTambahSubmit(this)">
                 <p style="font-size:13px; color:#e67e22; margin-bottom:15px; background:#fdf1de; padding:10px; border-radius:8px;">
                     <i class="bi bi-info-circle-fill"></i> Membuat periode baru akan otomatis menutup periode yang sedang aktif dan menonaktifkan akun siswa pada periode tersebut.
                 </p>
@@ -242,7 +242,7 @@
                 <h3><i class="bi bi-pencil-square"></i> Edit Periode Seleksi</h3>
                 <button class="modal-close" onclick="document.getElementById('modalEdit').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/periode/update" method="POST" onsubmit="return handleEditSubmit(this)">
+            <form action="/admin/periode/update" method="POST" onsubmit="return handleEditSubmit(this)">
                 <input type="hidden" name="id_periode" id="edit_id_periode">
                 <label>Tahun Ajaran</label>
                 <input type="hidden" name="tahun_ajaran" id="edit_tahun_ajaran">
@@ -277,7 +277,7 @@
                 <h3><i class="bi bi-calendar-plus"></i> Perpanjang Periode Seleksi</h3>
                 <button class="modal-close" onclick="document.getElementById('modalPerpanjang').style.display='none'">&times;</button>
             </div>
-            <form action="/superadmin/periode/perpanjang" method="POST" onsubmit="return handlePerpanjangSubmit(this)">
+            <form action="/admin/periode/perpanjang" method="POST" onsubmit="return handlePerpanjangSubmit(this)">
                 <input type="hidden" name="id_periode" id="perpanjang_id_periode">
                 <p style="font-size:13px; color:#b35c00; margin-bottom:15px; background:#fdf1de; padding:10px; border-radius:8px;">
                     <i class="bi bi-exclamation-triangle-fill"></i>
@@ -578,7 +578,7 @@
         if (tanggalMulai) {
             const today = getTodayStr();
             if (tanggalMulai > today) {
-                const pesan = `Perhatian: Tanggal mulai yang Anda pilih adalah ${formatTanggalIndo(tanggalMulai)}, sedangkan hari ini masih ${formatTanggalIndo(today)}.\n\nPeriode ini baru bisa mulai diisi (siswa/admin) setelah tanggal tersebut tiba. Jika ingin mengubah tanggal mulai nanti, Anda bisa mengklik aksi Edit.\n\nLanjutkan membuka periode ini?`;
+                const pesan = `Perhatian: Tanggal mulai yang Anda pilih adalah ${formatTanggalIndo(tanggalMulai)}, sedangkan hari ini masih ${formatTanggalIndo(today)}.\n\nPeriode ini baru bisa mulai diisi (siswa/operator) setelah tanggal tersebut tiba. Jika ingin mengubah tanggal mulai nanti, Anda bisa mengklik aksi Edit.\n\nLanjutkan membuka periode ini?`;
                 document.getElementById('confirmModal').style.zIndex = '10000';
                 return confirmDelete(form, pesan);
             }

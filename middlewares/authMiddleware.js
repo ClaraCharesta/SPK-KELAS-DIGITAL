@@ -15,8 +15,8 @@ const checkRole = (...allowedRoles) => {
 };
 
 const DASHBOARD_BY_ROLE = {
-    admin: '/superadmin/dashboard',
-    operator: '/admin/dashboard',
+    admin: '/admin/dashboard',
+    operator: '/operator/dashboard',
     kepsek: '/kepsek/dashboard'
 };
 

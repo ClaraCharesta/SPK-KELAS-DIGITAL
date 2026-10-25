@@ -7,7 +7,7 @@ const riwayatController = {
             const semuaPeriode = await periodeModel.getAll();
             const periodeTertutup = semuaPeriode.filter(p => p.status_periode === 'ditutup' && p.status_penyelesaian === 'selesai');
 
-            res.render('superadmin/riwayat', {
+            res.render('admin/riwayat', {
                 user: req.session.user, activePage: 'riwayat', pageTitle: 'Riwayat Periode',
                 periodeTertutup, selectedPeriode: null, hasilRanking: [], bobotKriteria: []
             });
@@ -31,7 +31,7 @@ const riwayatController = {
             const hasilRanking = await waspasModel.getHasilRanking(id_periode);
             const bobotKriteria = await waspasModel.getBobotForLaporan(id_periode);
 
-            res.render('superadmin/riwayat', {
+            res.render('admin/riwayat', {
                 user: req.session.user, activePage: 'riwayat', pageTitle: 'Riwayat Periode',
                 periodeTertutup, selectedPeriode, hasilRanking, bobotKriteria
             });

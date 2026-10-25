@@ -10,42 +10,42 @@
     <ul class="sidebar-menu">
         <% if (user.role === 'admin') { %>
             <li class="<%= activePage === 'dashboard' ? 'active' : '' %>">
-                <a href="/superadmin/dashboard">
+                <a href="/admin/dashboard">
                     <i class="bi bi-grid-fill"></i>
                     <span>Dashboard</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'akun-admin' ? 'active' : '' %>">
-                <a href="/superadmin/akun-admin">
+                <a href="/admin/akun-admin">
                     <i class="bi bi-people-fill"></i>
                     <span>Kelola Akun</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'periode' ? 'active' : '' %>">
-                <a href="/superadmin/periode">
+                <a href="/admin/periode">
                     <i class="bi bi-calendar-range"></i>
                     <span>Periode Seleksi</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'kriteria' ? 'active' : '' %>">
-                <a href="/superadmin/kriteria">
+                <a href="/admin/kriteria">
                     <i class="bi bi-list-check"></i>
                     <span>Kelola Kriteria</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'log' ? 'active' : '' %>">
-                <a href="/superadmin/log">
+                <a href="/admin/log">
                     <i class="bi bi-clock-history"></i>
                     <span>Log Aktivitas</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'riwayat' ? 'active' : '' %>">
-                <a href="/superadmin/riwayat">
+                <a href="/admin/riwayat">
                     <i class="bi bi-archive-fill"></i>
                     <span>Riwayat Periode</span>
                 </a>
@@ -54,49 +54,49 @@
         <% } else if (user.role === 'operator') { %>
 
             <li class="<%= activePage === 'dashboard' ? 'active' : '' %>">
-                <a href="/admin/dashboard">
+                <a href="/operator/dashboard">
                     <i class="bi bi-grid-fill"></i>
                     <span>Dashboard</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'kriteria' ? 'active' : '' %>">
-                <a href="/admin/kriteria">
+                <a href="/operator/kriteria">
                     <i class="bi bi-card-checklist"></i>
                     <span>Kriteria</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'fucom' ? 'active' : '' %>">
-                <a href="/admin/fucom">
+                <a href="/operator/fucom">
                     <i class="bi bi-sliders"></i>
                     <span>Pembobotan Kriteria</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'siswa' ? 'active' : '' %>">
-                <a href="/admin/siswa">
+                <a href="/operator/siswa">
                     <i class="bi bi-person-fill"></i>
                     <span>Data Siswa</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'nilai' ? 'active' : '' %>">
-                <a href="/admin/nilai">
+                <a href="/operator/nilai">
                     <i class="bi bi-pencil-square"></i>
                     <span>Input Nilai</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'waspas' ? 'active' : '' %>">
-                <a href="/admin/waspas">
+                <a href="/operator/waspas">
                     <i class="bi bi-graph-up-arrow"></i>
                     <span>Perankingan</span>
                 </a>
             </li>
 
             <li class="<%= activePage === 'laporan' ? 'active' : '' %>">
-                <a href="/admin/laporan">
+                <a href="/operator/laporan">
                     <i class="bi bi-file-earmark-text-fill"></i>
                     <span>Laporan</span>
                 </a>

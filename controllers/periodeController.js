@@ -115,7 +115,7 @@ async function ambilPeriodeById(id_periode) {
 async function tolakJikaKedaluwarsa(res, id_periode, aksi) {
     const p = await ambilPeriodeById(id_periode);
     if (p && isKedaluwarsa(p)) {
-        res.redirect('/superadmin/periode?error=' + encodeURIComponent(
+        res.redirect('/admin/periode?error=' + encodeURIComponent(
             `Periode kedaluwarsa tidak dapat ${aksi}. Gunakan fitur Perpanjang untuk mengubah tanggal periode.`
         ));
         return true;
@@ -217,7 +217,7 @@ const periodeController = {
             const terbesar = await periodeModel.getTahunAwalTerbesar();
             const tahunSaran = terbesar !== null ? `${terbesar + 1}/${terbesar + 2}` : '';
 
-            res.render('superadmin/periode', {
+            res.render('admin/periode', {
                 user: req.session.user, periodeList, latestId, activePage: 'periode',
                 pageTitle: 'Kelola Periode Seleksi',
                 tahunSaran,
@@ -240,10 +240,10 @@ const periodeController = {
             const tahun_ajaran = tahunAjaranSekarang();
 
             if (!tahun_ajaran || !kuota_kelas_digital) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Tahun ajaran dan kuota wajib diisi.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Tahun ajaran dan kuota wajib diisi.'));
             }
             if (parseInt(kuota_kelas_digital) < 30) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
             }
 
             const tahunBersih = tahun_ajaran.trim();
@@ -251,24 +251,24 @@ const periodeController = {
             // Tahun ajaran otomatis = tahun sekarang. Kalau sudah pernah dibuat, tolak dengan pesan jelas.
             const sudahAdaTahunIni = await periodeModel.existsByTahunAjaran(tahunBersih);
             if (sudahAdaTahunIni) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(`Periode tahun ajaran ${tahunBersih} sudah dibuat. Tahun ajaran otomatis mengikuti tahun sekarang dan tidak dapat diubah.`));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(`Periode tahun ajaran ${tahunBersih} sudah dibuat. Tahun ajaran otomatis mengikuti tahun sekarang dan tidak dapat diubah.`));
             }
 
             const pesanTahun = await validasiTahunAjaran(tahunBersih);
             if (pesanTahun) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(pesanTahun));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTahun));
             }
 
             // Validasi tanggal: harus di dalam tahun ajaran, mulai minimal hari ini,
             // selesai minimal 7 hari dari hari ini
             const pesanTanggal = validasiTanggalPeriode(tanggal_mulai, tanggal_selesai, null, null, tahunBersih);
             if (pesanTanggal) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(pesanTanggal));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTanggal));
             }
 
             const sudahAda = await periodeModel.existsByTahunAjaran(tahunBersih);
             if (sudahAda) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(`Tahun ajaran "${tahunBersih}" sudah pernah dibuat sebelumnya. Gunakan nama lain, atau edit periode yang sudah ada.`));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(`Tahun ajaran "${tahunBersih}" sudah pernah dibuat sebelumnya. Gunakan nama lain, atau edit periode yang sudah ada.`));
             }
 
             const id_periode_baru = await periodeModel.create({
@@ -292,10 +292,10 @@ const periodeController = {
 
             picuPengingat();
 
-            res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode seleksi berhasil dibuat dan diaktifkan beserta 6 kriteria default.'));
+            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode seleksi berhasil dibuat dan diaktifkan beserta 6 kriteria default.'));
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
+            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
         }
     },
 
@@ -307,13 +307,13 @@ const periodeController = {
             if (await tolakJikaKedaluwarsa(res, id_periode, 'diubah kuotanya')) return;
 
             if (parseInt(kuota_kelas_digital) < 30) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
             }
 
             // Status Masuk/Tidak Masuk dihitung dari ranking dan kuota,
             // jadi kuota tidak boleh diubah setelah hasil difinalisasi.
             if (await waspasModel.isFinal(id_periode)) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Kuota tidak dapat diubah karena hasil seleksi sudah difinalisasi.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota tidak dapat diubah karena hasil seleksi sudah difinalisasi.'));
             }
 
             await periodeModel.updateKuota(id_periode, kuota_kelas_digital);
@@ -322,10 +322,10 @@ const periodeController = {
             await waspasModel.invalidateHasilJikaAda(id_periode);
 
             await userModel.logActivity(req.session.user.id_user, `Admin mengubah kuota periode ID ${id_periode} menjadi ${kuota_kelas_digital}`);
-            res.redirect('/superadmin/periode?success=' + encodeURIComponent('Kuota berhasil diperbarui. Hasil ranking sebelumnya dikosongkan, silakan hitung ulang WASPAS.'));
+            res.redirect('/admin/periode?success=' + encodeURIComponent('Kuota berhasil diperbarui. Hasil ranking sebelumnya dikosongkan, silakan hitung ulang WASPAS.'));
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
+            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
         }
     },
 
@@ -340,7 +340,7 @@ const periodeController = {
                 const pesan = (periodeTarget.id_periode === latestId)
                     ? 'Periode ini tidak bisa diaktifkan karena tanggal selesainya sudah kedaluwarsa. Anda harus mengubah tanggal rentang periode terlebih dahulu lewat tombol Perpanjang.'
                     : 'Periode ini sudah kedaluwarsa dan bukan periode terbaru, sehingga tidak dapat diaktifkan kembali. Datanya tetap tersimpan sebagai arsip.';
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(pesan));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(pesan));
             }
 
             await periodeModel.setActive(id_periode);
@@ -353,10 +353,10 @@ const periodeController = {
                 req.session.user.id_user,
                 `Admin mengaktifkan periode ID ${id_periode} (${diaktifkan} akun siswa diaktifkan, ${dinonaktifkan} akun periode lain dinonaktifkan)`
             );
-            res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode berhasil diaktifkan.'));
+            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode berhasil diaktifkan.'));
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
+            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
         }
     },
 
@@ -367,7 +367,7 @@ const periodeController = {
             const latestId = await periodeModel.getLatestId();
 
             if (parseInt(id_periode) !== latestId) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat diedit.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat diedit.'));
             }
 
             // Periode kedaluwarsa tidak boleh diedit, harus lewat Perpanjang.
@@ -375,20 +375,20 @@ const periodeController = {
 
             const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
             if (statusPenyelesaian === 'selesai') {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diedit karena hasil seleksinya sudah difinalisasi.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diedit karena hasil seleksinya sudah difinalisasi.'));
             }
 
             if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diedit karena pembobotan FUCOM sudah dijalankan dan final.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diedit karena pembobotan FUCOM sudah dijalankan dan final.'));
             }
 
             if (parseInt(kuota_kelas_digital) < 30) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
             }
 
             const periodeLama = await ambilPeriodeById(id_periode);
             if (!periodeLama) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Periode tidak ditemukan.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode tidak ditemukan.'));
             }
 
             // Tahun ajaran dikunci: selalu memakai nilai yang tersimpan di database.
@@ -397,7 +397,7 @@ const periodeController = {
             // Saat edit, periode ini dikecualikan dari pembanding supaya tahunnya sendiri tidak dianggap bentrok.
             const pesanTahun = await validasiTahunAjaran(tahunBersih, id_periode);
             if (pesanTahun) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(pesanTahun));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTahun));
             }
 
             // Validasi tanggal. Tanggal wajib di dalam tahun ajaran (selalu dicek).
@@ -411,12 +411,12 @@ const periodeController = {
                 tahunBersih
             );
             if (pesanTanggal) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(pesanTanggal));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTanggal));
             }
 
             const sudahAda = await periodeModel.existsByTahunAjaran(tahunBersih, id_periode);
             if (sudahAda) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(`Tahun ajaran "${tahunBersih}" sudah dipakai periode lain.`));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(`Tahun ajaran "${tahunBersih}" sudah dipakai periode lain.`));
             }
 
             await periodeModel.update(id_periode, {
@@ -433,10 +433,10 @@ const periodeController = {
 
             picuPengingat();
 
-            res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode berhasil diperbarui.'));
+            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode berhasil diperbarui.'));
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
+            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
         }
     },
 
@@ -449,20 +449,20 @@ const periodeController = {
             const latestId = await periodeModel.getLatestId();
 
             if (parseInt(id_periode) !== latestId) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat diperpanjang.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat diperpanjang.'));
             }
 
             const p = await ambilPeriodeById(id_periode);
             if (!p) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Periode tidak ditemukan.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode tidak ditemukan.'));
             }
 
             if (p.status_penyelesaian === 'selesai') {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diperpanjang karena hasil seleksinya sudah difinalisasi.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diperpanjang karena hasil seleksinya sudah difinalisasi.'));
             }
 
             if (!tanggal_selesai) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Tanggal selesai baru wajib diisi.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Tanggal selesai baru wajib diisi.'));
             }
 
             // Tanggal selesai baru wajib minimal 7 hari dari hari ini (selesaiLama = null
@@ -476,7 +476,7 @@ const periodeController = {
                 p.tahun_ajaran
             );
             if (pesanTanggal) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent(pesanTanggal));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTanggal));
             }
 
             await periodeModel.update(id_periode, {
@@ -501,10 +501,10 @@ const periodeController = {
 
             picuPengingat();
 
-            res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode berhasil diperpanjang dan diaktifkan kembali. Data siswa, nilai, dan hasil ranking sebelumnya tetap aman.'));
+            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode berhasil diperpanjang dan diaktifkan kembali. Data siswa, nilai, dan hasil ranking sebelumnya tetap aman.'));
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
+            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
         }
     },
 
@@ -514,7 +514,7 @@ const periodeController = {
             const latestId = await periodeModel.getLatestId();
 
             if (parseInt(id_periode) !== latestId) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat dihapus.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat dihapus.'));
             }
 
             // Periode kedaluwarsa tidak boleh dihapus, harus diperpanjang dulu.
@@ -522,19 +522,19 @@ const periodeController = {
 
             const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
             if (statusPenyelesaian === 'selesai') {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Periode ini tidak dapat dihapus karena sudah difinalisasi dan tersimpan sebagai data historis.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat dihapus karena sudah difinalisasi dan tersimpan sebagai data historis.'));
             }
 
             if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
-                return res.redirect('/superadmin/periode?error=' + encodeURIComponent('Periode ini tidak dapat dihapus karena pembobotan FUCOM sudah dijalankan dan final.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat dihapus karena pembobotan FUCOM sudah dijalankan dan final.'));
             }
 
             await periodeModel.deleteCascade(id_periode);
             await userModel.logActivity(req.session.user.id_user, `Admin menghapus periode ID ${id_periode} beserta seluruh data terkait`);
-            res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode beserta seluruh data terkait berhasil dihapus.'));
+            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode beserta seluruh data terkait berhasil dihapus.'));
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
+            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
         }
     },
 
@@ -554,10 +554,10 @@ const periodeController = {
                 req.session.user.id_user,
                 `Admin menutup periode ID ${id_periode} secara manual (${dinonaktifkan} akun siswa dinonaktifkan)`
             );
-            res.redirect('/superadmin/periode?success=' + encodeURIComponent('Periode berhasil ditutup. Akun siswa pada periode ini dinonaktifkan.'));
+            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode berhasil ditutup. Akun siswa pada periode ini dinonaktifkan.'));
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
+            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
         }
     }
 };

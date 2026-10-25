@@ -6,16 +6,16 @@ const { cekTerkunci } = require('../utils/lockHelper');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
 
 const redirectError = (res, pesan) =>
-    res.redirect('/admin/waspas?error=' + encodeURIComponent(pesan));
+    res.redirect('/operator/waspas?error=' + encodeURIComponent(pesan));
 
 const waspasController = {
-    // GET /admin/waspas
+    // GET /operator/waspas
     async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.render('admin/waspas', {
+                return res.render('operator/waspas', {
                     user: req.session.user,
                     activePage: 'waspas',
                     pageTitle: 'Perhitungan WASPAS',
@@ -59,7 +59,7 @@ const waspasController = {
                 ? tandaiSeriKuota(hitungan.seri, periode.kuota_kelas_digital)
                 : null;
 
-            return res.render('admin/waspas', {
+            return res.render('operator/waspas', {
                 user: req.session.user,
                 activePage: 'waspas',
                 pageTitle: 'Perhitungan WASPAS',
@@ -78,7 +78,7 @@ const waspasController = {
         }
     },
 
-    // POST /admin/waspas/hitung
+    // POST /operator/waspas/hitung
     async hitung(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -142,7 +142,7 @@ const waspasController = {
                 pesan += ' PERHATIAN: ada nilai seri tepat di batas kuota, periksa kembali sebelum finalisasi.';
             }
 
-            return res.redirect('/admin/waspas?success=' + encodeURIComponent(pesan));
+            return res.redirect('/operator/waspas?success=' + encodeURIComponent(pesan));
         } catch (error) {
             if (error.message === 'PERIODE_FINAL') {
                 return redirectError(res, 'Hasil seleksi sudah difinalisasi dan tidak dapat dihitung ulang.');
@@ -153,7 +153,7 @@ const waspasController = {
         }
     },
 
-    // POST /admin/waspas/hapus
+    // POST /operator/waspas/hapus
     async hapusHasil(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -170,7 +170,7 @@ const waspasController = {
             await userModel.logActivity(req.session.user.id_user, 'Menghapus hasil perankingan WASPAS');
 
             return res.redirect(
-                '/admin/waspas?success=' +
+                '/operator/waspas?success=' +
                 encodeURIComponent('Hasil perankingan berhasil dihapus. Pembobotan kriteria kini dapat diubah kembali.')
             );
         } catch (error) {
@@ -179,7 +179,7 @@ const waspasController = {
         }
     },
 
-    // POST /admin/waspas/finalisasi
+    // POST /operator/waspas/finalisasi
     async finalisasi(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -207,7 +207,7 @@ const waspasController = {
             );
 
             return res.redirect(
-                '/admin/waspas?success=' +
+                '/operator/waspas?success=' +
                 encodeURIComponent('Hasil seleksi berhasil difinalisasi. Seluruh data kini terkunci dan siswa dapat melihat pengumuman.')
             );
         } catch (error) {

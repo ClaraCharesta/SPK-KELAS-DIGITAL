@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <title>Kriteria Penilaian</title>
+    <%- include('../partials/head') %>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
+        <div class="main-content">
+            <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
+
+            <div class="content-wrapper">
+                <% if (error) { %>
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+
+                <div class="alert" style="background:#e3edfd; color:#1d5fd6;">
+                    <i class="bi bi-info-circle-fill"></i> Kriteria penilaian dikelola oleh Super Admin. Hubungi Super Admin jika ada perubahan yang diperlukan.
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-card-checklist"></i></div>
+                        <h3>Daftar Kriteria Penilaian</h3>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>No</th><th>Nama Kriteria</th><th>Jenis</th><th>Keterangan</th></tr>
+                        </thead>
+                        <tbody>
+                            <% if (kriteriaList.length === 0) { %>
+                                <tr><td colspan="4" class="empty-state">Belum ada kriteria. Hubungi Super Admin untuk menambahkan.</td></tr>
+                            <% } %>
+                            <% kriteriaList.forEach(function(k, index) { %>
+                                <tr>
+                                    <td><%= index + 1 %></td>
+                                    <td><%= k.nama_kriteria %></td>
+                                    <td><span class="badge badge-<%= k.jenis === 'benefit' ? 'green' : 'red' %>"><%= k.jenis === 'benefit' ? 'Benefit' : 'Cost' %></span></td>
+                                    <td><%= k.keterangan || '-' %></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <%- include('../partials/footer') %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

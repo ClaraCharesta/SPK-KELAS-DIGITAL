@@ -20,7 +20,7 @@
                     <% if (periodeTertutup.length === 0) { %>
                         <p class="empty-state">Belum ada periode yang ditutup.</p>
                     <% } else { %>
-                        <select onchange="window.location.href='/superadmin/riwayat/' + this.value" style="padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:20px; width:100%; max-width:350px;">
+                        <select onchange="window.location.href='/admin/riwayat/' + this.value" style="padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:20px; width:100%; max-width:350px;">
                             <option value="">-- Pilih Periode --</option>
                             <% periodeTertutup.forEach(function(p) { %>
                                 <option value="<%= p.id_periode %>" <%= selectedPeriode && selectedPeriode.id_periode === p.id_periode ? 'selected' : '' %>>

@@ -9,7 +9,7 @@ const { sendPengingatPeriodeEmail } = require('../utils/pengingatMailer');
 const HARI_PENGINGAT = [7, 6, 5, 4, 3, 2, 1, 0];
 
 const PESAN_PER_ROLE = {
-    superadmin: {
+    admin: {
         peran: 'Admin',
         tugas: [
             'Ingatkan Operator agar data siswa dan nilai segera dilengkapi.',
@@ -45,10 +45,10 @@ const PESAN_DEFAULT = {
 
 // Nama lain dari tiap role (setelah dinormalisasi: huruf kecil, tanpa spasi/underscore/strip).
 const ALIAS_ROLE = {
-    superadmin: 'superadmin',
-    superadministrator: 'superadmin',
-    admin: 'superadmin',
-    administrator: 'superadmin',
+    admin: 'admin',
+    superadministrator: 'admin',
+    admin: 'admin',
+    administrator: 'admin',
     operator: 'operator',
     guru: 'operator',
     kepsek: 'kepsek',

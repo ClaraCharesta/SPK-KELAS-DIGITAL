@@ -10,10 +10,10 @@ const { isPeriodeSudahMulai } = require('../utils/periodeHelper');
 // Tautan tujuan dari dashboard. GANTI nilai "perankingan" jika route menu
 // Perankingan/WASPAS di aplikasimu berbeda.
 const LINK = {
-    fucom: '/admin/fucom',
-    siswa: '/admin/siswa',
-    nilai: '/admin/nilai',
-    perankingan: '/admin/waspas'
+    fucom: '/operator/fucom',
+    siswa: '/operator/siswa',
+    nilai: '/operator/nilai',
+    perankingan: '/operator/waspas'
 };
 
 // ===== Helper tanggal =====
@@ -361,11 +361,11 @@ async function bangunProgres(periodeAktif) {
 }
 
 const dashboardController = {
-    async showSuperAdminDashboard(req, res) {
+    async showAdminDashboard(req, res) {
         try {
-            const stats = await dashboardModel.getSuperAdminStats();
+            const stats = await dashboardModel.getAdminStats();
 
-            res.render('superadmin/dashboard', {
+            res.render('admin/dashboard', {
                 user: req.session.user,
                 stats,
                 activePage: 'dashboard',
@@ -377,14 +377,14 @@ const dashboardController = {
         }
     },
 
-    async showAdminDashboard(req, res) {
+    async showOperatorDashboard(req, res) {
         try {
             const [[periode]] = await db.query(
                 "SELECT id_periode FROM periode_seleksi WHERE status_periode = 'aktif' LIMIT 1"
             );
 
             const stats = periode
-                ? await dashboardModel.getAdminStats(periode.id_periode)
+                ? await dashboardModel.getOperatorStats(periode.id_periode)
                 : {
                     totalSiswa: 0,
                     totalKriteria: 0,
@@ -414,7 +414,7 @@ const dashboardController = {
                 }
             }
 
-            res.render('admin/dashboard', {
+            res.render('operator/dashboard', {
                 user: req.session.user,
                 stats,
                 chartData,

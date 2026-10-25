@@ -63,14 +63,14 @@
         daftarModal.push({
             id: 'modalInput', mode: 'input', icon: 'bi-clipboard-data',
             judul: 'Input Data Perbandingan Kriteria',
-            action: '/admin/fucom/input', tombol: 'Simpan Data'
+            action: '/operator/fucom/input', tombol: 'Simpan Data'
         });
     }
     if (bolehEdit) {
         daftarModal.push({
             id: 'modalEdit', mode: 'edit', icon: 'bi-pencil-fill',
             judul: 'Edit Data Perbandingan Kriteria',
-            action: '/admin/fucom/edit', tombol: 'Simpan Perubahan'
+            action: '/operator/fucom/edit', tombol: 'Simpan Perubahan'
         });
     }
 
@@ -231,7 +231,7 @@
                                                 <button type="button" class="btn-icon" title="Edit" onclick="bukaModalEdit()">
                                                     <i class="bi bi-pencil-fill"></i>
                                                 </button>
-                                                <form action="/admin/fucom/hapus" method="POST" onsubmit="return confirmDelete(this,'Hapus data responden ini?');">
+                                                <form action="/operator/fucom/hapus" method="POST" onsubmit="return confirmDelete(this,'Hapus data responden ini?');">
                                                     <button type="submit" class="btn-icon btn-icon-danger" title="Hapus">
                                                         <i class="bi bi-trash-fill"></i>
                                                     </button>
@@ -282,7 +282,7 @@
                                 <h3>Hasil Perhitungan Bobot Kriteria</h3>
                             </div>
                             <% if (respondenList.length >= 1 && !terkunci && (bobotFinal.length === 0 || !dfcKonsisten)) { %>
-                                <form action="/admin/fucom/hitung" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Setelah bobot dihitung dan hasilnya konsisten, data responden TIDAK bisa lagi diedit atau dihapus. Pastikan seluruh data responden sudah benar sebelum melanjutkan. Lanjutkan menghitung bobot?');">
+                                <form action="/operator/fucom/hitung" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Setelah bobot dihitung dan hasilnya konsisten, data responden TIDAK bisa lagi diedit atau dihapus. Pastikan seluruh data responden sudah benar sebelum melanjutkan. Lanjutkan menghitung bobot?');">
                                     <button type="submit" class="btn-primary">
                                         <i class="bi bi-calculator-fill"></i> Hitung Bobot FUCOM
                                     </button>

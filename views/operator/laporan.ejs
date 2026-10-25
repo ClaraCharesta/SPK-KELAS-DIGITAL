@@ -11,8 +11,8 @@
 </head>
 <body>
     <%
-        // Operator memakai route /admin, role lain mengikuti nilai role-nya.
-        const prefix = (user.role === 'operator') ? 'admin' : user.role;
+        // Operator memakai route /operator, role lain mengikuti nilai role-nya.
+        const prefix = (user.role === 'operator') ? 'operator' : user.role;
     %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>

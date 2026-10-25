@@ -54,7 +54,7 @@ const laporanController = {
     async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
-            const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'admin';
+            const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'operator';
             if (!periode) {
                 return res.render(`${basePath}/laporan`, {
                     user: req.session.user, activePage: 'laporan', pageTitle: 'Laporan',
@@ -80,7 +80,7 @@ const laporanController = {
     async unduhPDF(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
-            const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'admin';
+            const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'operator';
             if (!periode) {
                 return res.redirect(`/${basePath}/dashboard?error=${encodeURIComponent('Belum ada periode seleksi aktif.')}`);
             }
@@ -98,7 +98,7 @@ const laporanController = {
             generateLaporanPDF(res, { periode, hasilRanking, bobotKriteria, kepsek });
         } catch (error) {
             console.error(error);
-            const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'admin';
+            const basePath = req.session.user.role === 'kepsek' ? 'kepsek' : 'operator';
             res.redirect(`/${basePath}/dashboard?error=${encodeURIComponent('Terjadi kesalahan membuat laporan PDF.')}`);
         }
     }

@@ -327,7 +327,7 @@
                     <div class="alert alert-peringatan">
                         <i class="bi bi-exclamation-triangle-fill"></i>
                         Seluruh tombol di halaman Data Siswa <strong>dinonaktifkan</strong> karena pembobotan FUCOM belum selesai atau belum konsisten.
-                        Selesaikan di menu <a href="/admin/fucom" style="font-weight:600;">Pembobotan Kriteria</a>.
+                        Selesaikan di menu <a href="/operator/fucom" style="font-weight:600;">Pembobotan Kriteria</a>.
                     </div>
                 <% } %>
                 <% if (blokirNilai) { %>
@@ -358,7 +358,7 @@
                                 <i class="bi bi-download"></i> Unduh Template
                             </span>
                         <% } else { %>
-                            <a href="/admin/siswa/template" class="btn-secondary link-template">
+                            <a href="/operator/siswa/template" class="btn-secondary link-template">
                                 <i class="bi bi-download"></i> Unduh Template
                             </a>
                         <% } %>
@@ -454,7 +454,7 @@
 
                 <% if (bisaCentang) { %>
                     <!-- Bar aksi checklist massal (muncul otomatis saat ada yang dicentang) -->
-                    <form id="formMassal" class="bulk-bar" action="/admin/siswa/minat-massal" method="POST" onsubmit="return kirimMassal(this)">
+                    <form id="formMassal" class="bulk-bar" action="/operator/siswa/minat-massal" method="POST" onsubmit="return kirimMassal(this)">
                         <span class="bulk-info">
                             <i class="bi bi-check2-square"></i>
                             <strong id="jumlahDipilih">0</strong> siswa dipilih
@@ -487,7 +487,7 @@
                     </form>
 
                     <!-- Form hapus massal (tersembunyi). Id siswa diisi lewat JS saat submit. -->
-                    <form id="formHapusMassal" action="/admin/siswa/hapus-massal" method="POST"
+                    <form id="formHapusMassal" action="/operator/siswa/hapus-massal" method="POST"
                           onsubmit="return kirimHapusMassal(this)" style="display:none;"></form>
                 <% } %>
 
@@ -582,7 +582,7 @@
                                                 </div>
                                             <% } else { %>
                                                 <div class="minat-aksi">
-                                                    <form action="/admin/siswa/minat" method="POST"
+                                                    <form action="/operator/siswa/minat" method="POST"
                                                           onsubmit="return confirmDelete(this, 'Ubah status minat siswa ini menjadi Berminat? Siswa akan ikut perankingan dan status ini tidak dapat diubah lagi.')">
                                                         <input type="hidden" name="id_siswa" value="<%= s.id_siswa %>">
                                                         <input type="hidden" name="status_minat" value="berminat">
@@ -591,7 +591,7 @@
                                                         </button>
                                                     </form>
 
-                                                    <form action="/admin/siswa/minat" method="POST"
+                                                    <form action="/operator/siswa/minat" method="POST"
                                                           onsubmit="return confirmDelete(this, 'Ubah status minat siswa ini menjadi Tidak berminat? Akun siswa akan dinonaktifkan dan status ini tidak dapat diubah lagi.')">
                                                         <input type="hidden" name="id_siswa" value="<%= s.id_siswa %>">
                                                         <input type="hidden" name="status_minat" value="tidak_berminat">
@@ -616,7 +616,7 @@
                                                 <i class="bi bi-pencil-square"></i> Input/Edit
                                             </span>
                                         <% } else { %>
-                                            <a class="btn-kecil btn-nilai" href="/admin/nilai/<%= s.id_siswa %>" title="Input atau edit nilai siswa">
+                                            <a class="btn-kecil btn-nilai" href="/operator/nilai/<%= s.id_siswa %>" title="Input atau edit nilai siswa">
                                                 <i class="bi bi-pencil-square"></i> Input/Edit
                                             </a>
                                         <% } %>
@@ -668,7 +668,7 @@
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
 
-                                                <form action="/admin/siswa/delete/<%= s.id_siswa %>" method="POST"
+                                                <form action="/operator/siswa/delete/<%= s.id_siswa %>" method="POST"
                                                       onsubmit="return confirmDelete(this, 'Hapus data siswa ini beserta akun dan nilainya?')">
                                                     <button type="submit" class="btn-icon btn-icon-danger" title="Hapus data siswa">
                                                         <i class="bi bi-trash-fill"></i>
@@ -704,7 +704,7 @@
             <button type="button" class="modal-close" onclick="tutupModal('modalTambah')">&times;</button>
         </div>
 
-        <form action="/admin/siswa/create" method="POST" class="form-siswa" onsubmit="return validasiFormSiswa(this)">
+        <form action="/operator/siswa/create" method="POST" class="form-siswa" onsubmit="return validasiFormSiswa(this)">
             <div class="form-grid">
 
                 <div class="form-group">
@@ -773,7 +773,7 @@
             <button type="button" class="modal-close" onclick="tutupModal('modalImport')">&times;</button>
         </div>
 
-        <form action="/admin/siswa/import" method="POST" enctype="multipart/form-data">
+        <form action="/operator/siswa/import" method="POST" enctype="multipart/form-data">
             <p class="import-intro">
                 Pastikan file Excel memiliki kolom NISN, NAMA SISWA, JENIS KELAMIN SISWA, ASAL SEKOLAH,
                 PEKERJAAN AYAH, PEKERJAAN IBU, dan status penerima PIP/PKH sesuai template yang disediakan sistem.
@@ -805,7 +805,7 @@
             <button type="button" class="modal-close" onclick="tutupModal('modalEdit')">&times;</button>
         </div>
 
-        <form action="/admin/siswa/update" method="POST" class="form-siswa" onsubmit="return validasiFormSiswa(this)">
+        <form action="/operator/siswa/update" method="POST" class="form-siswa" onsubmit="return validasiFormSiswa(this)">
             <input type="hidden" name="id_siswa" id="edit_id_siswa">
 
             <div class="form-grid">
@@ -1165,7 +1165,7 @@
 
         selectFilter.value = <%- JSON.stringify(filterAwalVal) %>;
 
-        // Filter status minat dari tautan dashboard, contoh: /admin/siswa?minat=belum_respon
+        // Filter status minat dari tautan dashboard, contoh: /operator/siswa?minat=belum_respon
         try {
             const minatAwal = new URLSearchParams(window.location.search).get('minat');
             if (minatAwal && Array.prototype.some.call(selectMinat.options, function(o) { return o.value === minatAwal; })) {

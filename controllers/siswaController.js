@@ -89,10 +89,10 @@ const PESAN_BOBOT_BELUM_FINAL_AKSI =
     'Selesaikan dulu di menu Pembobotan Kriteria.';
 
 const redirectError = (res, pesan) =>
-    res.redirect('/admin/siswa?error=' + encodeURIComponent(pesan));
+    res.redirect('/operator/siswa?error=' + encodeURIComponent(pesan));
 
 const redirectSuccess = (res, pesan) =>
-    res.redirect('/admin/siswa?success=' + encodeURIComponent(pesan));
+    res.redirect('/operator/siswa?success=' + encodeURIComponent(pesan));
 
 function hapusFileUpload(req) {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
@@ -180,7 +180,7 @@ const PESAN_HAPUS_MASSAL = {
 
 const siswaController = {
 
-    // GET /admin/siswa
+    // GET /operator/siswa
     async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -201,7 +201,7 @@ const siswaController = {
             delete req.session.akunSiswaFlash;
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.render('admin/siswa', {
+                return res.render('operator/siswa', {
                     ...dasar,
                     siswaList: [],
                     ringkasan: null,
@@ -218,7 +218,7 @@ const siswaController = {
             const terkunci = await cekTerkunci(periode.id_periode);
             const bobotFinal = await cekBobotFinal(periode.id_periode);
 
-            return res.render('admin/siswa', {
+            return res.render('operator/siswa', {
                 ...dasar,
                 siswaList,
                 ringkasan,
@@ -234,7 +234,7 @@ const siswaController = {
         }
     },
 
-    // POST /admin/siswa/create
+    // POST /operator/siswa/create
     // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     // Akun siswa TIDAK dibuat otomatis; operator membuatnya lewat tombol "Buat Akun Siswa".
     async create(req, res) {
@@ -300,7 +300,7 @@ const siswaController = {
         }
     },
 
-    // POST /admin/siswa/update
+    // POST /operator/siswa/update
     // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async update(req, res) {
         try {
@@ -373,7 +373,7 @@ const siswaController = {
         }
     },
 
-    // POST /admin/siswa/minat
+    // POST /operator/siswa/minat
     // Operator mengubah status minat. Hanya untuk siswa yang masih "Belum merespons".
     // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async ubahMinat(req, res) {
@@ -435,7 +435,7 @@ const siswaController = {
         }
     },
 
-    // POST /admin/siswa/minat-massal
+    // POST /operator/siswa/minat-massal
     // Operator menandai banyak siswa (checklist) sebagai "Berminat" ATAU "Tidak berminat" sekaligus.
     // Status dikirim lewat field status_minat. Hanya siswa yang punya akun dan masih
     // "Belum merespons" yang diubah. Untuk "Tidak berminat", akun siswa ikut dinonaktifkan.
@@ -525,7 +525,7 @@ const siswaController = {
         }
     },
 
-    // POST /admin/siswa/hapus-massal
+    // POST /operator/siswa/hapus-massal
     // Operator menghapus BANYAK siswa sekaligus (checklist) beserta akun dan nilainya.
     // Aturannya sama dengan tombol input: hanya bisa jika bobot FUCOM sudah final dan konsisten,
     // dan TIDAK bisa lagi setelah hasil seleksi difinalisasi.
@@ -594,7 +594,7 @@ const siswaController = {
         }
     },
 
-    // POST /admin/siswa/delete/:id_siswa
+    // POST /operator/siswa/delete/:id_siswa
     // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async delete(req, res) {
         try {
@@ -632,7 +632,7 @@ const siswaController = {
         }
     },
 
-    // GET /admin/siswa/template
+    // GET /operator/siswa/template
     // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     async downloadTemplate(req, res) {
         try {
@@ -653,7 +653,7 @@ const siswaController = {
         }
     },
 
-    // POST /admin/siswa/import
+    // POST /operator/siswa/import
     // Hanya bisa jika bobot FUCOM sudah final dan konsisten.
     // Akun siswa TIDAK dibuat otomatis; operator membuatnya lewat tombol "Buat Akun Siswa".
     async importExcel(req, res) {

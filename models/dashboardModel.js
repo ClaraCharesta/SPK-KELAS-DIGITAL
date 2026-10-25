@@ -1,7 +1,7 @@
 const db = require('../config/database');
 
 const dashboardModel = {
-    async getAdminStats(id_periode) {
+    async getOperatorStats(id_periode) {
         const [[{ totalSiswa }]] = await db.query(
             'SELECT COUNT(*) AS totalSiswa FROM siswa WHERE id_periode = ?', [id_periode]
         );
@@ -30,9 +30,9 @@ const dashboardModel = {
         };
     },
 
-    async getSuperAdminStats() {
-        const [[{ totalAdmin }]] = await db.query(
-            "SELECT COUNT(*) AS totalAdmin FROM users WHERE role = 'admin' AND status_aktif = TRUE"
+    async getAdminStats() {
+        const [[{ totalOperator }]] = await db.query(
+            "SELECT COUNT(*) AS totalOperator FROM users WHERE role = 'operator' AND status_aktif = TRUE"
         );
         const [[periodeAktif]] = await db.query(
             "SELECT tahun_ajaran FROM periode_seleksi WHERE status_periode = 'aktif' LIMIT 1"
@@ -45,7 +45,7 @@ const dashboardModel = {
         );
 
         return {
-            totalAdmin,
+            totalOperator,
             periodeAktif: periodeAktif ? periodeAktif.tahun_ajaran : 'Belum ada',
             totalKriteria,
             logHariIni

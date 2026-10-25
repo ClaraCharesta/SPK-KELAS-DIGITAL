@@ -111,7 +111,7 @@ const fucomController = {
             const namaResponden = await ambilNamaResponden(req);
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.render('admin/fucom', {
+                return res.render('operator/fucom', {
                     user: req.session.user,
                     activePage: 'fucom',
                     pageTitle: 'Perhitungan FUCOM',
@@ -148,7 +148,7 @@ const fucomController = {
 
             const terkunci = await cekTerkunci(periode.id_periode);
 
-            res.render('admin/fucom', {
+            res.render('operator/fucom', {
                 user: req.session.user,
                 activePage: 'fucom',
                 pageTitle: 'Perhitungan FUCOM',
@@ -172,25 +172,25 @@ const fucomController = {
         try {
             const periode = await periodeModel.getActivePeriode();
             if (!periode) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
             }
             if (!isPeriodeSudahMulai(periode)) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent(pesanBelumMulai(periode)));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(pesanBelumMulai(periode)));
             }
             if (await cekTerkunci(periode.id_periode)) {
-                return res.redirect('/admin/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
+                return res.redirect('/operator/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
             }
 
             const kriteriaList = await fucomModel.getKriteria(periode.id_periode);
             const parsed = parseDanValidasiPayload(req.body, kriteriaList);
             if (parsed.errorMsg) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent(parsed.errorMsg));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(parsed.errorMsg));
             }
 
             // Nama responden = nama profil akun yang sedang login
             const namaResponden = await ambilNamaResponden(req);
             if (!namaResponden) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent('Nama pada profil akun Anda kosong. Isi dulu nama lengkap di menu Profil.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent('Nama pada profil akun Anda kosong. Isi dulu nama lengkap di menu Profil.'));
             }
 
             // Pengecekan "sudah ada responden?" dan "bobot sudah final?" dilakukan DI DALAM kunci database,
@@ -205,13 +205,13 @@ const fucomController = {
                 );
             } catch (err) {
                 if (err && err.code === 'ER_DUP_ENTRY') {
-                    return res.redirect('/admin/fucom?error=' + encodeURIComponent(PESAN_TOLAK.sudah_ada));
+                    return res.redirect('/operator/fucom?error=' + encodeURIComponent(PESAN_TOLAK.sudah_ada));
                 }
                 throw err;
             }
 
             if (!hasil.ok) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent(PESAN_TOLAK[hasil.alasan] || 'Data tidak dapat disimpan.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(PESAN_TOLAK[hasil.alasan] || 'Data tidak dapat disimpan.'));
             }
 
             await userModel.logActivity(
@@ -219,10 +219,10 @@ const fucomController = {
                 `Menyimpan data perbandingan kriteria FUCOM (responden: ${namaResponden})`
             );
 
-            res.redirect('/admin/fucom?success=Data responden berhasil disimpan. Klik Hitung Bobot FUCOM untuk melanjutkan.');
+            res.redirect('/operator/fucom?success=Data responden berhasil disimpan. Klik Hitung Bobot FUCOM untuk melanjutkan.');
         } catch (error) {
             console.error(error);
-            res.redirect('/admin/fucom?error=Terjadi kesalahan sistem.');
+            res.redirect('/operator/fucom?error=Terjadi kesalahan sistem.');
         }
     },
 
@@ -231,31 +231,31 @@ const fucomController = {
         try {
             const periode = await periodeModel.getActivePeriode();
             if (!periode) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
             }
             if (!isPeriodeSudahMulai(periode)) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent(pesanBelumMulai(periode)));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(pesanBelumMulai(periode)));
             }
             if (await cekTerkunci(periode.id_periode)) {
-                return res.redirect('/admin/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
+                return res.redirect('/operator/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
             }
 
             // Responden yang diedit diambil dari database (bukan dari form), supaya tidak bisa dimanipulasi.
             const respondenSaatIni = await fucomModel.getRespondenList(periode.id_periode);
             if (respondenSaatIni.length === 0) {
-                return res.redirect('/admin/fucom?error=Data responden yang ingin diedit tidak ditemukan.');
+                return res.redirect('/operator/fucom?error=Data responden yang ingin diedit tidak ditemukan.');
             }
             const namaLama = respondenSaatIni[0];
 
             const kriteriaList = await fucomModel.getKriteria(periode.id_periode);
             const parsed = parseDanValidasiPayload(req.body, kriteriaList);
             if (parsed.errorMsg) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent(parsed.errorMsg));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(parsed.errorMsg));
             }
 
             const namaBaru = await ambilNamaResponden(req);
             if (!namaBaru) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent('Nama pada profil akun Anda kosong. Isi dulu nama lengkap di menu Profil.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent('Nama pada profil akun Anda kosong. Isi dulu nama lengkap di menu Profil.'));
             }
 
             // Hapus data lama + tulis data baru dalam satu transaksi (aman dari gagal di tengah jalan).
@@ -267,7 +267,7 @@ const fucomController = {
             );
 
             if (!hasil.ok) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent(PESAN_TOLAK[hasil.alasan] || 'Data tidak dapat diubah.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(PESAN_TOLAK[hasil.alasan] || 'Data tidak dapat diubah.'));
             }
 
             await userModel.logActivity(
@@ -275,10 +275,10 @@ const fucomController = {
                 `Mengedit data perbandingan kriteria FUCOM (responden: ${namaLama} -> ${namaBaru})`
             );
 
-            res.redirect('/admin/fucom?success=Data responden berhasil diperbarui. Klik Hitung Bobot FUCOM untuk melanjutkan.');
+            res.redirect('/operator/fucom?success=Data responden berhasil diperbarui. Klik Hitung Bobot FUCOM untuk melanjutkan.');
         } catch (error) {
             console.error(error);
-            res.redirect('/admin/fucom?error=Terjadi kesalahan sistem.');
+            res.redirect('/operator/fucom?error=Terjadi kesalahan sistem.');
         }
     },
 
@@ -286,10 +286,10 @@ const fucomController = {
         try {
             const periode = await periodeModel.getActivePeriode();
             if (!periode) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
             }
             if (await cekTerkunci(periode.id_periode)) {
-                return res.redirect('/admin/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
+                return res.redirect('/operator/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
             }
 
             const respondenSaatIni = await fucomModel.getRespondenList(periode.id_periode);
@@ -302,7 +302,7 @@ const fucomController = {
                 const pesanHapus = hasil.alasan === 'final'
                     ? 'Bobot kriteria sudah dihitung dan konsisten. Data responden tidak dapat dihapus lagi.'
                     : PESAN_TOLAK[hasil.alasan];
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent(pesanHapus));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(pesanHapus));
             }
 
             await userModel.logActivity(
@@ -310,10 +310,10 @@ const fucomController = {
                 `Menghapus data responden FUCOM: ${namaDihapus}`
             );
 
-            res.redirect('/admin/fucom?success=Data responden berhasil dihapus. Silakan input ulang data untuk menghitung kembali.');
+            res.redirect('/operator/fucom?success=Data responden berhasil dihapus. Silakan input ulang data untuk menghitung kembali.');
         } catch (error) {
             console.error(error);
-            res.redirect('/admin/fucom?error=Terjadi kesalahan sistem.');
+            res.redirect('/operator/fucom?error=Terjadi kesalahan sistem.');
         }
     },
 
@@ -321,21 +321,21 @@ const fucomController = {
         try {
             const periode = await periodeModel.getActivePeriode();
             if (!periode) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
             }
             if (await cekTerkunci(periode.id_periode)) {
-                return res.redirect('/admin/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
+                return res.redirect('/operator/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
             }
 
             const respondenList = await fucomModel.getRespondenList(periode.id_periode);
             if (respondenList.length < 1) {
-                return res.redirect(`/admin/fucom?error=Data perbandingan kriteria belum diisi. Silakan input data responden terlebih dahulu.`);
+                return res.redirect(`/operator/fucom?error=Data perbandingan kriteria belum diisi. Silakan input data responden terlebih dahulu.`);
             }
 
             // Cek bobot sudah final (dibaca langsung dari database)
             const bobotTersimpan = await fucomModel.getBobotFinal(periode.id_periode);
             if (bobotTersimpan.length > 0 && parseFloat(bobotTersimpan[0].nilai_dfc) < DFC_THRESHOLD) {
-                return res.redirect('/admin/fucom?error=Bobot kriteria sudah final dan konsisten.');
+                return res.redirect('/operator/fucom?error=Bobot kriteria sudah final dan konsisten.');
             }
 
             // ====== PEMBOBOTAN FUCOM 1 RESPONDEN (HASIL MUSYAWARAH) ======
@@ -402,7 +402,7 @@ const fucomController = {
                         `Perhitungan bobot FUCOM ditahan karena bobot timpang (${namaTerkecil}: ${persenIndo(terkecil.bobot)}, DFC: ${hasil.dfc})`
                     );
 
-                    return res.redirect('/admin/fucom?error=' + encodeURIComponent(pesan));
+                    return res.redirect('/operator/fucom?error=' + encodeURIComponent(pesan));
                 }
             }
 
@@ -414,7 +414,7 @@ const fucomController = {
             );
 
             if (!tersimpan) {
-                return res.redirect('/admin/fucom?error=' + encodeURIComponent('Data perbandingan berubah saat perhitungan berjalan, bobot tidak disimpan. Silakan klik Hitung Bobot FUCOM sekali lagi.'));
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent('Data perbandingan berubah saat perhitungan berjalan, bobot tidak disimpan. Silakan klik Hitung Bobot FUCOM sekali lagi.'));
             }
 
             await userModel.logActivity(
@@ -424,15 +424,15 @@ const fucomController = {
 
             // Pesan berbeda tergantung apakah hasil konsisten atau tidak
             if (dfcLolos) {
-                res.redirect(`/admin/fucom?success=Bobot kriteria berhasil dihitung dan konsisten. Bobot telah dikunci sebagai bobot final.`);
+                res.redirect(`/operator/fucom?success=Bobot kriteria berhasil dihitung dan konsisten. Bobot telah dikunci sebagai bobot final.`);
             } else {
                 const dfcTampil = dfc.toFixed(3).replace('.', ',');
                 const pesan = `Hasil belum konsisten (DFC ${dfcTampil}, syarat di bawah 0,1). Ikuti panduan perbaikan di bawah, lalu hitung ulang.`;
-                res.redirect('/admin/fucom?error=' + encodeURIComponent(pesan));
+                res.redirect('/operator/fucom?error=' + encodeURIComponent(pesan));
             }
         } catch (error) {
             console.error(error);
-            res.redirect('/admin/fucom?error=' + encodeURIComponent('Terjadi kesalahan dalam perhitungan: ' + error.message));
+            res.redirect('/operator/fucom?error=' + encodeURIComponent('Terjadi kesalahan dalam perhitungan: ' + error.message));
         }
     }
 };

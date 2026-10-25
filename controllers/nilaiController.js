@@ -117,14 +117,14 @@ async function ambilKriteriaDenganNilai(id_siswa, id_periode) {
 
 const nilaiController = {
     // =========================================================
-    // GET /admin/nilai
+    // GET /operator/nilai
     // =========================================================
     async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.render('admin/nilai', {
+                return res.render('operator/nilai', {
                     user: req.session.user,
                     siswaList: [],
                     kriteriaList: [],
@@ -177,7 +177,7 @@ const nilaiController = {
             const bobotFinal = await cekBobotFinal(periode.id_periode);
             const jumlahBelumRespon = await hitungBelumRespon(periode.id_periode);
 
-            return res.render('admin/nilai', {
+            return res.render('operator/nilai', {
                 user: req.session.user,
                 siswaList,
                 kriteriaList,
@@ -197,7 +197,7 @@ const nilaiController = {
     },
 
     // =========================================================
-    // GET /admin/nilai/:id_siswa
+    // GET /operator/nilai/:id_siswa
     // =========================================================
     async showForm(req, res) {
         try {
@@ -205,17 +205,17 @@ const nilaiController = {
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode) {
-                return res.redirect('/admin/nilai?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
+                return res.redirect('/operator/nilai?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
             }
 
             if (!isPeriodeSudahMulai(periode)) {
-                return res.redirect('/admin/nilai?error=' + encodeURIComponent(pesanBelumMulai(periode)));
+                return res.redirect('/operator/nilai?error=' + encodeURIComponent(pesanBelumMulai(periode)));
             }
 
             const siswa = await nilaiModel.getSiswaById(id_siswa);
 
             if (!siswa || Number(siswa.id_periode) !== Number(periode.id_periode)) {
-                return res.redirect('/admin/nilai?error=' + encodeURIComponent('Siswa tidak ditemukan pada periode aktif.'));
+                return res.redirect('/operator/nilai?error=' + encodeURIComponent('Siswa tidak ditemukan pada periode aktif.'));
             }
 
             // Dibaca langsung dari database agar nilai selalu tampil, juga setelah finalisasi.
@@ -241,7 +241,7 @@ const nilaiController = {
                 statusMinat !== 'tidak_berminat' &&
                 jumlahBelumRespon === 0;
 
-            return res.render('admin/nilai-form', {
+            return res.render('operator/nilai-form', {
                 user: req.session.user,
                 siswa,
                 kriteriaList,
@@ -262,7 +262,7 @@ const nilaiController = {
     },
 
     // =========================================================
-    // POST /admin/nilai/:id_siswa/save
+    // POST /operator/nilai/:id_siswa/save
     // Syarat: sudah ada data siswa + tidak ada siswa "Belum merespons".
     // =========================================================
     async saveNilai(req, res) {
@@ -271,18 +271,18 @@ const nilaiController = {
 
         const redirectError = (pesan) =>
             res.redirect(
-                `/admin/nilai/${encodeURIComponent(id_siswa)}?error=` + encodeURIComponent(pesan)
+                `/operator/nilai/${encodeURIComponent(id_siswa)}?error=` + encodeURIComponent(pesan)
             );
 
         try {
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode) {
-                return res.redirect('/admin/nilai?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
+                return res.redirect('/operator/nilai?error=' + encodeURIComponent('Belum ada periode seleksi aktif.'));
             }
 
             if (!isPeriodeSudahMulai(periode)) {
-                return res.redirect('/admin/nilai?error=' + encodeURIComponent(pesanBelumMulai(periode)));
+                return res.redirect('/operator/nilai?error=' + encodeURIComponent(pesanBelumMulai(periode)));
             }
 
             if (await cekTerkunci(periode.id_periode)) {
@@ -454,7 +454,7 @@ const nilaiController = {
             await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
             return res.redirect(
-                '/admin/nilai?success=' +
+                '/operator/nilai?success=' +
                 encodeURIComponent(`Nilai siswa ${siswa.nama} berhasil disimpan.`)
             );
         } catch (error) {
@@ -495,7 +495,7 @@ const nilaiController = {
     },
 
     // =========================================================
-    // GET /admin/nilai/template
+    // GET /operator/nilai/template
     // =========================================================
     async downloadTemplate(req, res) {
         try {
@@ -523,13 +523,13 @@ const nilaiController = {
     },
 
     // =========================================================
-    // POST /admin/nilai/import
+    // POST /operator/nilai/import
     // Syarat: sudah ada data siswa + tidak ada siswa "Belum merespons".
     // Siswa tidak berminat dilewati.
     // =========================================================
     async importNilai(req, res) {
         const kembaliError = (pesan) =>
-            res.redirect('/admin/nilai?error=' + encodeURIComponent(pesan));
+            res.redirect('/operator/nilai?error=' + encodeURIComponent(pesan));
 
         try {
             if (!req.file) {
@@ -682,7 +682,7 @@ const nilaiController = {
             if (siswaDilewati.length) pesan += ` ${siswaDilewati.length} siswa dilewati (${formatDetail(siswaDilewati, 10)}).`;
             if (nilaiTidakValid.length) pesan += ` ${nilaiTidakValid.length} nilai gagal disimpan (${formatDetail(nilaiTidakValid, 10)}).`;
 
-            return res.redirect('/admin/nilai?success=' + encodeURIComponent(pesan));
+            return res.redirect('/operator/nilai?success=' + encodeURIComponent(pesan));
         } catch (error) {
             console.error('ERROR IMPORT NILAI:', error);
             hapusFileUpload(req);

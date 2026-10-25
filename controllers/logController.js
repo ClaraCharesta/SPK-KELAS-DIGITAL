@@ -6,7 +6,7 @@ const logController = {
             const { role, tanggal } = req.query;
             const logs = await logModel.getAllLogs(role || null, tanggal || null);
 
-            res.render('superadmin/log', {
+            res.render('admin/log', {
                 user: req.session.user, activePage: 'log', pageTitle: 'Log Aktivitas',
                 logs, filterRole: role || '', filterTanggal: tanggal || ''
             });

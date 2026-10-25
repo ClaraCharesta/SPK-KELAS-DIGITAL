@@ -24,7 +24,7 @@
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
             <div class="content-wrapper">
-                <a href="/admin/nilai" class="back-link"><i class="bi bi-arrow-left"></i> Kembali ke Daftar Siswa</a>
+                <a href="/operator/nilai" class="back-link"><i class="bi bi-arrow-left"></i> Kembali ke Daftar Siswa</a>
 
                 <% if (terkunci) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00;">
@@ -38,13 +38,13 @@
                     <div class="alert" style="background:#fdf1de; color:#b35c00;">
                         <i class="bi bi-exclamation-triangle-fill"></i>
                         Input nilai dinonaktifkan karena <strong>pembobotan FUCOM belum selesai atau belum konsisten</strong>.
-                        Selesaikan di menu <a href="/admin/fucom" style="font-weight:600;">Pembobotan Kriteria</a>.
+                        Selesaikan di menu <a href="/operator/fucom" style="font-weight:600;">Pembobotan Kriteria</a>.
                     </div>
                 <% } else if (jumlahBelumRespon > 0) { %>
                     <div class="alert" style="background:#fdf1de; color:#b35c00;">
                         <i class="bi bi-exclamation-triangle-fill"></i>
                         Input nilai dinonaktifkan karena masih ada <strong><%= jumlahBelumRespon %> siswa</strong> yang belum merespons.
-                        Selesaikan di menu <a href="/admin/siswa" style="font-weight:600;">Data Siswa</a>.
+                        Selesaikan di menu <a href="/operator/siswa" style="font-weight:600;">Data Siswa</a>.
                     </div>
                 <% } %>
 
@@ -100,7 +100,7 @@
 
                     <% } else { %>
 
-                        <form action="/admin/nilai/<%= siswa.id_siswa %>/save" method="POST" id="formNilai">
+                        <form action="/operator/nilai/<%= siswa.id_siswa %>/save" method="POST" id="formNilai">
                             <table class="data-table">
                                 <thead>
                                     <tr><th>Kriteria</th><th>Jenis</th><th>Nilai</th></tr>

@@ -11,7 +11,7 @@ const kriteriaController = {
         try {
             const periode = await periodeModel.getActivePeriode();
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.render('superadmin/kriteria', {
+                return res.render('admin/kriteria', {
                     user: req.session.user, kriteriaList: [], terkunci: false, activePage: 'kriteria',
                     pageTitle: 'Kelola Kriteria', success: null,
                     error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode)
@@ -22,7 +22,7 @@ const kriteriaController = {
             const terkunci = (await kriteriaModel.checkPerankinganDimulai(periode.id_periode))
                 || (await kriteriaModel.checkBobotSudahFinal(periode.id_periode));
 
-            res.render('superadmin/kriteria', {
+            res.render('admin/kriteria', {
                 user: req.session.user, kriteriaList, terkunci, activePage: 'kriteria',
                 pageTitle: 'Kelola Kriteria',
                 success: req.query.success || null,
@@ -40,7 +40,7 @@ const kriteriaController = {
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.render('admin/kriteria', {
+                return res.render('operator/kriteria', {
                     user: req.session.user, kriteriaList: [], activePage: 'kriteria',
                     pageTitle: 'Kriteria Penilaian',
                     error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
@@ -49,7 +49,7 @@ const kriteriaController = {
             }
 
             const kriteriaList = await kriteriaModel.getAll(periode.id_periode);
-            res.render('admin/kriteria', {
+            res.render('operator/kriteria', {
                 user: req.session.user, kriteriaList, activePage: 'kriteria',
                 pageTitle: 'Kriteria Penilaian', error: null, success: null
             });
@@ -64,40 +64,40 @@ const kriteriaController = {
             const { nama_kriteria, jenis, keterangan } = req.body;
 
             if (!nama_kriteria || !jenis) {
-                return res.redirect('/superadmin/kriteria?error=Nama kriteria dan jenis wajib diisi.');
+                return res.redirect('/admin/kriteria?error=Nama kriteria dan jenis wajib diisi.');
             }
 
             // VALIDASI BARU: Nama kriteria hanya boleh huruf dan spasi
             if (!REGEX_HURUF_SAJA.test(nama_kriteria.trim())) {
-                return res.redirect('/superadmin/kriteria?error=Nama kriteria hanya boleh berisi huruf dan spasi.');
+                return res.redirect('/admin/kriteria?error=Nama kriteria hanya boleh berisi huruf dan spasi.');
             }
 
             const periode = await periodeModel.getActivePeriode();
             if (!periode || !isPeriodeSudahMulai(periode)) {
-                return res.redirect('/superadmin/kriteria?error=' + encodeURIComponent(!periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode)));
+                return res.redirect('/admin/kriteria?error=' + encodeURIComponent(!periode ? 'Periode seleksi belum aktif.' : pesanBelumMulai(periode)));
             }
 
             if (await kriteriaModel.checkPerankinganDimulai(periode.id_periode)) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');
+                return res.redirect('/admin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');
             }
 
             if (await kriteriaModel.checkBobotSudahFinal(periode.id_periode)) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena pembobotan FUCOM sudah dijalankan dan final pada periode ini.');
+                return res.redirect('/admin/kriteria?error=Kriteria terkunci karena pembobotan FUCOM sudah dijalankan dan final pada periode ini.');
             }
 
             // VALIDASI: Cek duplikasi nama kriteria dalam periode yang sama
             const namaSudahAda = await kriteriaModel.checkNamaExists(periode.id_periode, nama_kriteria.trim());
             if (namaSudahAda) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria dengan nama tersebut sudah ada pada periode ini.');
+                return res.redirect('/admin/kriteria?error=Kriteria dengan nama tersebut sudah ada pada periode ini.');
             }
 
             await kriteriaModel.create({ id_periode: periode.id_periode, nama_kriteria: nama_kriteria.trim(), jenis, keterangan });
             await userModel.logActivity(req.session.user.id_user, `Menambahkan kriteria baru: ${nama_kriteria}`);
 
-            res.redirect('/superadmin/kriteria?success=Kriteria berhasil ditambahkan.');
+            res.redirect('/admin/kriteria?success=Kriteria berhasil ditambahkan.');
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/kriteria?error=Terjadi kesalahan sistem.');
+            res.redirect('/admin/kriteria?error=Terjadi kesalahan sistem.');
         }
     },
 
@@ -106,37 +106,37 @@ const kriteriaController = {
             const { id_kriteria, nama_kriteria, jenis, keterangan } = req.body;
 
             if (!nama_kriteria || !jenis) {
-                return res.redirect('/superadmin/kriteria?error=Nama kriteria dan jenis wajib diisi.');
+                return res.redirect('/admin/kriteria?error=Nama kriteria dan jenis wajib diisi.');
             }
 
             // VALIDASI BARU: Nama kriteria hanya boleh huruf dan spasi
             if (!REGEX_HURUF_SAJA.test(nama_kriteria.trim())) {
-                return res.redirect('/superadmin/kriteria?error=Nama kriteria hanya boleh berisi huruf dan spasi.');
+                return res.redirect('/admin/kriteria?error=Nama kriteria hanya boleh berisi huruf dan spasi.');
             }
 
             const periode = await periodeModel.getActivePeriode();
 
             if (await kriteriaModel.checkPerankinganDimulai(periode.id_periode)) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');
+                return res.redirect('/admin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');
             }
 
             if (await kriteriaModel.checkBobotSudahFinal(periode.id_periode)) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena pembobotan FUCOM sudah dijalankan dan final pada periode ini.');
+                return res.redirect('/admin/kriteria?error=Kriteria terkunci karena pembobotan FUCOM sudah dijalankan dan final pada periode ini.');
             }
 
             // VALIDASI: Cek duplikasi nama kriteria (kecuali dirinya sendiri)
             const namaSudahAda = await kriteriaModel.checkNamaExists(periode.id_periode, nama_kriteria.trim(), id_kriteria);
             if (namaSudahAda) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria dengan nama tersebut sudah ada pada periode ini.');
+                return res.redirect('/admin/kriteria?error=Kriteria dengan nama tersebut sudah ada pada periode ini.');
             }
 
             await kriteriaModel.update(id_kriteria, { nama_kriteria: nama_kriteria.trim(), jenis, keterangan });
             await userModel.logActivity(req.session.user.id_user, `Memperbarui kriteria: ${nama_kriteria}`);
 
-            res.redirect('/superadmin/kriteria?success=Kriteria berhasil diperbarui.');
+            res.redirect('/admin/kriteria?success=Kriteria berhasil diperbarui.');
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/kriteria?error=Terjadi kesalahan sistem.');
+            res.redirect('/admin/kriteria?error=Terjadi kesalahan sistem.');
         }
     },
 
@@ -146,26 +146,26 @@ const kriteriaController = {
             const kriteria = await kriteriaModel.getById(id_kriteria);
 
             if (kriteria && await kriteriaModel.checkPerankinganDimulai(kriteria.id_periode)) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');
+                return res.redirect('/admin/kriteria?error=Kriteria terkunci karena perankingan sudah pernah dijalankan pada periode ini.');
             }
 
             if (kriteria && await kriteriaModel.checkBobotSudahFinal(kriteria.id_periode)) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria terkunci karena pembobotan FUCOM sudah dijalankan dan final pada periode ini.');
+                return res.redirect('/admin/kriteria?error=Kriteria terkunci karena pembobotan FUCOM sudah dijalankan dan final pada periode ini.');
             }
 
             // VALIDASI: Cegah hapus kriteria yang sudah punya nilai siswa atau bobot FUCOM
             const sedangDipakai = await kriteriaModel.checkSedangDipakai(id_kriteria);
             if (sedangDipakai) {
-                return res.redirect('/superadmin/kriteria?error=Kriteria ini tidak dapat dihapus karena sudah memiliki data nilai siswa atau bobot FUCOM terkait.');
+                return res.redirect('/admin/kriteria?error=Kriteria ini tidak dapat dihapus karena sudah memiliki data nilai siswa atau bobot FUCOM terkait.');
             }
 
             await kriteriaModel.delete(id_kriteria);
             await userModel.logActivity(req.session.user.id_user, `Menghapus kriteria: ${kriteria ? kriteria.nama_kriteria : id_kriteria}`);
 
-            res.redirect('/superadmin/kriteria?success=Kriteria berhasil dihapus.');
+            res.redirect('/admin/kriteria?success=Kriteria berhasil dihapus.');
         } catch (error) {
             console.error(error);
-            res.redirect('/superadmin/kriteria?error=Gagal menghapus kriteria.');
+            res.redirect('/admin/kriteria?error=Gagal menghapus kriteria.');
         }
     },
 

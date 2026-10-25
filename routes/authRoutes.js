@@ -20,8 +20,8 @@ router.post('/forgot-password', authController.processForgotPassword);
 router.get('/dashboard', isAuthenticated, (req, res) => {
     const role = req.session.user.role;
 
-    if (role === 'admin') return res.redirect('/superadmin/dashboard');
-    if (role === 'operator') return res.redirect('/admin/dashboard');
+    if (role === 'admin') return res.redirect('/admin/dashboard');
+    if (role === 'operator') return res.redirect('/operator/dashboard');
     if (role === 'kepsek') return res.redirect('/kepsek/dashboard');
 
     return res.status(403).send('Role akun tidak dikenali.');

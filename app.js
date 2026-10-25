@@ -59,8 +59,8 @@ app.use((req, res, next) => {
 app.use('/akun-siswa', require('./routes/akunSiswaRoutes'));
 
 const authRoutes = require('./routes/authRoutes');
-const superadminRoutes = require('./routes/superadminRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const operatorRoutes = require('./routes/operatorRoutes');
 const kepsekRoutes = require('./routes/kepsekRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 
@@ -89,8 +89,8 @@ app.use('/siswa', require('./routes/siswaRoutes'));
 // Semua route staf di bawah ini wajib login
 app.use(isAuthenticated, wajibGantiPasswordGuard);
 
-app.use('/superadmin', superadminRoutes);
 app.use('/admin', adminRoutes);
+app.use('/operator', operatorRoutes);
 app.use('/kepsek', kepsekRoutes);
 app.use('/', profileRoutes);
 const pengingatService = require('./services/pengingatService');
