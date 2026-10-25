@@ -31,7 +31,6 @@ const siswaModel = {
         const nisn = bersihkan(data.nisn);
         const nama = bersihkan(data.nama);
         const sekolah_asal = bersihkan(data.sekolah_asal);
-        // Pekerjaan opsional: kosong -> "Tidak bekerja"
         const pekerjaan_ayah = bersihkan(data.pekerjaan_ayah) || PEKERJAAN_DEFAULT;
         const pekerjaan_ibu = bersihkan(data.pekerjaan_ibu) || PEKERJAAN_DEFAULT;
 
@@ -73,7 +72,6 @@ const siswaModel = {
         }
     },
 
-    // Hapus siswa beserta seluruh data turunannya dalam satu transaksi.
     async deleteSiswa(id_siswa) {
         const conn = await db.getConnection();
         try {
@@ -91,10 +89,6 @@ const siswaModel = {
         }
     },
 
-    // BARU: hapus BANYAK siswa sekaligus (checklist) beserta data turunannya, satu transaksi.
-    // Hanya siswa milik periode yang diberikan yang dihapus; id lain dilewati.
-    // Ditolak jika periode sudah difinalisasi (status_penyelesaian = 'selesai').
-    // Return { ok: true, dihapus, dilewati } atau { ok: false, alasan }.
     async deleteSiswaMassal(daftarId, id_periode) {
         if (!Array.isArray(daftarId) || daftarId.length === 0) {
             return { ok: false, alasan: 'TIDAK_ADA_PILIHAN' };
@@ -105,7 +99,6 @@ const siswaModel = {
         try {
             await conn.beginTransaction();
 
-            // Kunci bersama baris periode: finalisasi akan menunggu transaksi ini.
             const [[periode]] = await conn.query(
                 'SELECT status_penyelesaian FROM periode_seleksi WHERE id_periode = ? LOCK IN SHARE MODE',
                 [id_periode]
@@ -116,7 +109,6 @@ const siswaModel = {
                 return { ok: false, alasan: 'PERIODE_FINAL' };
             }
 
-            // Hanya siswa yang benar-benar milik periode ini.
             const [rows] = await conn.query(
                 'SELECT id_siswa FROM siswa WHERE id_periode = ? AND id_siswa IN (?) FOR UPDATE',
                 [id_periode, daftarId]
@@ -200,7 +192,6 @@ const siswaModel = {
         return { berhasil, gagal, pesanGagal };
     },
 
-    // Daftar siswa + status akun + status minat (sumber: akun_siswa).
     async getAllWithAkun(id_periode) {
         const [rows] = await db.query(
             `SELECT
@@ -227,10 +218,6 @@ const siswaModel = {
         return jumlah > 0;
     },
 
-    // Operator mengubah status minat satu siswa.
-    // Syarat: periode belum final, siswa punya akun, dan status saat ini 'belum_respon'.
-    // 'tidak_berminat' juga menonaktifkan akun (sama seperti jika siswa memilih sendiri).
-    // Return { ok: true } atau { ok: false, alasan }.
     async setMinatOlehOperator(id_siswa, id_periode, statusBaru) {
         if (!['berminat', 'tidak_berminat'].includes(statusBaru)) {
             return { ok: false, alasan: 'STATUS_TIDAK_VALID' };
@@ -306,11 +293,6 @@ const siswaModel = {
         }
     },
 
-    // Operator menandai BANYAK siswa sekaligus (checklist) sebagai 'berminat' ATAU 'tidak_berminat'.
-    // Hanya siswa yang punya akun dan masih 'belum_respon' pada periode ini yang diubah;
-    // sisanya dilewati. Semua dalam satu transaksi.
-    // 'tidak_berminat' juga menonaktifkan akun (sama seperti pada setMinatOlehOperator).
-    // Return { ok: true, diubah, dilewati } atau { ok: false, alasan }.
     async setMinatMassal(daftarId, id_periode, statusBaru = 'berminat') {
         if (!Array.isArray(daftarId) || daftarId.length === 0) {
             return { ok: false, alasan: 'TIDAK_ADA_PILIHAN' };
@@ -335,7 +317,6 @@ const siswaModel = {
                 return { ok: false, alasan: 'PERIODE_FINAL' };
             }
 
-            // Kunci baris akun yang dipilih agar tidak bentrok dengan jawaban siswa.
             const [terkunci] = await conn.query(
                 `SELECT a.id_siswa
                  FROM akun_siswa a

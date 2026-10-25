@@ -1,8 +1,25 @@
-
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
 require('dotenv').config();
+
+const db = require('./config/database');
+
+const authRoutes = require('./routes/authRoutes');
+const akunSiswaRoutes = require('./routes/akunSiswaRoutes');
+const siswaRoutes = require('./routes/siswaRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const operatorRoutes = require('./routes/operatorRoutes');
+const kepsekRoutes = require('./routes/kepsekRoutes');
+const profileRoutes = require('./routes/profileRoutes');
+
+const {
+    isAuthenticated,
+    wajibGantiPasswordGuard
+} = require('./middlewares/authMiddleware');
+
+const authController = require('./controllers/authController');
+const pengingatService = require('./services/pengingatService');
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('UNHANDLED REJECTION! Alasan:', reason);
@@ -12,8 +29,6 @@ process.on('uncaughtException', (err) => {
     console.error('UNCAUGHT EXCEPTION! Error:', err);
 });
 
-const db = require('./config/database');
-
 const app = express();
 
 app.set('view engine', 'ejs');
@@ -21,10 +36,8 @@ app.set('views', path.join(__dirname, 'views'));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
@@ -34,11 +47,9 @@ app.use(session({
     }
 }));
 
-// ===== Akun siswa: flash message + route =====
 app.use((req, res, next) => {
     res.locals.akunSiswaFlash = null;
 
-    // Hanya halaman HTML (bukan file CSS/JS/gambar)
     const halamanBiasa =
         req.method === 'GET' &&
         !/\.[a-z0-9]+$/i.test(req.path);
@@ -55,45 +66,25 @@ app.use((req, res, next) => {
     next();
 });
 
-// Route akun siswa untuk admin dan operator
-app.use('/akun-siswa', require('./routes/akunSiswaRoutes'));
+app.use('/akun-siswa', akunSiswaRoutes);
 
-const authRoutes = require('./routes/authRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const operatorRoutes = require('./routes/operatorRoutes');
-const kepsekRoutes = require('./routes/kepsekRoutes');
-const profileRoutes = require('./routes/profileRoutes');
-
-const {
-    isAuthenticated,
-    wajibGantiPasswordGuard
-} = require('./middlewares/authMiddleware');
-
-const authController = require('./controllers/authController');
-
-// Route publik (login, logout, lupa password)
 app.use('/', authRoutes);
 
-// Endpoint ganti password wajib untuk pengguna yang sudah login.
-// Diletakkan sebelum guard wajib ganti password agar prosesnya bisa dijalankan.
 app.post(
     '/ganti-password-wajib',
     isAuthenticated,
     authController.processGantiPasswordWajib
 );
 
-// Route siswa dipisahkan dari middleware autentikasi staf.
-// Autentikasi siswa harus ditangani oleh middleware di siswaRoutes.
-app.use('/siswa', require('./routes/siswaRoutes'));
+app.use('/siswa', siswaRoutes);
 
-// Semua route staf di bawah ini wajib login
 app.use(isAuthenticated, wajibGantiPasswordGuard);
 
 app.use('/admin', adminRoutes);
 app.use('/operator', operatorRoutes);
 app.use('/kepsek', kepsekRoutes);
 app.use('/', profileRoutes);
-const pengingatService = require('./services/pengingatService');
+
 pengingatService.mulaiJadwal();
 
 const PORT = process.env.PORT || 3000;
@@ -101,4 +92,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server berjalan di http://localhost:${PORT}`);
 });
-

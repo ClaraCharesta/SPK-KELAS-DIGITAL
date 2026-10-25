@@ -9,7 +9,6 @@ const redirectError = (res, pesan) =>
     res.redirect('/operator/waspas?error=' + encodeURIComponent(pesan));
 
 const waspasController = {
-    // GET /operator/waspas
     async index(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -34,9 +33,6 @@ const waspasController = {
             const hasilRanking = await waspasModel.getHasilRanking(periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
 
-            // Perhitungan dibangun ulang dari data saat ini (tidak disimpan di database).
-            // Dipakai untuk detail tahapan (jika hasil sudah ada) dan untuk
-            // pratinjau nilai seri sebelum operator menekan tombol Hitung.
             let hitungan = null;
 
             if (cekData.totalBobot > 0 && (hasilRanking.length > 0 || cekData.bisaHitung)) {
@@ -78,7 +74,6 @@ const waspasController = {
         }
     },
 
-    // POST /operator/waspas/hitung
     async hitung(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -153,7 +148,6 @@ const waspasController = {
         }
     },
 
-    // POST /operator/waspas/hapus
     async hapusHasil(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -179,7 +173,6 @@ const waspasController = {
         }
     },
 
-    // POST /operator/waspas/finalisasi
     async finalisasi(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();

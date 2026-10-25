@@ -7,12 +7,8 @@ const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper
 
 const DFC_THRESHOLD = 0.1;
 
-// Bobot terkecil yang masih diterima (3%). Di bawah ini distribusi dianggap terlalu timpang:
-// bobot TIDAK disimpan dan TIDAK dikunci, user diminta memperbaiki nilai perbandingan.
 const BOBOT_MINIMAL = 0.03;
 
-// Skala perbandingan: angka lebih dari 0 sampai 9, maksimal 2 desimal.
-// Contoh valid: 1, 1,5, 2.25, 0,5, 9. Tidak valid: 0, 0,0, 0,00, 10, 9,5, -1, huruf.
 const REGEX_SKALA = /^[0-9]([.,][0-9]{1,2})?$/;
 const SKALA_MAKS = 9;
 
@@ -28,13 +24,10 @@ function normalisasiSkala(raw) {
     return String(angka);
 }
 
-// Format angka desimal ke gaya Indonesia (koma), contoh 0.0234 -> "2,34%"
 function persenIndo(desimal) {
     return (parseFloat(desimal) * 100).toFixed(2).replace('.', ',') + '%';
 }
 
-// Nama responden SELALU diambil dari akun yang sedang login (data terbaru di database),
-// bukan dari input form, supaya tidak bisa dipalsukan dari browser.
 async function ambilNamaResponden(req) {
     let nama = '';
     try {
@@ -46,9 +39,6 @@ async function ambilNamaResponden(req) {
     return nama || String(req.session.user.nama || '').trim();
 }
 
-// Helper: parsing & validasi payload urutan kriteria + nilai perbandingan dari body form.
-// Dipakai bersama oleh saveInput dan editInput supaya tidak duplikat logika.
-// kriteriaList dipakai untuk memastikan semua kriteria dipilih dan milik periode ini.
 function parseDanValidasiPayload(body, kriteriaList) {
     const { id_kriteria_urutan } = body;
 
@@ -64,14 +54,11 @@ function parseDanValidasiPayload(body, kriteriaList) {
         return { errorMsg: 'Setiap kriteria hanya boleh dipilih satu kali dalam urutan peringkat.' };
     }
 
-    // Semua kriteria periode ini harus ada di urutan, dan tidak boleh ada ID asing.
     const idValid = new Set(kriteriaList.map(function (k) { return String(k.id_kriteria); }));
     if (urutanKriteria.length !== idValid.size || !urutanKriteria.every(function (id) { return idValid.has(id); })) {
         return { errorMsg: 'Urutan kriteria tidak valid. Pastikan semua kriteria dipilih tepat satu kali.' };
     }
 
-    // Ambil nilai perbandingan dari field bernama nilai_perbandingan_0, nilai_perbandingan_1, dst
-    // (sesuai jumlah pasangan kriteria berurutan = jumlah kriteria - 1)
     const jumlahPasangan = urutanKriteria.length - 1;
     const nilaiPerbandingan = [];
     for (let i = 0; i < jumlahPasangan; i++) {
@@ -97,7 +84,6 @@ function parseDanValidasiPayload(body, kriteriaList) {
     return { dataPerbandingan };
 }
 
-// Pesan untuk hasil penolakan dari model (kasus tabrakan / status berubah)
 const PESAN_TOLAK = {
     sudah_ada: 'Data responden sudah ada (kemungkinan baru saja disimpan). Muat ulang halaman, lalu gunakan tombol Edit jika ingin mengubahnya.',
     final: 'Bobot kriteria sudah dihitung dan konsisten. Data responden tidak dapat diubah lagi.',
@@ -140,7 +126,6 @@ const fucomController = {
 
             const bobotFinal = await fucomModel.getBobotFinal(periode.id_periode);
 
-            // Tentukan status konsistensi berdasarkan nilai DFC yang tersimpan
             let dfcKonsisten = false;
             if (bobotFinal.length > 0) {
                 dfcKonsisten = parseFloat(bobotFinal[0].nilai_dfc) < DFC_THRESHOLD;
@@ -187,14 +172,11 @@ const fucomController = {
                 return res.redirect('/operator/fucom?error=' + encodeURIComponent(parsed.errorMsg));
             }
 
-            // Nama responden = nama profil akun yang sedang login
             const namaResponden = await ambilNamaResponden(req);
             if (!namaResponden) {
                 return res.redirect('/operator/fucom?error=' + encodeURIComponent('Nama pada profil akun Anda kosong. Isi dulu nama lengkap di menu Profil.'));
             }
 
-            // Pengecekan "sudah ada responden?" dan "bobot sudah final?" dilakukan DI DALAM kunci database,
-            // jadi kalau dua request masuk bersamaan, hanya yang pertama berhasil.
             let hasil;
             try {
                 hasil = await fucomModel.simpanResponden(
@@ -226,7 +208,6 @@ const fucomController = {
         }
     },
 
-    // ====== EDIT DATA RESPONDEN (SEBELUM BOBOT DIHITUNG/KONSISTEN) ======
     async editInput(req, res) {
         try {
             const periode = await periodeModel.getActivePeriode();
@@ -240,7 +221,6 @@ const fucomController = {
                 return res.redirect('/operator/fucom?error=Pembobotan terkunci karena sudah ada siswa yang ditetapkan Lulus.');
             }
 
-            // Responden yang diedit diambil dari database (bukan dari form), supaya tidak bisa dimanipulasi.
             const respondenSaatIni = await fucomModel.getRespondenList(periode.id_periode);
             if (respondenSaatIni.length === 0) {
                 return res.redirect('/operator/fucom?error=Data responden yang ingin diedit tidak ditemukan.');
@@ -258,7 +238,6 @@ const fucomController = {
                 return res.redirect('/operator/fucom?error=' + encodeURIComponent('Nama pada profil akun Anda kosong. Isi dulu nama lengkap di menu Profil.'));
             }
 
-            // Hapus data lama + tulis data baru dalam satu transaksi (aman dari gagal di tengah jalan).
             const hasil = await fucomModel.gantiResponden(
                 periode.id_periode,
                 namaBaru,
@@ -295,7 +274,6 @@ const fucomController = {
             const respondenSaatIni = await fucomModel.getRespondenList(periode.id_periode);
             const namaDihapus = respondenSaatIni[0] || '(tidak ada)';
 
-            // Bobot lama (belum dihitung maupun hasil tidak konsisten) dan hasil WASPAS ikut dibersihkan di dalam transaksi.
             const hasil = await fucomModel.hapusResponden(periode.id_periode, DFC_THRESHOLD);
 
             if (!hasil.ok) {
@@ -332,13 +310,11 @@ const fucomController = {
                 return res.redirect(`/operator/fucom?error=Data perbandingan kriteria belum diisi. Silakan input data responden terlebih dahulu.`);
             }
 
-            // Cek bobot sudah final (dibaca langsung dari database)
             const bobotTersimpan = await fucomModel.getBobotFinal(periode.id_periode);
             if (bobotTersimpan.length > 0 && parseFloat(bobotTersimpan[0].nilai_dfc) < DFC_THRESHOLD) {
                 return res.redirect('/operator/fucom?error=Bobot kriteria sudah final dan konsisten.');
             }
 
-            // ====== PEMBOBOTAN FUCOM 1 RESPONDEN (HASIL MUSYAWARAH) ======
             const namaResponden = respondenList[0];
             const perbandinganData = await fucomModel.getPerbandinganByResponden(
                 periode.id_periode,
@@ -368,19 +344,12 @@ const fucomController = {
                 parseFloat(row.nilai_perbandingan)
             );
 
-            // Catat "sidik jari" data yang dipakai menghitung. Kalau data berubah sebelum bobot
-            // tersimpan (misal ada edit di waktu yang sama), bobot tidak akan disimpan.
             const sidikJari = fucomModel.buatSidikJari(perbandinganData);
 
-            // Hitung di memori dulu. Belum ada yang ditulis ke database.
             const hasil = hitungFUCOM(kriteriaOrder, comparisonValues);
             const dfc = parseFloat(hasil.dfc);
             const dfcLolos = dfc < DFC_THRESHOLD;
 
-            // ====== TAHAN JIKA DISTRIBUSI BOBOT TERLALU TIMPANG ======
-            // Hanya dicek kalau DFC sudah lolos. Kalau DFC belum lolos, alur perbaikan inkonsistensi
-            // yang jalan lebih dulu (bobot disimpan agar skor DFC bisa ditampilkan di Langkah 2).
-            // Kalau timpang, bobot TIDAK disimpan sehingga TIDAK terkunci dan data masih bisa diedit.
             if (dfcLolos) {
                 const terkecil = hasil.bobot.reduce(function (min, b) {
                     return parseFloat(b.bobot) < parseFloat(min.bobot) ? b : min;
@@ -422,7 +391,6 @@ const fucomController = {
                 `Menghitung bobot kriteria FUCOM (responden: ${namaResponden}, DFC: ${hasil.dfc})`
             );
 
-            // Pesan berbeda tergantung apakah hasil konsisten atau tidak
             if (dfcLolos) {
                 res.redirect(`/operator/fucom?success=Bobot kriteria berhasil dihitung dan konsisten. Bobot telah dikunci sebagai bobot final.`);
             } else {
