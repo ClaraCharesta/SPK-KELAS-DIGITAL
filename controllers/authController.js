@@ -2,6 +2,8 @@ const bcrypt = require('bcrypt');
 const userModel = require('../models/userModel');
 const akunSiswaModel = require('../models/akunSiswaModel');
 const { sendDefaultPasswordEmail } = require('../utils/mailer');
+const cfg = require('../config/sessionConfig');
+const { statusSesiSiswa, pesanTimeout } = require('../middlewares/sessionTimeout');
 
 // Password default per role saat reset lewat "Lupa Password"
 const DEFAULT_PASSWORD_BY_ROLE = {
@@ -9,6 +11,8 @@ const DEFAULT_PASSWORD_BY_ROLE = {
     operator: 'Panitia123',
     kepsek: 'Kepsek123'
 };
+
+const ALASAN_TIMEOUT_VALID = ['idle', 'absolut'];
 
 // ====== LOGIN SISWA (dipanggil kalau username tidak ada di tabel users) ======
 async function prosesLoginSiswa(req, res, usernameInput, password) {
@@ -44,12 +48,18 @@ async function prosesLoginSiswa(req, res, usernameInput, password) {
 
     // siswa dan staf memakai session key yang berbeda
     delete req.session.user;
+
+    const sekarang = Date.now();
     req.session.siswa = {
         id_akun_siswa: akun.id_akun_siswa,
         id_siswa: akun.id_siswa,
         id_periode: akun.id_periode,
         nama: akun.nama,
-        nisn: akun.nisn
+        nisn: akun.nisn,
+        // loginAt   : waktu login, dipakai untuk absolute timeout (tidak pernah diperbarui)
+        // lastActivity: aktivitas terakhir, dipakai untuk idle timeout (diperbarui tiap request)
+        loginAt: sekarang,
+        lastActivity: sekarang
     };
 
     await akunSiswaModel.updateLastLogin(akun.id_akun_siswa);
@@ -59,12 +69,28 @@ async function prosesLoginSiswa(req, res, usernameInput, password) {
 
 const authController = {
     showLoginPage(req, res) {
+        // Sesi siswa yang sudah melewati batas (idle atau absolute) dianggap tidak ada,
+        // supaya tidak dilempar ke /siswa lalu bolak-balik.
+        let alasan = null;
+        if (req.session.siswa) {
+            const status = statusSesiSiswa(req.session.siswa);
+            if (status) {
+                delete req.session.siswa;
+                alasan = status;
+            }
+        }
+
         // kalau sudah login, langsung lempar ke dashboard, gak perlu login lagi
         if (req.session.user) {
             return res.redirect('/dashboard');
         }
         if (req.session.siswa) {
             return res.redirect('/siswa');
+        }
+
+        // Datang dari redirect timeout (?timeout=idle atau ?timeout=absolut)
+        if (!alasan && ALASAN_TIMEOUT_VALID.indexOf(req.query.timeout) !== -1) {
+            alasan = req.query.timeout;
         }
 
         // Halaman login tidak boleh disimpan di cache browser.
@@ -74,7 +100,7 @@ const authController = {
             'Expires': '0'
         });
 
-        res.render('login', { error: null });
+        res.render('login', { error: alasan ? pesanTimeout(alasan) : null });
     },
     async processLogin(req, res) {
         const { username, password } = req.body;
@@ -117,8 +143,12 @@ const authController = {
         }
     },
     logout(req, res) {
+        // ?alasan=idle atau ?alasan=absolut dikirim oleh script timeout di browser siswa
+        const alasan = ALASAN_TIMEOUT_VALID.indexOf(req.query.alasan) !== -1 ? req.query.alasan : null;
+
         req.session.destroy(() => {
-            res.redirect('/login');
+            res.clearCookie(cfg.SESSION_COOKIE_NAME);
+            res.redirect(alasan ? '/login?timeout=' + alasan : '/login');
         });
     },
 

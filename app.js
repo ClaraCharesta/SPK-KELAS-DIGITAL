@@ -1,9 +1,13 @@
+require('dotenv').config();
+
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
-require('dotenv').config();
 
 const db = require('./config/database');
+
+const { siswaIdleTimeout } = require('./middlewares/sessionTimeout');
+const sesiRoutes = require('./routes/sesiRoutes');
 
 const authRoutes = require('./routes/authRoutes');
 const akunSiswaRoutes = require('./routes/akunSiswaRoutes');
@@ -39,11 +43,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Session dipakai semua role (admin, operator, kepsek, siswa).
+// maxAge 2 jam di bawah adalah umur cookie untuk STAF.
+// Untuk SISWA, umur cookie diganti saat login (lihat authController.prosesLoginSiswa)
+// menjadi SISWA_ABSOLUT_JAM, dan batas idle dijaga oleh middleware siswaIdleTimeout.
+// Jika kamu mengisi opsi "name" di sini, samakan dengan SESSION_COOKIE_NAME di .env.
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
+        httpOnly: true,
+        sameSite: 'lax',
         maxAge: 1000 * 60 * 60 * 2
     }
 }));
@@ -78,8 +89,13 @@ app.post(
     authController.processGantiPasswordWajib
 );
 
+// ====== SISWA: batas idle + absolute timeout ======
+// Urutan penting: middleware cek sesi -> endpoint ping -> route siswa.
+app.use('/siswa', siswaIdleTimeout);
+app.use('/siswa/sesi', sesiRoutes);
 app.use('/siswa', siswaRoutes);
 
+// ====== STAF: admin, operator, kepsek ======
 app.use(isAuthenticated, wajibGantiPasswordGuard);
 
 app.use('/admin', adminRoutes);

@@ -1,0 +1,210 @@
+<% if (typeof siswaIdleMs !== 'undefined') { %>
+
+<div class="idle-overlay" id="idleOverlay" role="alertdialog" aria-modal="true" aria-labelledby="idleJudul">
+    <div class="idle-box">
+        <div class="idle-ikon"><i class="bi bi-hourglass-split"></i></div>
+        <h3 id="idleJudul">Sesi akan segera berakhir</h3>
+        <p id="idleTeks"></p>
+        <div class="idle-aksi">
+            <a href="/logout" class="s-btn s-btn-outline" id="idleKeluar">Keluar sekarang</a>
+            <button type="button" class="s-btn s-btn-primary" id="idleLanjut">
+                <i class="bi bi-arrow-repeat"></i> Tetap masuk
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .idle-overlay {
+        position: fixed; inset: 0; z-index: 99999;
+        background: rgba(11, 37, 69, .6);
+        display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .idle-overlay.tampil { display: flex; }
+    .idle-box {
+        background: #fff; border-radius: 16px; padding: 28px 24px;
+        max-width: 420px; width: 100%; text-align: center;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+    }
+    .idle-ikon {
+        width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 14px;
+        background: #fdf1de; color: #b35c00; font-size: 26px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .idle-box h3 { margin: 0 0 8px; font-size: 18px; color: #0b2545; }
+    .idle-box p { margin: 0 0 18px; font-size: 14px; color: #44505f; line-height: 1.6; }
+    .idle-box strong { color: #b3261e; font-size: 16px; }
+    .idle-aksi { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+</style>
+
+<script>
+(function () {
+    var BATAS_IDLE = <%= siswaIdleMs %>;
+    var PERINGATAN = Math.min(<%= siswaPeringatanMs %>, BATAS_IDLE);
+    var JAM_ABSOLUT = <%= siswaAbsolutJam %>;
+
+    // Batas absolut dihitung dari sisa waktu yang dikirim server (bukan dari jam komputer siswa),
+    // jadi tidak terpengaruh kalau jam di perangkat siswa salah.
+    var batasAbsolutAt = Date.now() + <%= siswaSisaAbsolutMs %>;
+
+    var KUNCI = 'siswaAktivitasTerakhir';
+    var JEDA_PING = 30000;      // kirim ping ke server paling cepat tiap 30 detik
+    var JEDA_EVENT = 1000;      // abaikan event aktivitas yang datang lebih rapat dari 1 detik
+
+    var overlay = document.getElementById('idleOverlay');
+    var judul = document.getElementById('idleJudul');
+    var teks = document.getElementById('idleTeks');
+    var tombolLanjut = document.getElementById('idleLanjut');
+
+    var aktivitasLokal = Date.now();
+    var pingTerakhir = Date.now();
+    var eventTerakhir = 0;
+    var sedangKeluar = false;
+    var modeModal = null; // 'idle' | 'absolut' | null
+
+    // Aktivitas dibagi antar tab lewat localStorage: aktif di satu tab = aktif di semua tab.
+    function bacaAktivitas() {
+        try {
+            var v = Number(localStorage.getItem(KUNCI));
+            if (v) return Math.max(v, aktivitasLokal);
+        } catch (e) {}
+        return aktivitasLokal;
+    }
+
+    function simpanAktivitas(waktu) {
+        aktivitasLokal = waktu;
+        try { localStorage.setItem(KUNCI, String(waktu)); } catch (e) {}
+    }
+
+    function keLogin(url) {
+        if (sedangKeluar) return;
+        sedangKeluar = true;
+        window.location.href = url;
+    }
+
+    function kirimPing() {
+        pingTerakhir = Date.now();
+        fetch('/siswa/sesi/ping', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(function (res) {
+            if (res.status === 401) {
+                return res.json().then(function (d) {
+                    keLogin((d && d.redirect) || '/login?timeout=idle');
+                }).catch(function () { keLogin('/login?timeout=idle'); });
+            }
+            return res.json().then(function (d) {
+                // sinkronkan lagi sisa waktu absolut dengan server
+                if (d && typeof d.sisaAbsolutMs === 'number') {
+                    batasAbsolutAt = Date.now() + d.sisaAbsolutMs;
+                }
+            });
+        }).catch(function () { /* koneksi putus: biarkan, dicoba lagi pada ping berikutnya */ });
+    }
+
+    function tandaiAktif() {
+        var sekarang = Date.now();
+        simpanAktivitas(sekarang);
+        if (sekarang - pingTerakhir >= JEDA_PING) kirimPing();
+    }
+
+    function saatAktivitas() {
+        // Saat peringatan tampil, hanya tombol "Tetap masuk" yang dihitung.
+        if (overlay.classList.contains('tampil')) return;
+
+        var sekarang = Date.now();
+        if (sekarang - eventTerakhir < JEDA_EVENT) return;
+        eventTerakhir = sekarang;
+        tandaiAktif();
+    }
+
+    ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(function (nama) {
+        document.addEventListener(nama, saatAktivitas, { passive: true, capture: true });
+    });
+
+    tombolLanjut.addEventListener('click', function () {
+        overlay.classList.remove('tampil');
+        modeModal = null;
+        simpanAktivitas(Date.now());
+        kirimPing();
+    });
+
+    function tampilkanModal(mode, sisaMs) {
+        var detik = Math.max(0, Math.ceil(sisaMs / 1000));
+
+        if (modeModal !== mode) {
+            modeModal = mode;
+            if (mode === 'absolut') {
+                judul.textContent = 'Batas waktu login hampir habis';
+                tombolLanjut.style.display = 'none';
+            } else {
+                judul.textContent = 'Sesi akan segera berakhir';
+                tombolLanjut.style.display = '';
+            }
+        }
+
+        if (mode === 'absolut') {
+            teks.innerHTML = 'Sesi login dibatasi maksimal ' + JAM_ABSOLUT + ' jam. ' +
+                'Anda akan keluar otomatis dalam <strong>' + detik + '</strong> detik. ' +
+                'Silakan login kembali setelahnya.';
+        } else {
+            teks.innerHTML = 'Anda tidak terlihat aktif. Demi keamanan, Anda akan keluar otomatis dalam <strong>' +
+                detik + '</strong> detik.';
+        }
+
+        if (!overlay.classList.contains('tampil')) {
+            overlay.classList.add('tampil');
+            if (mode === 'idle') tombolLanjut.focus();
+        }
+    }
+
+    function sembunyikanModal() {
+        if (overlay.classList.contains('tampil')) overlay.classList.remove('tampil');
+        modeModal = null;
+    }
+
+    function periksa() {
+        if (sedangKeluar) return;
+
+        var sekarang = Date.now();
+        var sisaAbsolut = batasAbsolutAt - sekarang;
+        var sisaIdle = BATAS_IDLE - (sekarang - bacaAktivitas());
+
+        // Batas absolut lebih tegas, jadi dicek lebih dulu.
+        if (sisaAbsolut <= 0) {
+            keLogin('/logout?alasan=absolut');
+            return;
+        }
+
+        if (sisaIdle <= 0) {
+            keLogin('/logout?alasan=idle');
+            return;
+        }
+
+        if (sisaAbsolut <= PERINGATAN) {
+            tampilkanModal('absolut', sisaAbsolut);
+        } else if (sisaIdle <= PERINGATAN) {
+            tampilkanModal('idle', sisaIdle);
+        } else {
+            // aktivitas terdeteksi di tab lain
+            sembunyikanModal();
+        }
+    }
+
+    // Memuat halaman = aktivitas (server juga sudah memperbarui lastActivity saat halaman ini dimuat).
+    simpanAktivitas(Date.now());
+
+    setInterval(periksa, 1000);
+
+    // Tab yang tadinya tersembunyi dan timer-nya diperlambat browser: periksa segera saat dibuka lagi.
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) periksa();
+    });
+})();
+</script>
+
+<% } %>

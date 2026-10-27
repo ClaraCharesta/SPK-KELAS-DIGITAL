@@ -50,10 +50,10 @@
             <section class="s-card">
                 <div class="s-center">
                     <div class="s-icon s-icon-blue"><i class="bi bi-laptop"></i></div>
-                    <h2>Apakah Anda tertarik mengikuti Kelas Digital?</h2>
+                    <h2>Apakah Anda berminat mengikuti Kelas Digital?</h2>
                     <p class="s-muted">
                         Jawaban Anda dipakai dalam proses seleksi penempatan siswa ke Kelas Digital.
-                        Jika setuju, Anda akan diminta mengisi empat pertanyaan singkat.
+                        Jika berminat, Anda akan diminta mengisi empat pertanyaan singkat.
                     </p>
                 </div>
 
@@ -63,7 +63,7 @@
                         <i class="bi bi-exclamation-triangle-fill"></i>
                         <div>
                             <strong>Baca dan centang semua pernyataan sebelum melanjutkan</strong>
-                            <span>Pilihan &ldquo;Ya, saya setuju&rdquo; bersifat mengikat dan tidak dapat dibatalkan.</span>
+                            <span>Pilihan &ldquo;Ya, saya berminat&rdquo; bersifat mengikat dan tidak dapat dibatalkan.</span>
                         </div>
                     </div>
 
@@ -96,9 +96,9 @@
                 </div>
 
                 <div class="s-actions s-actions-center">
-                    <a href="/siswa/tolak" class="s-btn s-btn-outline">Tidak tertarik</a>
+                    <a href="/siswa/tolak" class="s-btn s-btn-outline">Tidak berminat</a>
                     <button type="button" class="s-btn s-btn-primary" id="btnSetuju" disabled>
-                        <i class="bi bi-check2-circle"></i> Ya, saya setuju
+                        <i class="bi bi-check2-circle"></i> Ya, saya berminat
                     </button>
                 </div>
             </section>
@@ -269,5 +269,8 @@
         })();
     </script>
     <% } %>
+
+  <%# Pemantau batas waktu sesi siswa (idle 15 menit + batas maksimal). Harus di luar blok if tahap. %>
+    <%- include('../partials/siswa-idle') %>
 </body>
 </html>
