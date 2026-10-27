@@ -6,17 +6,42 @@
     <style>
         .nilai-terkunci { font-size:18px; font-weight:700; color:#1f2937; }
         .nilai-terkunci.kosong { font-weight:400; color:#aaa; }
+
+        .input-nilai {
+            width:150px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;
+            font-size:14px; font-family:inherit; outline:none;
+        }
+        .input-nilai:focus { border-color:#1d5fd6; box-shadow:0 0 0 3px rgba(29,95,214,.12); }
+        .input-nilai.salah { border:2px solid #e74c3c; }
+        .input-nilai:disabled { background:#f3f4f6; cursor:not-allowed; }
+
+        .hint-nilai { font-size:11px; color:#999; margin-top:4px; line-height:1.5; }
+        .pesan-field { display:none; font-size:12px; font-weight:600; color:#e74c3c; margin-top:4px; }
+
+        .ringkasan-error-form {
+            display:none; background:#fdecea; color:#b3261e; border:1px solid #f5c2bd;
+            border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:14px; line-height:1.5;
+        }
+        .ringkasan-error-form ul { margin:8px 0 0; padding-left:20px; font-size:13px; }
+        .ringkasan-error-form li { margin-bottom:3px; }
     </style>
 </head>
 <body>
 <%
     const bobotOk = (typeof bobotFinal !== 'undefined') ? Boolean(bobotFinal) : false;
 
-    const formatNilai = function(v) {
+    // Akademik & Psikotes: skala 0-100 (2 angka di belakang koma). Kriteria lain: bilangan bulat 1-5.
+    const skor100 = function(k) {
+        const n = String(k.nama_kriteria || '').toLowerCase();
+        return n.indexOf('akademik') !== -1 || n.indexOf('psikotes') !== -1;
+    };
+
+    // Skor 0-100 tampil 2 angka di belakang koma (92 -> 92,00). Skala 1-5 tampil bulat.
+    const formatNilai = function(v, k) {
         if (v === null || v === undefined || v === '') return null;
         const n = Number(v);
         if (!Number.isFinite(n)) return null;
-        return Number.isInteger(n) ? String(n) : n.toFixed(2);
+        return skor100(k) ? n.toFixed(2).replace('.', ',') : String(Math.round(n));
     };
 %>
     <div class="app-layout">
@@ -77,7 +102,7 @@
                                 <% } %>
 
                                 <% kriteriaList.forEach(function(k) {
-                                    const tampil = formatNilai(k.nilai_mentah);
+                                    const tampil = formatNilai(k.nilai_mentah, k);
                                 %>
                                     <tr>
                                         <td><%= k.nama_kriteria %></td>
@@ -100,18 +125,17 @@
 
                     <% } else { %>
 
-                        <form action="/operator/nilai/<%= siswa.id_siswa %>/save" method="POST" id="formNilai">
+                        <div id="ringkasanErrorForm" class="ringkasan-error-form" role="alert"></div>
+
+                        <form action="/operator/nilai/<%= siswa.id_siswa %>/save" method="POST" id="formNilai" novalidate>
                             <table class="data-table">
                                 <thead>
                                     <tr><th>Kriteria</th><th>Jenis</th><th>Nilai</th></tr>
                                 </thead>
                                 <tbody>
                                     <% kriteriaList.forEach(function(k) {
-                                        var namaLower = (k.nama_kriteria || '').toLowerCase();
-                                        var isSkor100 = namaLower.indexOf('akademik') !== -1 || namaLower.indexOf('psikotes') !== -1;
-                                        var minVal = isSkor100 ? 0 : 1;
-                                        var maxVal = isSkor100 ? 100 : 5;
-                                        var stepVal = isSkor100 ? '0.01' : '1';
+                                        var isSkor100 = skor100(k);
+                                        var nilaiAwal = formatNilai(k.nilai_mentah, k);
                                     %>
                                         <tr>
                                             <td><%= k.nama_kriteria %></td>
@@ -122,22 +146,22 @@
                                             </td>
                                             <td>
                                                 <input type="hidden" name="id_kriteria" value="<%= k.id_kriteria %>">
-                                                <input type="number"
-                                                    step="<%= stepVal %>"
-                                                    min="<%= minVal %>"
-                                                    max="<%= maxVal %>"
+                                                <input type="text"
+                                                    class="input-nilai"
                                                     name="nilai_mentah"
                                                     inputmode="<%= isSkor100 ? 'decimal' : 'numeric' %>"
+                                                    autocomplete="off"
                                                     data-skala="<%= isSkor100 ? '100' : '5' %>"
-                                                    value="<%= k.nilai_mentah !== null && k.nilai_mentah !== undefined ? k.nilai_mentah : '' %>"
-                                                    style="width:150px; padding:8px 10px; border:1px solid #ddd; border-radius:6px;"
-                                                    required
+                                                    data-nama="<%= k.nama_kriteria %>"
+                                                    placeholder="<%= isSkor100 ? 'contoh: 85,50' : '1 - 5' %>"
+                                                    value="<%= nilaiAwal !== null ? nilaiAwal : '' %>"
                                                     <%= bolehIsi ? '' : 'disabled' %>>
-                                                <div style="font-size:11px; color:#999; margin-top:4px;">
+                                                <div class="pesan-field"></div>
+                                                <div class="hint-nilai">
                                                     <% if (isSkor100) { %>
-                                                        Skala 0 - 100 (hanya angka, boleh desimal maksimal 2 digit)
+                                                        Skala 0 - 100. Desimal boleh pakai koma atau titik (85,5 atau 85.5). Otomatis disimpan 2 angka di belakang koma.
                                                     <% } else { %>
-                                                        Skala 1 - 5 (bulat, tanpa desimal)
+                                                        Skala 1 - 5, hanya angka bulat 1, 2, 3, 4, atau 5 (tidak boleh 0 dan tidak boleh desimal)
                                                     <% } %>
                                                 </div>
                                             </td>
@@ -173,48 +197,130 @@
             const form = document.getElementById('formNilai');
             if (!form) return;
 
-            // Hanya angka: blokir e, +, - (dan titik/koma untuk skala 1-5), serta paste non-angka.
-            form.querySelectorAll('input[name="nilai_mentah"]').forEach(function (inp) {
-                inp.addEventListener('keydown', function (e) {
-                    const terlarang = ['e', 'E', '+', '-'];
-                    if (this.getAttribute('data-skala') === '5') {
-                        terlarang.push('.', ',');
+            const kotakRingkasan = document.getElementById('ringkasanErrorForm');
+            const POLA_ANGKA = /^(\d+([.,]\d*)?|[.,]\d+)$/;
+
+            function periksa(inp) {
+                const skala = inp.getAttribute('data-skala');
+                const teks = (inp.value || '').replace(/[\s\u00A0\u200B]/g, '');
+
+                if (teks === '') return { valid: false, pesan: 'Belum diisi.' };
+                if (/^[-\u2212\u2013]/.test(teks)) return { valid: false, pesan: 'Tidak boleh bernilai negatif.' };
+                if (!POLA_ANGKA.test(teks)) {
+                    return { valid: false, pesan: 'Hanya boleh angka. Desimal pakai satu tanda koma atau titik.' };
+                }
+
+                let n = Number(teks.replace(',', '.'));
+
+                if (skala === '5') {
+                    if (Math.abs(n - Math.round(n)) > 1e-9) {
+                        return { valid: false, pesan: 'Harus bilangan bulat 1-5, tanpa desimal.' };
                     }
-                    if (terlarang.indexOf(e.key) !== -1) e.preventDefault();
+                    n = Math.round(n);
+                    if (n === 0) return { valid: false, pesan: 'Tidak boleh 0. Isi 1, 2, 3, 4, atau 5.' };
+                    if (n < 1 || n > 5) return { valid: false, pesan: 'Harus antara 1 sampai 5.' };
+                    return { valid: true, kirim: String(n), tampil: String(n) };
+                }
+
+                if (n < 0 || n > 100) return { valid: false, pesan: 'Harus antara 0 sampai 100.' };
+
+                const bulat = Math.round((n + Number.EPSILON) * 100) / 100;
+                const dua = bulat.toFixed(2);
+                return { valid: true, kirim: dua, tampil: dua.replace('.', ',') };
+            }
+
+            function elemenPesan(inp) {
+                const sel = inp.parentNode.querySelector('.pesan-field');
+                return sel;
+            }
+
+            function tandai(inp, hasil) {
+                const el = elemenPesan(inp);
+                if (hasil.valid) {
+                    inp.classList.remove('salah');
+                    if (el) { el.textContent = ''; el.style.display = 'none'; }
+                } else {
+                    inp.classList.add('salah');
+                    if (el) { el.textContent = hasil.pesan; el.style.display = 'block'; }
+                }
+            }
+
+            function sembunyikanRingkasan() {
+                if (!kotakRingkasan) return;
+                kotakRingkasan.style.display = 'none';
+                kotakRingkasan.textContent = '';
+            }
+
+            form.querySelectorAll('input[name="nilai_mentah"]').forEach(function (inp) {
+                inp.addEventListener('input', function () {
+                    const bersih = this.value.replace(/[^0-9.,]/g, '');
+                    if (bersih !== this.value) this.value = bersih;
+                    this.classList.remove('salah');
+                    const el = elemenPesan(this);
+                    if (el) { el.textContent = ''; el.style.display = 'none'; }
                 });
 
-                inp.addEventListener('paste', function (e) {
-                    const teks = ((e.clipboardData || window.clipboardData).getData('text') || '').trim();
-                    const pola = this.getAttribute('data-skala') === '5'
-                        ? /^[0-9]+$/
-                        : /^[0-9]+([.,][0-9]+)?$/;
-                    if (!pola.test(teks)) e.preventDefault();
+                inp.addEventListener('blur', function () {
+                    if (this.disabled) return;
+                    if (this.value.trim() === '') {
+                        this.classList.remove('salah');
+                        const el = elemenPesan(this);
+                        if (el) { el.textContent = ''; el.style.display = 'none'; }
+                        return;
+                    }
+                    const hasil = periksa(this);
+                    tandai(this, hasil);
+                    if (hasil.valid) this.value = hasil.tampil;
                 });
             });
 
-            form.addEventListener('submit', function(e) {
-                const inputs = this.querySelectorAll('input[name="nilai_mentah"]:not([disabled])');
-                let invalid = false;
+            form.addEventListener('submit', function (e) {
+                const inputs = Array.prototype.slice.call(
+                    this.querySelectorAll('input[name="nilai_mentah"]:not([disabled])')
+                );
+                const masalah = [];
+                const hasilSemua = [];
 
-                inputs.forEach(function(inp) {
-                    const val = parseFloat(inp.value);
-                    const skala = inp.getAttribute('data-skala');
-                    const min = parseFloat(inp.getAttribute('min'));
-                    const max = parseFloat(inp.getAttribute('max'));
-                    let isValid = true;
-
-                    if (inp.value.trim() === '' || isNaN(val)) isValid = false;
-                    else if (val < min || val > max) isValid = false;
-                    else if (skala === '5' && !Number.isInteger(val)) isValid = false;
-
-                    inp.style.border = isValid ? '1px solid #ddd' : '2px solid #e74c3c';
-                    if (!isValid) invalid = true;
+                inputs.forEach(function (inp) {
+                    const hasil = periksa(inp);
+                    hasilSemua.push(hasil);
+                    tandai(inp, hasil);
+                    if (!hasil.valid) {
+                        masalah.push({ inp: inp, nama: inp.getAttribute('data-nama') || 'Kriteria', pesan: hasil.pesan });
+                    }
                 });
 
-                if (invalid) {
+                if (masalah.length > 0) {
                     e.preventDefault();
-                    alert('Ada nilai yang belum valid. Akademik/Psikotes harus angka 0-100 (boleh desimal), kriteria lain harus bilangan bulat 1-5. Kolom bertanda merah perlu diperbaiki.');
+
+                    if (kotakRingkasan) {
+                        kotakRingkasan.textContent = '';
+
+                        const judul = document.createElement('strong');
+                        judul.textContent = 'Nilai belum bisa disimpan. Ada ' + masalah.length + ' kolom yang perlu diperbaiki:';
+                        kotakRingkasan.appendChild(judul);
+
+                        const daftar = document.createElement('ul');
+                        masalah.forEach(function (m) {
+                            const li = document.createElement('li');
+                            li.textContent = m.nama + ': ' + m.pesan;
+                            daftar.appendChild(li);
+                        });
+                        kotakRingkasan.appendChild(daftar);
+
+                        kotakRingkasan.style.display = 'block';
+                        if (kotakRingkasan.scrollIntoView) kotakRingkasan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
+                    masalah[0].inp.focus();
+                    return;
                 }
+
+                sembunyikanRingkasan();
+
+                inputs.forEach(function (inp, i) {
+                    inp.value = hasilSemua[i].kirim;
+                });
             });
         })();
     </script>

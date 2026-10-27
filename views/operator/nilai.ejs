@@ -39,6 +39,30 @@
         .hint-cari { font-size:12px; color:#9aa5b8; margin-bottom:14px; }
         .cari-kecil { margin-bottom:10px; max-width:340px; }
         .cari-kecil input { padding-top:8px; padding-bottom:8px; }
+
+        /* ===== Pesan hasil import (ringkasan + rincian) ===== */
+        .alert-import {
+            display:flex; align-items:flex-start; gap:10px;
+            padding:14px 16px; border-radius:10px; margin-bottom:15px;
+            font-size:14px; line-height:1.5;
+        }
+        .alert-import > i { font-size:18px; flex-shrink:0; margin-top:1px; }
+        .alert-import.sukses { background:#e2f8ea; color:#1e8449; }
+        .alert-import.sebagian { background:#fdf1de; color:#b35c00; }
+        .alert-import.error { background:#fdecea; color:#b3261e; }
+        .alert-isi { flex:1; min-width:0; }
+        .rincian-pesan { margin-top:10px; }
+        .rincian-pesan summary { cursor:pointer; font-weight:600; font-size:13px; user-select:none; }
+        .rincian-judul { margin-top:12px; font-weight:700; font-size:13px; }
+        .rincian-pesan ul {
+            margin:6px 0 0; padding-left:20px; max-height:240px; overflow-y:auto;
+            font-size:13px; line-height:1.5;
+        }
+        .rincian-pesan li { margin-bottom:4px; word-break:break-word; }
+        .info-format {
+            background:#f4f8ff; border:1px solid #d9e6fb; color:#334; border-radius:8px;
+            padding:10px 12px; font-size:12.5px; line-height:1.6; margin-bottom:14px;
+        }
     </style>
 </head>
 <body>
@@ -55,6 +79,7 @@
 
     const daftarKriteria = (typeof kriteriaList !== 'undefined' && Array.isArray(kriteriaList)) ? kriteriaList : [];
     const petaNilai = (typeof nilaiMap !== 'undefined' && nilaiMap) ? nilaiMap : {};
+    const hasilImport = (typeof pesanImport !== 'undefined' && pesanImport) ? pesanImport : null;
 
     // Setelah finalisasi, nilai tiap kriteria ditampilkan di tabel (hanya baca).
     const tampilNilai = !!terkunci && daftarKriteria.length > 0;
@@ -67,18 +92,24 @@
         return !terkunci && !terblokir && s.status_minat !== 'tidak_berminat';
     };
 
-    // Format angka nilai: bulat tampil bulat, desimal tampil 2 angka.
-    const formatNilai = function(v) {
+    // Akademik & Psikotes: skala 0-100 (2 angka di belakang koma). Kriteria lain: bilangan bulat 1-5.
+    const skor100 = function(k) {
+        const n = String(k.nama_kriteria || '').toLowerCase();
+        return n.indexOf('akademik') !== -1 || n.indexOf('psikotes') !== -1;
+    };
+
+    // Skor 0-100 tampil 2 angka di belakang koma (92 -> 92,00). Skala 1-5 tampil bulat.
+    const formatNilaiKriteria = function(v, k) {
         if (v === null || v === undefined || v === '') return null;
         const n = Number(v);
         if (!Number.isFinite(n)) return null;
-        return Number.isInteger(n) ? String(n) : n.toFixed(2);
+        return skor100(k) ? n.toFixed(2).replace('.', ',') : String(Math.round(n));
     };
 
     const ambilNilai = function(s, k) {
         const baris = petaNilai[String(s.id_siswa)];
         if (!baris) return null;
-        return formatNilai(baris[String(k.id_kriteria)]);
+        return formatNilaiKriteria(baris[String(k.id_kriteria)], k);
     };
 
     const belumLengkap = siswaList.filter(function(s) {
@@ -104,6 +135,12 @@
                             <li>Pastikan <strong>data siswa sudah ada</strong> di menu Data Siswa.</li>
                             <li>Pastikan <strong>tidak ada siswa yang Belum merespons</strong>. Selesaikan di menu Data Siswa (operator dapat mengubah statusnya menjadi Berminat atau Tidak berminat).</li>
                             <li>Klik <strong>Unduh Template</strong>, isi nilai sesuai NISN, lalu <strong>Import Nilai (Excel)</strong>. Atau klik ikon pensil untuk mengisi satu per satu.</li>
+                            <li>
+                                Aturan nilai: <strong>Akademik dan Psikotes</strong> berskala <strong>0 sampai 100</strong>, boleh desimal memakai <strong>koma atau titik</strong>
+                                (contoh 85,5 atau 85.5). Sistem otomatis menyimpan <strong>2 angka di belakang koma</strong> (92 menjadi 92,00).
+                                Kriteria lain hanya boleh <strong>bilangan bulat 1, 2, 3, 4, atau 5</strong> (tidak boleh 0 dan tidak boleh desimal).
+                            </li>
+                            <li>Jika ada data yang gagal diimpor, sistem menampilkan penyebabnya. Klik <strong>Lihat rincian</strong> untuk melihat baris dan kolom mana yang bermasalah.</li>
                             <li>Gunakan kotak <strong>cari NISN atau nama</strong> di atas tabel untuk menemukan siswa dengan cepat. Jika hasil tinggal satu siswa, tekan <strong>Enter</strong> untuk langsung membuka form nilainya.</li>
                             <li>Siswa yang berstatus <strong>tidak berminat</strong> tidak bisa dinilai dan tidak ikut perankingan.</li>
                             <li>Nilai masih bisa diubah sampai hasil seleksi difinalisasi. Setiap perubahan mengosongkan hasil ranking, jadi perlu dihitung ulang.</li>
@@ -136,6 +173,34 @@
                 <% } %>
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+
+                <% if (hasilImport) { %>
+                    <div class="alert-import <%= hasilImport.tipe %>">
+                        <% if (hasilImport.tipe === 'sukses') { %>
+                            <i class="bi bi-check-circle-fill"></i>
+                        <% } else if (hasilImport.tipe === 'sebagian') { %>
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        <% } else { %>
+                            <i class="bi bi-exclamation-circle-fill"></i>
+                        <% } %>
+                        <div class="alert-isi">
+                            <%= hasilImport.ringkasan %>
+                            <% if (Array.isArray(hasilImport.kelompok) && hasilImport.kelompok.length > 0) { %>
+                                <details class="rincian-pesan">
+                                    <summary>Lihat rincian</summary>
+                                    <% hasilImport.kelompok.forEach(function(g) { %>
+                                        <div class="rincian-judul"><%= g.judul %> (<%= g.jumlah %>)</div>
+                                        <ul>
+                                            <% g.items.forEach(function(item) { %>
+                                                <li><%= item %></li>
+                                            <% }) %>
+                                        </ul>
+                                    <% }) %>
+                                </details>
+                            <% } %>
+                        </div>
+                    </div>
                 <% } %>
 
                 <% if (belumLengkap.length > 0) { %>
@@ -324,10 +389,16 @@
                 <button type="button" class="modal-close" onclick="document.getElementById('modalImportNilai').style.display='none'">&times;</button>
             </div>
             <form action="/operator/nilai/import" method="POST" enctype="multipart/form-data">
-                <p style="font-size:13px; color:#777; margin-bottom:15px;">
+                <p style="font-size:13px; color:#777; margin-bottom:12px;">
                     Nilai dicocokkan berdasarkan kolom <strong>NISN</strong>.
                     Siswa yang tidak berminat dilewati.
                 </p>
+                <div class="info-format">
+                    <strong>Aturan nilai:</strong><br>
+                    Akademik &amp; Psikotes: 0 sampai 100, desimal boleh pakai koma atau titik, otomatis disimpan 2 angka di belakang koma.<br>
+                    Kriteria lain: hanya bilangan bulat 1, 2, 3, 4, atau 5 (tanpa 0, tanpa desimal).<br>
+                    Sel yang dikosongkan dilewati dan tidak menimpa nilai lama.
+                </div>
                 <label>Pilih File Excel (.xlsx / .xls)</label>
                 <input type="file" name="fileExcel" accept=".xlsx,.xls" required>
                 <div class="modal-footer">

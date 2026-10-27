@@ -1,10 +1,8 @@
 const db = require('../config/database');
 
-// SESUAIKAN kalau nama tabel periode kamu berbeda.
 const TABEL_PERIODE = 'periode_seleksi';
 
 const pengingatModel = {
-    // Membuat tabel log pengingat otomatis kalau belum ada.
     async buatTabelJikaBelum() {
         await db.query(
             `CREATE TABLE IF NOT EXISTS pengingat_periode (
@@ -19,8 +17,6 @@ const pengingatModel = {
         );
     },
 
-    // Periode yang masih berstatus aktif tapi tanggal selesainya sudah lewat
-    // (dan belum difinalisasi) -> harus ditutup otomatis.
     async getPeriodeAktifKedaluwarsa() {
         const [rows] = await db.query(
             `SELECT id_periode, tahun_ajaran, tanggal_selesai
@@ -33,7 +29,6 @@ const pengingatModel = {
         return rows;
     },
 
-    // Periode aktif yang sudah mulai, belum final, dan sisa harinya di antara minHari..maxHari.
     async getPeriodeUntukPengingat(minHari, maxHari) {
         const [rows] = await db.query(
             `SELECT id_periode, tahun_ajaran, tanggal_selesai,
@@ -49,7 +44,6 @@ const pengingatModel = {
         return rows;
     },
 
-    // Semua akun aktif yang punya email.
     async getPenerima() {
         const [rows] = await db.query(
             `SELECT id_user, nama, email, role
@@ -59,7 +53,6 @@ const pengingatModel = {
         return rows;
     },
 
-    // "Klaim" slot pengiriman hari ini. Return true kalau berhasil (belum pernah dikirim hari ini).
     async klaimPengingat(id_periode, id_user, sisa_hari) {
         const [result] = await db.query(
             `INSERT IGNORE INTO pengingat_periode (id_periode, id_user, tanggal_kirim, sisa_hari)
@@ -69,7 +62,6 @@ const pengingatModel = {
         return result.affectedRows === 1;
     },
 
-    // Dipakai kalau pengiriman email gagal, supaya bisa dicoba lagi di run berikutnya.
     async batalkanKlaim(id_periode, id_user) {
         await db.query(
             `DELETE FROM pengingat_periode
@@ -78,7 +70,6 @@ const pengingatModel = {
         );
     },
 
-    // Khusus untuk tes: hapus catatan pengiriman hari ini supaya bisa kirim ulang.
     async hapusKlaimHariIni() {
         const [result] = await db.query(
             `DELETE FROM pengingat_periode WHERE tanggal_kirim = CURDATE()`

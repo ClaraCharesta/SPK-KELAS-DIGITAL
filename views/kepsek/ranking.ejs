@@ -4,9 +4,145 @@
     <title>Hasil Ranking Siswa</title>
     <%- include('../partials/head') %>
     <style>
-        .table-scroll { max-height:560px; overflow:auto; border:1px solid #e5e5e5; border-radius:8px; }
-        .table-scroll .data-table { margin:0; }
-        .table-scroll thead th { position:sticky; top:0; background:#fff; z-index:2; box-shadow:0 1px 0 #e5e5e5; }
+        .rk-panel {
+            background: #fff; border-radius: 16px; padding: 22px 24px; margin-bottom: 22px;
+            border: 1px solid #e8ecf3; box-shadow: 0 2px 10px rgba(11, 37, 69, .05);
+        }
+        .rk-header {
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid #eef1f6;
+        }
+        .rk-header-ikon {
+            width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+            background: linear-gradient(135deg, #1d4ed8, #3f78d8); color: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 22px;
+        }
+        .rk-header-teks { flex: 1; min-width: 200px; }
+        .rk-header-teks h3 { margin: 0 0 3px; font-size: 18px; font-weight: 700; color: #0b2545; }
+        .rk-header-teks p { margin: 0; font-size: 13px; color: #6b7685; }
+        .rk-badge-status {
+            display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+            border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap;
+        }
+        .rk-final { background: #e6f7ee; color: #1e8449; }
+        .rk-sementara { background: #fdf1de; color: #b35c00; }
+
+        .rk-ringkasan { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+        .rk-kartu {
+            display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+            border-radius: 12px; background: #f7f9fc; border: 1px solid #eef1f6;
+        }
+        .rk-kartu-ikon {
+            width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 19px;
+        }
+        .rk-biru { background: #e3edfd; color: #1d4ed8; }
+        .rk-hijau { background: #e6f7ee; color: #27ae60; }
+        .rk-oranye { background: #fef3e0; color: #f39c12; }
+        .rk-kartu small { display: block; font-size: 12px; color: #6b7685; font-weight: 600; margin-bottom: 2px; }
+        .rk-kartu strong { font-size: 22px; color: #0b2545; line-height: 1.1; }
+
+        .rk-toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+        }
+        .rk-cari { position: relative; flex: 1; min-width: 220px; max-width: 360px; }
+        .rk-cari i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9aa5b8; }
+        .rk-cari input {
+            width: 100%; box-sizing: border-box; padding: 11px 14px 11px 38px;
+            border: 1.5px solid #dcdfe6; border-radius: 10px; font-size: 14px; outline: none;
+            transition: border-color .15s, box-shadow .15s; background: #fff;
+        }
+        .rk-cari input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+        .rk-jumlah { font-size: 13px; color: #6b7685; }
+        .rk-jumlah b { color: #0b2545; }
+
+        .rk-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #6b7685; margin-bottom: 12px; }
+        .rk-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+        .table-scroll {
+            max-height: 560px; overflow: auto; border: 1px solid #e8ecf3; border-radius: 12px;
+        }
+        .table-scroll .data-table { margin: 0; width: 100%; border-collapse: separate; border-spacing: 0; }
+        .table-scroll thead th {
+            position: sticky; top: 0; z-index: 2; background: #f3f6fb; color: #33415c;
+            font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
+            padding: 13px 14px; text-align: left; border-bottom: 1px solid #e3e8f0; white-space: nowrap;
+        }
+        .table-scroll tbody td { padding: 12px 14px; border-bottom: 1px solid #f0f3f8; font-size: 14px; color: #33415c; }
+        .table-scroll tbody tr:last-child td { border-bottom: none; }
+        .table-scroll tbody tr { transition: background .12s; }
+        .table-scroll tbody tr:hover { background: #f7faff; }
+        .rk-nama { font-weight: 600; color: #0b2545; }
+        .rk-nisn { color: #6b7685; font-variant-numeric: tabular-nums; }
+        .rk-skor { color: #6b7685; font-variant-numeric: tabular-nums; }
+        .rk-q {
+            display: inline-block; padding: 4px 10px; border-radius: 8px; font-weight: 700;
+            background: #e3edfd; color: #1d4ed8; font-variant-numeric: tabular-nums;
+        }
+
+        .rk-rank {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 34px; height: 34px; padding: 0 6px; box-sizing: border-box;
+            border-radius: 50%; font-weight: 700; font-size: 13px;
+            background: #f0f3f8; color: #33415c;
+        }
+        .rk-rank-1 { background: linear-gradient(135deg, #f7c948, #e6a700); color: #fff; box-shadow: 0 2px 8px rgba(230, 167, 0, .4); }
+        .rk-rank-2 { background: linear-gradient(135deg, #cfd6df, #9aa5b8); color: #fff; box-shadow: 0 2px 8px rgba(154, 165, 184, .4); }
+        .rk-rank-3 { background: linear-gradient(135deg, #e2a373, #b9692f); color: #fff; box-shadow: 0 2px 8px rgba(185, 105, 47, .35); }
+
+        .rk-kosong {
+            text-align: center; color: #8a94a6; font-size: 14px; padding: 40px 16px;
+            background: #f7f9fc; border-radius: 12px; line-height: 1.6;
+        }
+        .rk-kosong i { font-size: 32px; display: block; margin-bottom: 8px; color: #b6bfcf; }
+        .rk-tidak-ketemu { display: none; }
+
+        .rk-belum {
+            background: #fff; border-radius: 16px; border: 1px solid #e8ecf3;
+            box-shadow: 0 2px 10px rgba(11, 37, 69, .05); margin-bottom: 22px;
+            padding: 56px 24px; text-align: center;
+            background-image: linear-gradient(180deg, #f7faff 0%, #ffffff 60%);
+        }
+        .rk-belum-ikon {
+            width: 96px; height: 96px; margin: 0 auto 22px; border-radius: 50%;
+            background: #e3edfd; color: #1d4ed8; font-size: 44px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 0 10px rgba(29, 78, 216, .07);
+        }
+        .rk-belum h3 { margin: 0 0 10px; font-size: 21px; font-weight: 700; color: #0b2545; }
+        .rk-belum p {
+            margin: 0 auto 22px; max-width: 460px; font-size: 14px; color: #6b7685; line-height: 1.7;
+        }
+        .rk-belum-info {
+            display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px;
+            border-radius: 10px; background: #fdf1de; color: #b35c00;
+            font-size: 13px; font-weight: 600; margin-bottom: 24px; text-align: left;
+        }
+        .rk-belum-aksi { display: flex; justify-content: center; }
+        .rk-tombol-muat {
+            display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px;
+            border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600;
+            background: #1d4ed8; color: #fff; transition: background .15s, transform .15s;
+        }
+        .rk-tombol-muat:hover { background: #1a43b8; transform: translateY(-1px); }
+
+        .rk-modal-kecil { max-width: 500px; width: calc(100% - 24px); max-height: 92vh; overflow-y: auto; }
+        .rk-detail-tabel { width: 100%; border-collapse: collapse; }
+        .rk-detail-tabel th {
+            background: #f3f6fb; color: #33415c; font-size: 12px; text-transform: uppercase;
+            letter-spacing: .4px; padding: 11px 12px; text-align: left;
+        }
+        .rk-detail-tabel td { padding: 11px 12px; border-bottom: 1px solid #f0f3f8; font-size: 14px; color: #33415c; }
+        .rk-detail-tabel tr:last-child td { border-bottom: none; }
+
+        @media (max-width: 720px) {
+            .rk-ringkasan { grid-template-columns: 1fr; }
+            .rk-panel { padding: 18px 14px; }
+            .rk-cari { max-width: none; }
+            .rk-belum { padding: 40px 18px; }
+            .rk-belum-ikon { width: 80px; height: 80px; font-size: 36px; }
+        }
     </style>
 </head>
 <body>
@@ -15,48 +151,105 @@
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
             <div class="content-wrapper">
-                <% if (error) { %>
+                <% if (error && periode) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
                 <% } %>
-                <% if (periode) { %>
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
-                        <div>
-                            <h3>Hasil Perangkingan Siswa</h3>
-                            <p class="stat-desc">Tahun Ajaran <%= periode.tahun_ajaran %> — Kuota: <%= periode.kuota_kelas_digital %> siswa</p>
-                        </div>
+
+                <% if (!periode) { %>
+                <div class="rk-belum">
+                    <div class="rk-belum-ikon"><i class="bi bi-calendar-x"></i></div>
+                    <h3>Belum Ada Periode Aktif</h3>
+                    <p>Hasil ranking siswa akan tampil di sini setelah Admin membuka periode seleksi dan perhitungan WASPAS dijalankan.</p>
+                    <div class="rk-belum-info"><i class="bi bi-info-circle-fill"></i> Saat ini tidak ada periode seleksi yang sedang berjalan.</div>
+                    <div class="rk-belum-aksi">
+                        <button type="button" class="rk-tombol-muat" onclick="window.location.reload()">
+                            <i class="bi bi-arrow-clockwise"></i> Muat Ulang
+                        </button>
                     </div>
+                </div>
+                <% } %>
+
+                <% if (periode) { %>
+                <%
+                    const sudahFinal = periode.status_penyelesaian === 'selesai';
+                    const nilaiQTertinggi = hasilRanking.length > 0
+                        ? Math.max.apply(null, hasilRanking.map(function (x) { return parseFloat(x.nilai_akhir_q) || 0; }))
+                        : null;
+                %>
+                <div class="rk-panel">
+                    <div class="rk-header">
+                        <div class="rk-header-ikon"><i class="bi bi-trophy-fill"></i></div>
+                        <div class="rk-header-teks">
+                            <h3>Hasil Perangkingan Siswa</h3>
+                            <p>Tahun Ajaran <%= periode.tahun_ajaran %> — Kuota: <%= periode.kuota_kelas_digital %> siswa</p>
+                        </div>
+                        <% if (hasilRanking.length > 0) { %>
+                            <% if (sudahFinal) { %>
+                                <span class="rk-badge-status rk-final"><i class="bi bi-check-circle-fill"></i> Hasil Final</span>
+                            <% } else { %>
+                                <span class="rk-badge-status rk-sementara"><i class="bi bi-hourglass-split"></i> Hasil Sementara</span>
+                            <% } %>
+                        <% } %>
+                    </div>
+
                     <% if (hasilRanking.length === 0) { %>
-                        <p class="empty-state">Belum ada hasil perangkingan. Admin belum menjalankan perhitungan WASPAS.</p>
+                        <div class="rk-kosong">
+                            <i class="bi bi-inbox"></i>
+                            Belum ada hasil perangkingan. Admin belum menjalankan perhitungan WASPAS.
+                        </div>
                     <% } else { %>
-                        <% if (periode.status_penyelesaian === 'selesai') { %>
-                            <div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> Hasil final.</div>
+                        <% if (!sudahFinal) { %>
+                            <div class="alert" style="background:#fdf1de; color:#b35c00; margin-bottom:18px;"><i class="bi bi-hourglass-split"></i> Hasil sementara. Admin belum memfinalisasi hasil seleksi.</div>
                         <% } else { %>
-                            <div class="alert" style="background:#fdf1de; color:#b35c00;"><i class="bi bi-hourglass-split"></i> Hasil sementara. Admin belum memfinalisasi hasil seleksi.</div>
+                            <div class="alert alert-success" style="margin-bottom:18px;"><i class="bi bi-check-circle-fill"></i> Hasil final.</div>
                         <% } %>
 
-                        <div class="status-legend">
+                        <div class="rk-ringkasan">
+                            <div class="rk-kartu">
+                                <div class="rk-kartu-ikon rk-biru"><i class="bi bi-people-fill"></i></div>
+                                <div><small>Total Siswa Diranking</small><strong><%= hasilRanking.length %></strong></div>
+                            </div>
+                            <div class="rk-kartu">
+                                <div class="rk-kartu-ikon rk-hijau"><i class="bi bi-door-open-fill"></i></div>
+                                <div><small>Kuota Kelas Digital</small><strong><%= periode.kuota_kelas_digital %></strong></div>
+                            </div>
+                            <div class="rk-kartu">
+                                <div class="rk-kartu-ikon rk-oranye"><i class="bi bi-star-fill"></i></div>
+                                <div><small>Nilai Q Tertinggi</small><strong><%= nilaiQTertinggi.toFixed(4) %></strong></div>
+                            </div>
+                        </div>
+
+                        <div class="rk-toolbar">
+                            <div class="rk-cari">
+                                <i class="bi bi-search"></i>
+                                <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." onkeyup="filterTabelSiswa()">
+                            </div>
+                            <div class="rk-jumlah">Menampilkan <b id="jumlahTampil"><%= hasilRanking.length %></b> dari <b><%= hasilRanking.length %></b> siswa</div>
+                        </div>
+
+                        <div class="rk-legend">
                             <span><span class="dot-legend badge-diterima"></span> Masuk Kelas Digital</span>
                             <span><span class="dot-legend badge-tidak_diterima"></span> Tidak Masuk Kelas Digital</span>
                         </div>
-                        <input type="text" id="searchSiswa" placeholder="Cari nama atau NISN siswa..." 
-                               style="width:100%; max-width:350px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;"
-                               onkeyup="filterTabelSiswa()">
+
                         <div class="table-scroll">
                         <table class="data-table">
                             <thead>
                                 <tr><th>Rank</th><th>NISN</th><th>Nama</th><th>WSM</th><th>WPM</th><th>Nilai Q</th><th>Status</th><th>Detail</th></tr>
                             </thead>
                             <tbody id="tabelBodyRanking">
-                                <% hasilRanking.forEach(function(h) { %>
+                                <% hasilRanking.forEach(function(h) {
+                                    const wsm = (h.nilai_wsm !== undefined && h.nilai_wsm !== null) ? h.nilai_wsm : h.wsm;
+                                    const wpm = (h.nilai_wpm !== undefined && h.nilai_wpm !== null) ? h.nilai_wpm : h.wpm;
+                                    const kelasRank = Number(h.ranking) <= 3 ? ' rk-rank-' + Number(h.ranking) : '';
+                                %>
                                     <tr class="baris-siswa" data-nama="<%= h.nama.toLowerCase() %>" data-nisn="<%= h.nisn %>">
-                                        <td><strong>#<%= h.ranking %></strong></td>
-                                        <td><%= h.nisn %></td>
-                                        <td><%= h.nama %></td>
-                                        <td><%= (h.nilai_wsm !== undefined && h.nilai_wsm !== null) ? parseFloat(h.nilai_wsm).toFixed(4) : '-' %></td>
-                                        <td><%= (h.nilai_wpm !== undefined && h.nilai_wpm !== null) ? parseFloat(h.nilai_wpm).toFixed(4) : '-' %></td>
-                                        <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
+                                        <td><span class="rk-rank<%= kelasRank %>"><%= h.ranking %></span></td>
+                                        <td class="rk-nisn"><%= h.nisn %></td>
+                                        <td class="rk-nama"><%= h.nama %></td>
+                                        <td class="rk-skor"><%= (wsm !== undefined && wsm !== null) ? parseFloat(wsm).toFixed(4) : '-' %></td>
+                                        <td class="rk-skor"><%= (wpm !== undefined && wpm !== null) ? parseFloat(wpm).toFixed(4) : '-' %></td>
+                                        <td><span class="rk-q"><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></span></td>
                                         <td><%- include('../partials/status-badge', { status: h.status_penerimaan }) %></td>
                                         <td>
                                             <button class="btn-icon" title="Lihat Detail Nilai"
@@ -67,6 +260,9 @@
                                         </td>
                                     </tr>
                                 <% }); %>
+                                <tr id="barisTidakKetemu" class="rk-tidak-ketemu">
+                                    <td colspan="8" style="text-align:center; color:#8a94a6; padding:28px;">Tidak ada siswa yang cocok dengan pencarian.</td>
+                                </tr>
                             </tbody>
                         </table>
                         </div>
@@ -77,14 +273,13 @@
             </div>
         </div>
     </div>
-    <!-- Modal Detail Nilai Siswa -->
     <div class="modal-overlay" id="modalDetailSiswa">
-        <div class="modal-box" style="max-width:500px;">
+        <div class="modal-box rk-modal-kecil">
             <div class="modal-header">
                 <h3><i class="bi bi-person-lines-fill"></i> Detail Nilai: <span id="detailNamaSiswa"></span></h3>
                 <button class="modal-close" onclick="document.getElementById('modalDetailSiswa').style.display='none'">&times;</button>
             </div>
-            <table class="data-table">
+            <table class="rk-detail-tabel">
                 <thead><tr><th>Kriteria</th><th>Nilai</th></tr></thead>
                 <tbody id="isiDetailSiswa"></tbody>
             </table>
@@ -109,6 +304,7 @@
                         const tdNilai = document.createElement('td');
                         if (d.nilai_mentah !== null && d.nilai_mentah !== undefined) {
                             tdNilai.textContent = d.nilai_mentah;
+                            tdNilai.style.fontWeight = '600';
                         } else {
                             tdNilai.innerHTML = '<span style="color:#e74c3c;">Belum diisi</span>';
                         }
@@ -124,10 +320,16 @@
         }
         function filterTabelSiswa() {
             const keyword = document.getElementById('searchSiswa').value.toLowerCase();
+            let tampil = 0;
             document.querySelectorAll('.baris-siswa').forEach(row => {
                 const cocok = row.dataset.nama.includes(keyword) || row.dataset.nisn.includes(keyword);
                 row.style.display = cocok ? '' : 'none';
+                if (cocok) tampil++;
             });
+            const elJumlah = document.getElementById('jumlahTampil');
+            if (elJumlah) elJumlah.textContent = tampil;
+            const elKosong = document.getElementById('barisTidakKetemu');
+            if (elKosong) elKosong.style.display = tampil === 0 ? 'table-row' : 'none';
         }
     </script>
 </body>

@@ -72,6 +72,15 @@ const nilaiModel = {
 async upsertNilai(id_siswa, id_kriteria, nilai_mentah, conn = null) {
     const executor = conn || db;
 
+    // Nilai selalu disimpan dengan 2 angka di belakang koma (92 -> 92.00).
+    const nilaiAngka = Number(nilai_mentah);
+
+    if (!Number.isFinite(nilaiAngka)) {
+        throw new Error('Nilai bukan angka yang valid');
+    }
+
+    const nilaiBersih = Math.round((nilaiAngka + Number.EPSILON) * 100) / 100;
+
     const [existing] = await executor.query(
         `SELECT id_nilai
          FROM nilai_siswa
@@ -85,14 +94,14 @@ async upsertNilai(id_siswa, id_kriteria, nilai_mentah, conn = null) {
             `UPDATE nilai_siswa
              SET nilai_mentah = ?
              WHERE id_siswa = ? AND id_kriteria = ?`,
-            [nilai_mentah, id_siswa, id_kriteria]
+            [nilaiBersih, id_siswa, id_kriteria]
         );
     } else {
         await executor.query(
             `INSERT INTO nilai_siswa
                 (id_siswa, id_kriteria, nilai_mentah)
              VALUES (?, ?, ?)`,
-            [id_siswa, id_kriteria, nilai_mentah]
+            [id_siswa, id_kriteria, nilaiBersih]
         );
     }
 }

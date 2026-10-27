@@ -83,6 +83,7 @@ const fucomModel = {
     },
 
     // Apakah bobot di periode ini sudah final (ada dan DFC di bawah ambang)? Dibaca di dalam kunci.
+    // Ambang (dfcThreshold) dikirim dari controller (DFC_THRESHOLD = 0.025), jadi tidak ditulis di sini.
     async _bobotFinalDi(conn, id_periode, dfcThreshold) {
         const [rows] = await conn.query(
             'SELECT nilai_dfc FROM bobot_kriteria WHERE id_periode = ? LIMIT 1',
@@ -179,6 +180,8 @@ const fucomModel = {
     },
 
     // Simpan bobot hasil hitung. Delete + insert dalam satu transaksi.
+    // Catatan: controller hanya memanggil fungsi ini untuk hasil yang konsisten
+    // (DFC di bawah ambang) dan distribusi bobotnya tidak timpang.
     // sidikJariAwal (opsional): ringkasan data perbandingan yang dipakai saat menghitung.
     // Kalau data sudah berubah sebelum bobot disimpan (misal ada edit di waktu yang sama),
     // bobot TIDAK disimpan dan fungsi mengembalikan false.

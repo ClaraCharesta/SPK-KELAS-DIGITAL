@@ -22,7 +22,6 @@ router.post('/akun-admin/toggle-status/:id_user', userManagementController.toggl
 router.post('/akun-admin/delete/:id_user', userManagementController.delete);
 router.get('/periode', periodeController.index);
 router.post('/periode/create', periodeController.create);
-router.post('/periode/set-active/:id_periode', periodeController.setActive);
 router.post('/periode/update', periodeController.update);
 router.post('/periode/delete/:id_periode', periodeController.delete);
 
@@ -31,12 +30,10 @@ router.get('/kriteria', kriteriaController.index);
 router.post('/kriteria/create', cekLock, kriteriaController.create);
 router.post('/kriteria/update', cekLock, kriteriaController.update);
 router.post('/kriteria/delete/:id_kriteria', cekLock, kriteriaController.delete);
-router.post('/periode/perpanjang', periodeController.perpanjang);
 
 router.post('/periode/update-kuota', periodeController.updateKuota);
 router.get('/log', logController.index);
 router.get('/riwayat', riwayatController.index);
 router.get('/riwayat/:id_periode', riwayatController.detail);
-router.post('/periode/tutup/:id_periode', periodeController.tutupManual);
 
 module.exports = router;

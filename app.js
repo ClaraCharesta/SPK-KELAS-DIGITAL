@@ -18,6 +18,7 @@ const {
     wajibGantiPasswordGuard
 } = require('./middlewares/authMiddleware');
 
+const autoTutupPeriode = require('./middlewares/autoTutupPeriode');
 const authController = require('./controllers/authController');
 const pengingatService = require('./services/pengingatService');
 
@@ -47,6 +48,7 @@ app.use(session({
     }
 }));
 
+app.use(autoTutupPeriode);
 app.use((req, res, next) => {
     res.locals.akunSiswaFlash = null;
 

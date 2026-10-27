@@ -77,6 +77,25 @@ function pekerjaanAtauDefault(nilai) {
     return rapikan(nilai) || PEKERJAAN_DEFAULT;
 }
 
+// ===== Pembersih khusus IMPORT EXCEL =====
+// Di Excel sering ada isian aneh (strip "-", tanda kurung, garis miring, dsb).
+// Pekerjaan bersifat opsional, jadi isian yang bukan huruf murni dianggap KOSONG
+// (nanti otomatis menjadi "Tidak bekerja"), bukan membuat baris ditolak.
+function pekerjaanImportBersih(nilai) {
+    const teks = rapikan(nilai);
+    return REGEX_HURUF_SAJA.test(teks) ? teks : '';
+}
+
+// Sekolah asal dari Excel: titik dan apostrof dihapus ("Mts.s" -> "Mtss", "SMP N. 1" -> "SMP N 1"),
+// tanda baca lain diganti spasi, lalu spasi dirapikan. Validasi jenjang tetap berlaku.
+function sekolahImportBersih(nilai) {
+    return rapikan(
+        String(nilai === undefined || nilai === null ? '' : nilai)
+            .replace(/[.'’`]/g, '')
+            .replace(/[^A-Za-zÀ-ÖØ-öø-ÿ0-9\s]/g, ' ')
+    );
+}
+
 const BATAS_MASSAL = 1000;
 
 const PESAN_BOBOT_BELUM_FINAL =
@@ -151,6 +170,8 @@ function getAlasanGagalBarisSiswa(row) {
     }
 
     // Pekerjaan orang tua OPSIONAL: kosong diperbolehkan (otomatis "Tidak bekerja").
+    // Pada import Excel, isian aneh sudah dikosongkan lebih dulu oleh pekerjaanImportBersih,
+    // jadi pengecekan ini hanya jaring pengaman.
     if (row.pekerjaan_ayah && !REGEX_HURUF_SAJA.test(row.pekerjaan_ayah)) {
         alasan.push(`kolom PEKERJAAN AYAH "${row.pekerjaan_ayah}" harus berupa huruf`);
     }
@@ -686,6 +707,8 @@ const siswaController = {
             hapusFileUpload(req);
 
             // Baris Excel = index + 2 (baris 1 = header).
+            // Pekerjaan ayah/ibu: isian aneh (strip, kurung, garis miring, dll) dikosongkan.
+            // Asal sekolah: titik/tanda baca dibersihkan lebih dulu (mis. "Mts.s" -> "Mtss").
             const dataSiswaRaw = jsonData.map((row, idx) => ({
                 baris: idx + 2,
                 nisn: rapikan(row['NISN'] || row['nisn'] || ''),
@@ -693,11 +716,11 @@ const siswaController = {
                 jenis_kelamin: String(row['JENIS KELAMIN SISWA'] || row['jenis_kelamin'] || '')
                     .toUpperCase()
                     .startsWith('L') ? 'L' : 'P',
-                sekolah_asal: rapikan(row['ASAL SEKOLAH'] || row['sekolah_asal'] || ''),
-                pekerjaan_ayah: rapikan(
+                sekolah_asal: sekolahImportBersih(row['ASAL SEKOLAH'] || row['sekolah_asal'] || ''),
+                pekerjaan_ayah: pekerjaanImportBersih(
                     row['PEKERJAAAN AYAH'] || row['PEKERJAAN AYAH'] || row['pekerjaan_ayah'] || ''
                 ),
-                pekerjaan_ibu: rapikan(row['PEKERJAAN IBU'] || row['pekerjaan_ibu'] || ''),
+                pekerjaan_ibu: pekerjaanImportBersih(row['PEKERJAAN IBU'] || row['pekerjaan_ibu'] || ''),
                 status_pip_pkh: String(row['APAKAH ANANDA PENERIMA PIP / PKH'] || '').trim().toUpperCase() === 'YA'
             }));
 

@@ -13,7 +13,6 @@ const periodeModel = {
 
     async create(data) {
         const { tahun_ajaran, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = data;
-        // Nonaktifkan semua periode lain dulu supaya cuma 1 yang aktif
         await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup'");
         const [result] = await db.query(
             `INSERT INTO periode_seleksi (tahun_ajaran, kuota_kelas_digital, status_periode, tanggal_mulai, tanggal_selesai)
@@ -34,11 +33,6 @@ const periodeModel = {
         return rows.length > 0;
     },
 
-    async setActive(id_periode) {
-        await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup'");
-        await db.query("UPDATE periode_seleksi SET status_periode = 'aktif' WHERE id_periode = ?", [id_periode]);
-    },
-
     async updateKuota(id_periode, kuota_baru) {
         await db.query(
             'UPDATE periode_seleksi SET kuota_kelas_digital = ? WHERE id_periode = ?',
@@ -47,7 +41,10 @@ const periodeModel = {
     },
 
     async close(id_periode) {
-        await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode = ?", [id_periode]);
+        await db.query(
+            "UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode = ?",
+            [id_periode]
+        );
     },
 
     async getLatestId() {
@@ -63,7 +60,6 @@ const periodeModel = {
         );
     },
 
-    // Hapus periode beserta seluruh data turunannya dalam satu transaksi.
     async deleteCascade(id_periode) {
         const conn = await db.getConnection();
 
@@ -100,7 +96,10 @@ const periodeModel = {
     },
 
     async tutupManual(id_periode) {
-        await db.query("UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode = ?", [id_periode]);
+        await db.query(
+            "UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode = ?",
+            [id_periode]
+        );
     },
 
     async getLatestPeriode() {
@@ -108,9 +107,21 @@ const periodeModel = {
         return rows[0];
     },
 
-    // Nonaktifkan akun siswa pada SEMUA periode yang berstatus 'ditutup'.
-    // Dipanggil setelah periode ditutup (periode baru dibuat, periode lain diaktifkan,
-    // atau penutupan manual). Return jumlah akun yang dinonaktifkan.
+    // Tutup semua periode aktif yang tanggal selesainya sudah lewat (sebelum hari ini).
+    // hariIniStr format 'YYYY-MM-DD' (dihitung di sisi aplikasi supaya tidak bergantung timezone MySQL).
+    // Return: jumlah periode yang baru saja ditutup.
+    async tutupPeriodeKedaluwarsa(hariIniStr) {
+        const [hasil] = await db.query(
+            `UPDATE periode_seleksi
+             SET status_periode = 'ditutup'
+             WHERE status_periode = 'aktif'
+               AND tanggal_selesai IS NOT NULL
+               AND tanggal_selesai < ?`,
+            [hariIniStr]
+        );
+        return hasil.affectedRows;
+    },
+
     async nonaktifkanAkunPeriodeDitutup() {
         const [hasil] = await db.query(
             `UPDATE akun_siswa a
@@ -123,8 +134,6 @@ const periodeModel = {
         return hasil.affectedRows;
     },
 
-    // Aktifkan kembali akun satu periode yang dibuka lagi.
-    // Siswa yang menyatakan tidak berminat tetap nonaktif.
     async aktifkanKembaliAkunPeriode(id_periode) {
         const [hasil] = await db.query(
             `UPDATE akun_siswa a
@@ -137,8 +146,7 @@ const periodeModel = {
         );
         return hasil.affectedRows;
     },
-        // Tahun awal terbesar dari semua periode (mis. 2026 untuk "2026/2027"). null jika belum ada.
-    // Jika excludeId diisi, periode itu diabaikan (dipakai saat Edit).
+
     async getTahunAwalTerbesar(excludeId = null) {
         let query = 'SELECT tahun_ajaran FROM periode_seleksi';
         const params = [];

@@ -4,12 +4,149 @@
     <title>Laporan</title>
     <%- include('../partials/head') %>
     <style>
-        .table-scroll { max-height:560px; overflow:auto; border:1px solid #e5e5e5; border-radius:8px; }
-        .table-scroll .data-table { margin:0; }
-        .table-scroll thead th { position:sticky; top:0; background:#fff; z-index:2; box-shadow:0 1px 0 #e5e5e5; }
+        .lp-banner {
+            display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+            background: linear-gradient(135deg, #0b2545 0%, #1d4ed8 100%);
+            color: #fff; border-radius: 16px; padding: 24px 28px; margin-bottom: 22px;
+            box-shadow: 0 8px 24px rgba(29, 78, 216, .22);
+        }
+        .lp-banner-ikon {
+            width: 56px; height: 56px; border-radius: 14px; flex-shrink: 0;
+            background: rgba(255, 255, 255, .16); display: flex; align-items: center;
+            justify-content: center; font-size: 28px;
+        }
+        .lp-banner-teks { flex: 1; min-width: 220px; }
+        .lp-banner-teks h3 { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: #fff; }
+        .lp-banner-teks p { margin: 0; font-size: 14px; color: rgba(255, 255, 255, .85); line-height: 1.5; }
+        .lp-banner-aksi { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        .lp-badge {
+            background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .28);
+            border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+            white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .lp-unduh {
+            display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px;
+            border-radius: 10px; background: #fff; color: #1d4ed8; font-size: 14px; font-weight: 700;
+            text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
+            transition: transform .15s, box-shadow .15s;
+        }
+        .lp-unduh:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 0, 0, .2); }
+
+        .lp-ringkasan { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 22px; }
+        .lp-kartu {
+            display: flex; align-items: center; gap: 14px; padding: 18px 20px;
+            border-radius: 16px; background: #fff; border: 1px solid #e8ecf3;
+            box-shadow: 0 2px 10px rgba(11, 37, 69, .05);
+        }
+        .lp-kartu-ikon {
+            width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 22px;
+        }
+        .lp-biru { background: #e3edfd; color: #1d4ed8; }
+        .lp-ungu { background: #f0e7fb; color: #8e44ad; }
+        .lp-oranye { background: #fef3e0; color: #f39c12; }
+        .lp-kartu small { display: block; font-size: 12px; color: #6b7685; font-weight: 600; margin-bottom: 2px; }
+        .lp-kartu strong { font-size: 24px; color: #0b2545; line-height: 1.1; }
+
+        .lp-panel {
+            background: #fff; border-radius: 16px; padding: 22px 24px; margin-bottom: 22px;
+            border: 1px solid #e8ecf3; box-shadow: 0 2px 10px rgba(11, 37, 69, .05);
+        }
+        .lp-panel-judul {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+            padding-bottom: 14px; border-bottom: 1px solid #eef1f6;
+        }
+        .lp-panel-judul h3 { margin: 0; font-size: 16px; font-weight: 700; color: #0b2545; }
+        .lp-panel-judul small { display: block; font-size: 12px; color: #6b7685; font-weight: 500; margin-top: 2px; }
+        .lp-ikon {
+            width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 17px;
+        }
+
+        .lp-bobot-list { display: flex; flex-direction: column; gap: 14px; }
+        .lp-bobot-baris { display: flex; flex-direction: column; gap: 6px; }
+        .lp-bobot-atas { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14px; }
+        .lp-bobot-nama { font-weight: 600; color: #33415c; display: inline-flex; align-items: center; gap: 8px; }
+        .lp-bobot-titik { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .lp-bobot-nilai { font-weight: 700; color: #0b2545; font-variant-numeric: tabular-nums; }
+        .lp-bobot-track { width: 100%; height: 10px; border-radius: 999px; background: #eef1f6; overflow: hidden; }
+        .lp-bobot-isi { height: 100%; border-radius: 999px; }
+        .lp-bobot-total {
+            display: flex; justify-content: space-between; margin-top: 16px; padding-top: 14px;
+            border-top: 1px dashed #dcdfe6; font-size: 13px; color: #6b7685;
+        }
+        .lp-bobot-total b { color: #0b2545; }
+
+        .lp-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #6b7685; margin-bottom: 12px; }
+        .lp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+        .table-scroll {
+            max-height: 560px; overflow: auto; border: 1px solid #e8ecf3; border-radius: 12px;
+        }
+        .table-scroll .data-table { margin: 0; width: 100%; border-collapse: separate; border-spacing: 0; }
+        .table-scroll thead th {
+            position: sticky; top: 0; z-index: 2; background: #f3f6fb; color: #33415c;
+            font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
+            padding: 13px 14px; text-align: left; border-bottom: 1px solid #e3e8f0; white-space: nowrap;
+        }
+        .table-scroll tbody td { padding: 12px 14px; border-bottom: 1px solid #f0f3f8; font-size: 14px; color: #33415c; }
+        .table-scroll tbody tr:last-child td { border-bottom: none; }
+        .table-scroll tbody tr { transition: background .12s; }
+        .table-scroll tbody tr:hover { background: #f7faff; }
+        .lp-nama { font-weight: 600; color: #0b2545; }
+        .lp-nisn, .lp-skor { color: #6b7685; font-variant-numeric: tabular-nums; }
+        .lp-q {
+            display: inline-block; padding: 4px 10px; border-radius: 8px; font-weight: 700;
+            background: #e3edfd; color: #1d4ed8; font-variant-numeric: tabular-nums;
+        }
+
+        .lp-rank {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 34px; height: 34px; padding: 0 6px; box-sizing: border-box;
+            border-radius: 50%; font-weight: 700; font-size: 13px;
+            background: #f0f3f8; color: #33415c;
+        }
+        .lp-rank-1 { background: linear-gradient(135deg, #f7c948, #e6a700); color: #fff; box-shadow: 0 2px 8px rgba(230, 167, 0, .4); }
+        .lp-rank-2 { background: linear-gradient(135deg, #cfd6df, #9aa5b8); color: #fff; box-shadow: 0 2px 8px rgba(154, 165, 184, .4); }
+        .lp-rank-3 { background: linear-gradient(135deg, #e2a373, #b9692f); color: #fff; box-shadow: 0 2px 8px rgba(185, 105, 47, .35); }
+
+        .lp-belum {
+            background: #fff; border-radius: 16px; border: 1px solid #e8ecf3;
+            box-shadow: 0 2px 10px rgba(11, 37, 69, .05); margin-bottom: 22px;
+            padding: 56px 24px; text-align: center;
+            background-image: linear-gradient(180deg, #f7faff 0%, #ffffff 60%);
+        }
+        .lp-belum-ikon {
+            width: 96px; height: 96px; margin: 0 auto 22px; border-radius: 50%;
+            background: #fef3e0; color: #f39c12; font-size: 44px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 0 10px rgba(243, 156, 18, .08);
+        }
+        .lp-belum h3 { margin: 0 0 10px; font-size: 21px; font-weight: 700; color: #0b2545; }
+        .lp-belum p { margin: 0 auto 24px; max-width: 460px; font-size: 14px; color: #6b7685; line-height: 1.7; }
+        .lp-tombol-muat {
+            display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px;
+            border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600;
+            background: #1d4ed8; color: #fff; transition: background .15s, transform .15s;
+        }
+        .lp-tombol-muat:hover { background: #1a43b8; transform: translateY(-1px); }
+
+        @media (max-width: 720px) {
+            .lp-ringkasan { grid-template-columns: 1fr; }
+            .lp-banner { padding: 20px; }
+            .lp-banner-aksi { align-items: flex-start; width: 100%; }
+            .lp-unduh { width: 100%; justify-content: center; box-sizing: border-box; }
+            .lp-panel { padding: 18px 14px; }
+            .lp-belum { padding: 40px 18px; }
+            .lp-belum-ikon { width: 80px; height: 80px; font-size: 36px; }
+        }
     </style>
 </head>
 <body>
+    <%
+    const paletBobot = ['#1d4ed8', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e74c3c'];
+    const daftarBobot = (typeof bobotKriteria !== 'undefined' && bobotKriteria) ? bobotKriteria : [];
+    %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
@@ -20,39 +157,81 @@
                 <% } %>
 
                 <% if (periode && hasilRanking && hasilRanking.length > 0) { %>
+                <%
+                    const nilaiQTertinggi = Math.max.apply(null, hasilRanking.map(function (x) { return parseFloat(x.nilai_akhir_q) || 0; }));
+                    const totalBobot = daftarBobot.reduce(function (acc, b) { return acc + (parseFloat(b.nilai_bobot) || 0); }, 0);
+                %>
 
-                    <div class="panel laporan-panel">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-file-earmark-text-fill"></i></div>
+                    <div class="lp-banner">
+                        <div class="lp-banner-ikon"><i class="bi bi-file-earmark-text-fill"></i></div>
+                        <div class="lp-banner-teks">
+                            <h3>Laporan Hasil Penempatan Kelas Digital</h3>
+                            <p>Tahun Ajaran <%= periode.tahun_ajaran %> — ringkasan bobot kriteria dan hasil perangkingan siswa.</p>
+                        </div>
+                        <div class="lp-banner-aksi">
+                            <span class="lp-badge"><i class="bi bi-people-fill"></i> <%= hasilRanking.length %> siswa</span>
+                            <a href="/<%= user.role %>/laporan/unduh" class="lp-unduh"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
+                        </div>
+                    </div>
+
+                    <div class="lp-ringkasan">
+                        <div class="lp-kartu">
+                            <div class="lp-kartu-ikon lp-biru"><i class="bi bi-people-fill"></i></div>
+                            <div><small>Total Siswa Diranking</small><strong><%= hasilRanking.length %></strong></div>
+                        </div>
+                        <div class="lp-kartu">
+                            <div class="lp-kartu-ikon lp-ungu"><i class="bi bi-sliders"></i></div>
+                            <div><small>Jumlah Kriteria</small><strong><%= daftarBobot.length %></strong></div>
+                        </div>
+                        <div class="lp-kartu">
+                            <div class="lp-kartu-ikon lp-oranye"><i class="bi bi-star-fill"></i></div>
+                            <div><small>Nilai Q Tertinggi</small><strong><%= nilaiQTertinggi.toFixed(4) %></strong></div>
+                        </div>
+                    </div>
+
+                    <div class="lp-panel">
+                        <div class="lp-panel-judul">
+                            <div class="lp-ikon lp-oranye"><i class="bi bi-sliders"></i></div>
                             <div>
-                                <h3>Laporan Hasil Penempatan Kelas Digital</h3>
-                                <p class="stat-desc">Tahun Ajaran <%= periode.tahun_ajaran %> — <%= hasilRanking.length %> siswa</p>
+                                <h3>Bobot Kriteria</h3>
+                                <small>Hasil pembobotan FUCOM</small>
                             </div>
                         </div>
-                        <a href="/<%= user.role %>/laporan/unduh" class="btn-primary"><i class="bi bi-download"></i> Unduh Laporan PDF</a>
-                    </div>
-
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-sliders"></i></div>
-                            <h3>Bobot Kriteria</h3>
-                        </div>
-                        <table class="data-table">
-                            <thead><tr><th>Kriteria</th><th>Bobot</th></tr></thead>
-                            <tbody>
-                                <% bobotKriteria.forEach(function(b) { %>
-                                    <tr><td><%= b.nama_kriteria %></td><td><strong><%= (b.nilai_bobot * 100).toFixed(2) %>%</strong></td></tr>
+                        <% if (daftarBobot.length === 0) { %>
+                            <p style="color:#8a94a6; font-size:14px; margin:0;">Data bobot kriteria belum tersedia.</p>
+                        <% } else { %>
+                            <div class="lp-bobot-list">
+                                <% daftarBobot.forEach(function(b, i) {
+                                    const persenBobot = (parseFloat(b.nilai_bobot) || 0) * 100;
+                                    const warna = paletBobot[i % paletBobot.length];
+                                %>
+                                    <div class="lp-bobot-baris">
+                                        <div class="lp-bobot-atas">
+                                            <span class="lp-bobot-nama"><span class="lp-bobot-titik" style="background: <%= warna %>;"></span><%= b.nama_kriteria %></span>
+                                            <span class="lp-bobot-nilai"><%= persenBobot.toFixed(2) %>%</span>
+                                        </div>
+                                        <div class="lp-bobot-track">
+                                            <div class="lp-bobot-isi" style="width: <%= Math.min(100, persenBobot).toFixed(2) %>%; background: <%= warna %>;"></div>
+                                        </div>
+                                    </div>
                                 <% }); %>
-                            </tbody>
-                        </table>
+                            </div>
+                            <div class="lp-bobot-total">
+                                <span>Total bobot</span>
+                                <b><%= (totalBobot * 100).toFixed(2) %>%</b>
+                            </div>
+                        <% } %>
                     </div>
 
-                    <div class="panel">
-                        <div class="panel-header">
-                            <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-trophy-fill"></i></div>
-                            <h3>Hasil Perangkingan Siswa</h3>
+                    <div class="lp-panel">
+                        <div class="lp-panel-judul">
+                            <div class="lp-ikon lp-ungu"><i class="bi bi-trophy-fill"></i></div>
+                            <div>
+                                <h3>Hasil Perangkingan Siswa</h3>
+                                <small>Diurutkan berdasarkan nilai Q tertinggi</small>
+                            </div>
                         </div>
-                        <div class="status-legend">
+                        <div class="lp-legend">
                             <span><span class="dot-legend badge-diterima"></span> Masuk Kelas Digital</span>
                             <span><span class="dot-legend badge-tidak_diterima"></span> Tidak Masuk Kelas Digital</span>
                         </div>
@@ -60,14 +239,18 @@
                         <table class="data-table">
                             <thead><tr><th>Rank</th><th>NISN</th><th>Nama</th><th>WSM</th><th>WPM</th><th>Nilai Q</th><th>Status</th></tr></thead>
                             <tbody>
-                                <% hasilRanking.forEach(function(h) { %>
+                                <% hasilRanking.forEach(function(h) {
+                                    const wsm = (h.nilai_wsm !== undefined && h.nilai_wsm !== null) ? h.nilai_wsm : h.wsm;
+                                    const wpm = (h.nilai_wpm !== undefined && h.nilai_wpm !== null) ? h.nilai_wpm : h.wpm;
+                                    const kelasRank = Number(h.ranking) <= 3 ? ' lp-rank-' + Number(h.ranking) : '';
+                                %>
                                     <tr>
-                                        <td>#<%= h.ranking %></td>
-                                        <td><%= h.nisn %></td>
-                                        <td><%= h.nama %></td>
-                                        <td><%= (h.nilai_wsm !== undefined && h.nilai_wsm !== null) ? parseFloat(h.nilai_wsm).toFixed(4) : '-' %></td>
-                                        <td><%= (h.nilai_wpm !== undefined && h.nilai_wpm !== null) ? parseFloat(h.nilai_wpm).toFixed(4) : '-' %></td>
-                                        <td><strong><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></strong></td>
+                                        <td><span class="lp-rank<%= kelasRank %>"><%= h.ranking %></span></td>
+                                        <td class="lp-nisn"><%= h.nisn %></td>
+                                        <td class="lp-nama"><%= h.nama %></td>
+                                        <td class="lp-skor"><%= (wsm !== undefined && wsm !== null) ? parseFloat(wsm).toFixed(4) : '-' %></td>
+                                        <td class="lp-skor"><%= (wpm !== undefined && wpm !== null) ? parseFloat(wpm).toFixed(4) : '-' %></td>
+                                        <td><span class="lp-q"><%= parseFloat(h.nilai_akhir_q).toFixed(4) %></span></td>
                                         <td><%- include('../partials/status-badge', { status: h.status_penerimaan }) %></td>
                                     </tr>
                                 <% }); %>
@@ -78,14 +261,13 @@
 
                 <% } else { %>
 
-                    <div class="panel" style="text-align:center; padding:60px 20px;">
-                        <div class="stat-icon icon-orange" style="width:60px;height:60px;font-size:28px;margin:0 auto 20px;">
-                            <i class="bi bi-bar-chart-line"></i>
-                        </div>
+                    <div class="lp-belum">
+                        <div class="lp-belum-ikon"><i class="bi bi-bar-chart-line"></i></div>
                         <h3>Belum Ada Hasil Perangkingan</h3>
-                        <p style="color:#888; margin:10px 0 0;">
-                            Laporan akan tersedia setelah admin menjalankan perhitungan WASPAS untuk periode ini.
-                        </p>
+                        <p>Laporan akan tersedia setelah admin menjalankan perhitungan WASPAS untuk periode ini.</p>
+                        <button type="button" class="lp-tombol-muat" onclick="window.location.reload()">
+                            <i class="bi bi-arrow-clockwise"></i> Muat Ulang
+                        </button>
                     </div>
 
                 <% } %>

@@ -5,7 +5,7 @@ const { hitungFUCOM } = require('../utils/fucomCalculator');
 const { cekTerkunci } = require('../utils/lockHelper');
 const { isPeriodeSudahMulai, pesanBelumMulai } = require('../utils/periodeHelper');
 
-const DFC_THRESHOLD = 0.1;
+const DFC_THRESHOLD = 0.025;
 
 const BOBOT_MINIMAL = 0.03;
 
@@ -348,31 +348,39 @@ const fucomController = {
 
             const hasil = hitungFUCOM(kriteriaOrder, comparisonValues);
             const dfc = parseFloat(hasil.dfc);
-            const dfcLolos = dfc < DFC_THRESHOLD;
 
-            if (dfcLolos) {
-                const terkecil = hasil.bobot.reduce(function (min, b) {
-                    return parseFloat(b.bobot) < parseFloat(min.bobot) ? b : min;
-                }, hasil.bobot[0]);
+            if (dfc >= DFC_THRESHOLD) {
+                const dfcTampil = dfc.toFixed(3).replace('.', ',');
+                await userModel.logActivity(
+                    req.session.user.id_user,
+                    `Perhitungan bobot FUCOM ditahan karena DFC tidak konsisten (DFC: ${hasil.dfc})`
+                );
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(
+                    `Hasil belum konsisten (DFC ${dfcTampil}, syarat di bawah 0,025). Bobot tidak disimpan. Edit nilai perbandingan, lalu hitung ulang.`
+                ));
+            }
 
-                if (parseFloat(terkecil.bobot) < BOBOT_MINIMAL) {
-                    const kriteriaTerkecil = kriteriaOrder.find(
-                        k => String(k.id_kriteria) === String(terkecil.id_kriteria)
-                    );
-                    const namaTerkecil = kriteriaTerkecil ? kriteriaTerkecil.nama : 'salah satu kriteria';
+            const terkecil = hasil.bobot.reduce(function (min, b) {
+                return parseFloat(b.bobot) < parseFloat(min.bobot) ? b : min;
+            }, hasil.bobot[0]);
 
-                    const pesan =
-                        `Bobot belum disimpan karena distribusinya terlalu timpang: kriteria "${namaTerkecil}" hanya mendapat bobot ` +
-                        `${persenIndo(terkecil.bobot)} (minimal ${persenIndo(BOBOT_MINIMAL)}). ` +
-                        `Klik Edit pada data responden, turunkan nilai perbandingan yang besar agar lebih seimbang, lalu hitung ulang.`;
+            if (parseFloat(terkecil.bobot) < BOBOT_MINIMAL) {
+                const kriteriaTerkecil = kriteriaOrder.find(
+                    k => String(k.id_kriteria) === String(terkecil.id_kriteria)
+                );
+                const namaTerkecil = kriteriaTerkecil ? kriteriaTerkecil.nama : 'salah satu kriteria';
 
-                    await userModel.logActivity(
-                        req.session.user.id_user,
-                        `Perhitungan bobot FUCOM ditahan karena bobot timpang (${namaTerkecil}: ${persenIndo(terkecil.bobot)}, DFC: ${hasil.dfc})`
-                    );
+                const pesan =
+                    `Bobot belum disimpan karena distribusinya terlalu timpang: kriteria "${namaTerkecil}" hanya mendapat bobot ` +
+                    `${persenIndo(terkecil.bobot)} (minimal ${persenIndo(BOBOT_MINIMAL)}). ` +
+                    `Klik Edit pada data responden, turunkan nilai perbandingan yang besar agar lebih seimbang, lalu hitung ulang.`;
 
-                    return res.redirect('/operator/fucom?error=' + encodeURIComponent(pesan));
-                }
+                await userModel.logActivity(
+                    req.session.user.id_user,
+                    `Perhitungan bobot FUCOM ditahan karena bobot timpang (${namaTerkecil}: ${persenIndo(terkecil.bobot)}, DFC: ${hasil.dfc})`
+                );
+
+                return res.redirect('/operator/fucom?error=' + encodeURIComponent(pesan));
             }
 
             const tersimpan = await fucomModel.saveBobotFinal(
@@ -391,13 +399,7 @@ const fucomController = {
                 `Menghitung bobot kriteria FUCOM (responden: ${namaResponden}, DFC: ${hasil.dfc})`
             );
 
-            if (dfcLolos) {
-                res.redirect(`/operator/fucom?success=Bobot kriteria berhasil dihitung dan konsisten. Bobot telah dikunci sebagai bobot final.`);
-            } else {
-                const dfcTampil = dfc.toFixed(3).replace('.', ',');
-                const pesan = `Hasil belum konsisten (DFC ${dfcTampil}, syarat di bawah 0,1). Ikuti panduan perbaikan di bawah, lalu hitung ulang.`;
-                res.redirect('/operator/fucom?error=' + encodeURIComponent(pesan));
-            }
+            res.redirect('/operator/fucom?success=Bobot kriteria berhasil dihitung dan konsisten. Bobot telah dikunci sebagai bobot final.');
         } catch (error) {
             console.error(error);
             res.redirect('/operator/fucom?error=' + encodeURIComponent('Terjadi kesalahan dalam perhitungan: ' + error.message));

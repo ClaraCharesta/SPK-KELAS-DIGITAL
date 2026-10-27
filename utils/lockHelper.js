@@ -1,11 +1,7 @@
-const db = require('../config/database');
+const waspasModel = require('../models/waspasModel');
 
 async function cekTerkunci(id_periode) {
-    const [[row]] = await db.query(
-        'SELECT status_penyelesaian FROM periode_seleksi WHERE id_periode = ?',
-        [id_periode]
-    );
-    return !!row && row.status_penyelesaian === 'selesai';
+    return waspasModel.isFinal(id_periode);
 }
 
 module.exports = { cekTerkunci };

@@ -18,9 +18,11 @@ const PESAN_BELUM_ADA_SISWA =
     'Input nilai belum dapat dilakukan karena belum ada data siswa. ' +
     'Tambahkan data siswa terlebih dahulu di menu Data Siswa.';
 
-// Nilai dari form hanya boleh angka murni: digit, lalu (opsional) titik dan 1-2 digit desimal.
-// Menolak huruf, spasi di tengah, tanda minus/plus, dan notasi seperti "1e2" atau "0x10".
-const REGEX_ANGKA_NILAI = /^\d+(\.\d{1,2})?$/;
+// Teks nilai hanya boleh angka murni: digit, lalu (opsional) satu tanda koma atau titik beserta desimalnya.
+// Koma dan titik sama-sama diterima sebagai pemisah desimal. Menolak huruf, minus, dan notasi seperti "1e2".
+const REGEX_ANGKA_NILAI = /^(\d+([.,]\d*)?|[.,]\d+)$/;
+
+const BATAS_RINCIAN_PER_KELOMPOK = 200;
 
 function hapusFileUpload(req) {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
@@ -33,6 +35,130 @@ function skalaKriteria(nama) {
     const n = String(nama || '').toLowerCase();
     const isSkor100 = n.includes('akademik') || n.includes('psikotes');
     return { isSkor100, minVal: isSkor100 ? 0 : 1, maxVal: isSkor100 ? 100 : 5 };
+}
+
+// Bulatkan ke 2 angka di belakang koma.
+function bulatkanDuaDesimal(n) {
+    return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+// Hapus spasi biasa, spasi non-breaking, dan zero-width space dari teks nilai.
+function bersihkanTeksNilai(raw) {
+    if (raw === undefined || raw === null) return '';
+    return String(raw).replace(/[\s\u00A0\u200B]/g, '');
+}
+
+// Baca satu nilai dari form atau Excel.
+// Menerima angka dengan koma maupun titik sebagai pemisah desimal.
+// Hasil: { ok: true, nilai } atau { ok: false, kosong?, alasan }.
+function parseNilai(raw, skala) {
+    const { isSkor100 } = skala;
+    let nilai;
+
+    if (typeof raw === 'number') {
+        if (!Number.isFinite(raw)) {
+            return { ok: false, alasan: 'bukan angka yang valid' };
+        }
+        nilai = raw;
+    } else {
+        const teks = bersihkanTeksNilai(raw);
+
+        if (teks === '') {
+            return { ok: false, kosong: true, alasan: 'belum diisi' };
+        }
+
+        if (/^[-\u2212\u2013]/.test(teks)) {
+            return { ok: false, alasan: 'tidak boleh bernilai negatif' };
+        }
+
+        if (!REGEX_ANGKA_NILAI.test(teks)) {
+            return {
+                ok: false,
+                alasan: isSkor100
+                    ? 'bukan angka yang valid (gunakan angka saja, desimal dengan satu koma atau titik, contoh 85,5 atau 85.5)'
+                    : 'bukan angka yang valid (isi bilangan bulat 1, 2, 3, 4, atau 5)'
+            };
+        }
+
+        nilai = Number(teks.replace(',', '.'));
+
+        if (!Number.isFinite(nilai)) {
+            return { ok: false, alasan: 'bukan angka yang valid' };
+        }
+    }
+
+    if (nilai < 0) {
+        return { ok: false, alasan: 'tidak boleh bernilai negatif' };
+    }
+
+    if (!isSkor100) {
+        if (Math.abs(nilai - Math.round(nilai)) > 1e-9) {
+            return { ok: false, alasan: 'skala 1-5 harus bilangan bulat, tanpa desimal' };
+        }
+
+        nilai = Math.round(nilai);
+
+        if (nilai === 0) {
+            return { ok: false, alasan: 'tidak boleh 0, isi 1, 2, 3, 4, atau 5' };
+        }
+
+        if (nilai < 1 || nilai > 5) {
+            return { ok: false, alasan: 'di luar skala (harus 1 sampai 5)' };
+        }
+
+        return { ok: true, nilai };
+    }
+
+    if (nilai > 100) {
+        return { ok: false, alasan: 'di luar skala (harus 0 sampai 100)' };
+    }
+
+    return { ok: true, nilai: bulatkanDuaDesimal(nilai) };
+}
+
+function normalisasiHeader(teks) {
+    return String(teks === undefined || teks === null ? '' : teks)
+        .replace(/[\u00A0\u200B]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+function bersihkanNisn(raw) {
+    return String(raw === undefined || raw === null ? '' : raw).replace(/[\s\u00A0\u200B'`]/g, '');
+}
+
+function potongDaftar(items, batas) {
+    if (items.length <= batas) return items.slice();
+    const dipotong = items.slice(0, batas);
+    dipotong.push('dan ' + (items.length - batas) + ' lainnya');
+    return dipotong;
+}
+
+// Simpan pesan hasil import (ringkasan + rincian) ke session, lalu arahkan ke halaman nilai.
+function simpanFlashDanRedirect(req, res, tipe, ringkasan, kelompok) {
+    const bersih = (kelompok || [])
+        .filter(g => g.items.length > 0)
+        .map(g => ({
+            judul: g.judul,
+            jumlah: g.items.length,
+            items: potongDaftar(g.items, BATAS_RINCIAN_PER_KELOMPOK)
+        }));
+
+    req.session.flashNilai = { tipe, ringkasan, kelompok: bersih };
+
+    if (typeof req.session.save === 'function') {
+        return req.session.save(() => res.redirect('/operator/nilai'));
+    }
+
+    return res.redirect('/operator/nilai');
+}
+
+function ambilFlash(req) {
+    if (!req.session || !req.session.flashNilai) return null;
+    const flash = req.session.flashNilai;
+    delete req.session.flashNilai;
+    return flash;
 }
 
 // Jumlah siswa yang masih "Belum merespons" (termasuk yang belum punya akun).
@@ -121,6 +247,7 @@ const nilaiController = {
     // =========================================================
     async index(req, res) {
         try {
+            const pesanImport = ambilFlash(req);
             const periode = await periodeModel.getActivePeriode();
 
             if (!periode || !isPeriodeSudahMulai(periode)) {
@@ -132,6 +259,7 @@ const nilaiController = {
                     terkunci: false,
                     bobotFinal: false,
                     jumlahBelumRespon: 0,
+                    pesanImport,
                     activePage: 'nilai',
                     pageTitle: 'Input Nilai Siswa',
                     error: !periode ? 'Belum ada periode seleksi aktif.' : pesanBelumMulai(periode),
@@ -185,6 +313,7 @@ const nilaiController = {
                 terkunci,
                 bobotFinal,
                 jumlahBelumRespon,
+                pesanImport,
                 activePage: 'nilai',
                 pageTitle: 'Input Nilai Siswa',
                 success: req.query.success || null,
@@ -311,7 +440,7 @@ const nilaiController = {
                 : nilai_mentah !== undefined ? [nilai_mentah] : [];
 
             if (idKriteriaArr.length === 0 || idKriteriaArr.length !== nilaiArr.length) {
-                return redirectError('Data nilai tidak lengkap atau format form tidak valid.');
+                return redirectError('Data nilai tidak lengkap atau format form tidak valid. Muat ulang form lalu isi semua kolom nilai.');
             }
 
             // ID kriteria valid dan tidak duplikat.
@@ -321,35 +450,6 @@ const nilaiController = {
                     return redirectError('Daftar kriteria tidak valid atau terdapat kriteria duplikat.');
                 }
                 idUnik.add(String(id));
-            }
-
-            // Validasi angka sebelum membuka transaksi.
-            const nilaiTervalidasi = [];
-
-            for (let i = 0; i < idKriteriaArr.length; i++) {
-                const raw = nilaiArr[i];
-
-                if (raw === undefined || raw === null || String(raw).trim() === '') {
-                    return redirectError('Semua kriteria wajib memiliki nilai.');
-                }
-
-                const teksNilai = String(raw).trim();
-
-                // Hanya angka murni. Huruf, simbol, minus, dan notasi eksponen ditolak.
-                if (!REGEX_ANGKA_NILAI.test(teksNilai)) {
-                    return redirectError('Nilai hanya boleh berupa angka (tanpa huruf atau simbol), desimal maksimal 2 digit.');
-                }
-
-                const nilai = Number(teksNilai);
-
-                if (!Number.isFinite(nilai)) {
-                    return redirectError('Nilai harus berupa angka yang valid.');
-                }
-
-                nilaiTervalidasi.push({
-                    id_kriteria: Number(idKriteriaArr[i]),
-                    nilai_mentah: nilai
-                });
             }
 
             conn = await db.getConnection();
@@ -411,30 +511,36 @@ const nilaiController = {
             }
 
             const kriteriaMap = new Map(kriteriaRows.map(k => [Number(k.id_kriteria), k.nama_kriteria]));
+            const idKriteriaAngka = idKriteriaArr.map(id => Number(id));
 
             if (
-                nilaiTervalidasi.length !== kriteriaRows.length ||
-                nilaiTervalidasi.some(n => !kriteriaMap.has(n.id_kriteria))
+                idKriteriaAngka.length !== kriteriaRows.length ||
+                idKriteriaAngka.some(id => !kriteriaMap.has(id))
             ) {
                 await conn.rollback();
                 return redirectError('Daftar kriteria pada form tidak sesuai dengan periode aktif. Muat ulang form nilai.');
             }
 
-            // Validasi skala.
-            for (const item of nilaiTervalidasi) {
-                const namaKriteria = kriteriaMap.get(item.id_kriteria);
-                const { isSkor100, minVal, maxVal } = skalaKriteria(namaKriteria);
-                const nilai = item.nilai_mentah;
+            // Validasi semua nilai sekaligus, lalu laporkan seluruh kriteria yang bermasalah.
+            const nilaiTervalidasi = [];
+            const masalah = [];
 
-                if (nilai < minVal || nilai > maxVal) {
-                    await conn.rollback();
-                    return redirectError(`Nilai kriteria "${namaKriteria}" harus berada pada skala ${minVal}-${maxVal}.`);
+            for (let i = 0; i < idKriteriaAngka.length; i++) {
+                const idKrit = idKriteriaAngka[i];
+                const namaKriteria = kriteriaMap.get(idKrit);
+                const hasil = parseNilai(nilaiArr[i], skalaKriteria(namaKriteria));
+
+                if (!hasil.ok) {
+                    masalah.push(`"${namaKriteria}" ${hasil.alasan}`);
+                    continue;
                 }
 
-                if (!isSkor100 && !Number.isInteger(nilai)) {
-                    await conn.rollback();
-                    return redirectError(`Nilai kriteria "${namaKriteria}" harus berupa bilangan bulat 1-5.`);
-                }
+                nilaiTervalidasi.push({ id_kriteria: idKrit, nilai_mentah: hasil.nilai });
+            }
+
+            if (masalah.length > 0) {
+                await conn.rollback();
+                return redirectError('Nilai belum bisa disimpan. Perbaiki: ' + masalah.join('; ') + '.');
             }
 
             // Simpan nilai.
@@ -567,14 +673,58 @@ const nilaiController = {
                 return kembaliError('Belum ada kriteria pada periode seleksi aktif.');
             }
 
-            const kriteriaMap = {};
-            kriteriaList.forEach(k => { kriteriaMap[k.nama_kriteria] = k.id_kriteria; });
-
             const workbook = xlsx.readFile(req.file.path);
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = xlsx.utils.sheet_to_json(sheet);
+            const jsonData = xlsx.utils.sheet_to_json(sheet, { defval: '' });
 
             hapusFileUpload(req);
+
+            if (jsonData.length === 0) {
+                return kembaliError('File Excel kosong atau tidak ada baris data di sheet pertama. Isi data pada template lalu import lagi.');
+            }
+
+            // Cocokkan header kolom tanpa peduli huruf besar/kecil dan spasi berlebih.
+            const petaKolom = {};
+            jsonData.forEach(row => {
+                Object.keys(row).forEach(key => {
+                    const n = normalisasiHeader(key);
+                    if (!(n in petaKolom)) petaKolom[n] = key;
+                });
+            });
+
+            const headerTerbaca = Object.keys(jsonData[0]).map(h => String(h).trim()).filter(h => h !== '');
+            const kolomNisn = petaKolom['nisn'];
+
+            if (kolomNisn === undefined) {
+                return simpanFlashDanRedirect(
+                    req, res, 'error',
+                    'Import gagal: kolom NISN tidak ditemukan di file. Pastikan baris pertama berisi header sesuai template (jangan mengubah nama kolom).',
+                    [{ judul: 'Kolom yang terbaca di file', items: headerTerbaca }]
+                );
+            }
+
+            const kolomKriteria = [];
+            const kriteriaHilang = [];
+
+            kriteriaList.forEach(k => {
+                const kolom = petaKolom[normalisasiHeader(k.nama_kriteria)];
+                if (kolom === undefined) {
+                    kriteriaHilang.push(k.nama_kriteria);
+                } else {
+                    kolomKriteria.push({ nama: k.nama_kriteria, id: k.id_kriteria, kolom });
+                }
+            });
+
+            if (kolomKriteria.length === 0) {
+                return simpanFlashDanRedirect(
+                    req, res, 'error',
+                    'Import gagal: tidak ada satu pun kolom kriteria yang cocok dengan header di file. Unduh template terbaru lalu isi ulang.',
+                    [
+                        { judul: 'Kolom kriteria yang dibutuhkan', items: kriteriaList.map(k => k.nama_kriteria) },
+                        { judul: 'Kolom yang terbaca di file', items: headerTerbaca }
+                    ]
+                );
+            }
 
             const dataToSave = [];
             const nisnKosong = [];
@@ -585,17 +735,27 @@ const nilaiController = {
             for (let idx = 0; idx < jsonData.length; idx++) {
                 const row = jsonData[idx];
                 const baris = idx + 2; // baris 1 = header
-                const nisn = String(row['NISN'] || '').trim();
+                let nisn = bersihkanNisn(row[kolomNisn]);
 
                 if (!nisn) {
-                    nisnKosong.push(`Baris ${baris}`);
+                    nisnKosong.push(`Baris ${baris}: kolom NISN kosong`);
                     continue;
                 }
 
-                const siswa = await nilaiModel.getSiswaByNisn(nisn, periode.id_periode);
+                let siswa = await nilaiModel.getSiswaByNisn(nisn, periode.id_periode);
+
+                // Excel sering menghapus angka 0 di depan NISN. Coba lagi dengan 0 di depan.
+                if (!siswa && /^\d{1,9}$/.test(nisn)) {
+                    const nisnLengkap = nisn.padStart(10, '0');
+                    const siswaLengkap = await nilaiModel.getSiswaByNisn(nisnLengkap, periode.id_periode);
+                    if (siswaLengkap) {
+                        siswa = siswaLengkap;
+                        nisn = nisnLengkap;
+                    }
+                }
 
                 if (!siswa) {
-                    nisnTidakDitemukan.push(`Baris ${baris} (NISN ${nisn})`);
+                    nisnTidakDitemukan.push(`Baris ${baris}: NISN ${nisn} tidak terdaftar pada periode aktif`);
                     continue;
                 }
 
@@ -608,36 +768,23 @@ const nilaiController = {
 
                 if (!akun || akun.status_minat !== 'berminat') {
                     const alasan = akun && akun.status_minat === 'tidak_berminat'
-                        ? 'tidak berminat'
-                        : 'belum berminat';
-                    siswaDilewati.push(`Baris ${baris} (NISN ${nisn}, ${alasan})`);
+                        ? 'siswa tidak berminat, jadi tidak ikut dinilai'
+                        : 'siswa belum berminat atau belum merespons';
+                    siswaDilewati.push(`Baris ${baris} (NISN ${nisn}): ${alasan}`);
                     continue;
                 }
 
-                for (const namaKriteria of Object.keys(kriteriaMap)) {
-                    if (row[namaKriteria] === undefined || row[namaKriteria] === '') continue;
+                for (const kr of kolomKriteria) {
+                    const rawVal = row[kr.kolom];
 
-                    const rawVal = row[namaKriteria];
-                    const { isSkor100, minVal, maxVal } = skalaKriteria(namaKriteria);
-                    const nilaiNumerik = Number(rawVal);
+                    if (rawVal === undefined || rawVal === null || String(rawVal).trim() === '') continue;
 
-                    const isNumberValid =
-                        typeof rawVal === 'number' ||
-                        (typeof rawVal === 'string' && /^-?\d*\.?\d+$/.test(rawVal.trim()));
+                    const hasil = parseNilai(rawVal, skalaKriteria(kr.nama));
 
-                    let alasanGagal = null;
-
-                    if (!isNumberValid || !Number.isFinite(nilaiNumerik)) {
-                        alasanGagal = 'nilai bukan angka';
-                    } else if (nilaiNumerik < minVal || nilaiNumerik > maxVal) {
-                        alasanGagal = `nilai di luar skala (harus ${minVal}-${maxVal})`;
-                    } else if (!isSkor100 && !Number.isInteger(nilaiNumerik)) {
-                        alasanGagal = 'skala 1-5 harus bilangan bulat, tanpa desimal';
-                    }
-
-                    if (alasanGagal) {
+                    if (!hasil.ok) {
+                        if (hasil.kosong) continue;
                         nilaiTidakValid.push(
-                            `Baris ${baris} (NISN ${nisn}) - kolom "${namaKriteria}": ${alasanGagal} (nilai diinput: "${rawVal}")`
+                            `Baris ${baris} (NISN ${nisn}), kolom "${kr.nama}": ${hasil.alasan} (nilai diinput: "${String(rawVal).trim()}")`
                         );
                         continue;
                     }
@@ -645,50 +792,69 @@ const nilaiController = {
                     dataToSave.push({
                         id_siswa: siswa.id_siswa,
                         nisn,
-                        id_kriteria: kriteriaMap[namaKriteria],
-                        nilai_mentah: nilaiNumerik
+                        id_kriteria: kr.id,
+                        nilai_mentah: hasil.nilai
                     });
                 }
             }
 
-            const formatDetail = (list, batas) => {
-                const dipotong = list.slice(0, batas);
-                const sisa = list.length - dipotong.length;
-                const teks = dipotong.join(' || ');
-                return sisa > 0 ? `${teks} || dan ${sisa} lainnya` : teks;
-            };
+            const kelompok = [
+                { judul: 'Kolom kriteria tidak ada di file (dilewati)', items: kriteriaHilang.map(n => `Kolom "${n}" tidak ditemukan`) },
+                { judul: 'Baris tanpa NISN', items: nisnKosong },
+                { judul: 'NISN tidak ditemukan', items: nisnTidakDitemukan },
+                { judul: 'Siswa dilewati', items: siswaDilewati },
+                { judul: 'Nilai tidak valid', items: nilaiTidakValid }
+            ];
+
+            const ringkasMasalah = [];
+            if (kriteriaHilang.length) ringkasMasalah.push(`${kriteriaHilang.length} kolom kriteria tidak ada di file`);
+            if (nisnKosong.length) ringkasMasalah.push(`${nisnKosong.length} baris tanpa NISN`);
+            if (nisnTidakDitemukan.length) ringkasMasalah.push(`${nisnTidakDitemukan.length} NISN tidak ditemukan`);
+            if (siswaDilewati.length) ringkasMasalah.push(`${siswaDilewati.length} siswa dilewati`);
+            if (nilaiTidakValid.length) ringkasMasalah.push(`${nilaiTidakValid.length} nilai tidak valid`);
 
             if (dataToSave.length === 0) {
-                let pesan = 'Tidak ada data nilai valid yang bisa disimpan.';
-                if (nisnKosong.length) pesan += ` Kolom NISN kosong pada: ${formatDetail(nisnKosong, 10)}.`;
-                if (nisnTidakDitemukan.length) pesan += ` NISN tidak ditemukan pada: ${formatDetail(nisnTidakDitemukan, 10)}.`;
-                if (siswaDilewati.length) pesan += ` Siswa dilewati: ${formatDetail(siswaDilewati, 10)}.`;
-                if (nilaiTidakValid.length) pesan += ` Detail kegagalan nilai: ${formatDetail(nilaiTidakValid, 10)}.`;
-                return kembaliError(pesan);
+                const ringkasan = ringkasMasalah.length > 0
+                    ? `Tidak ada nilai yang bisa disimpan. Penyebab: ${ringkasMasalah.join(', ')}. Klik "Lihat rincian" untuk melihat baris dan kolom yang bermasalah.`
+                    : 'Tidak ada nilai yang bisa disimpan karena semua sel nilai di file masih kosong. Isi nilai pada kolom kriteria lalu import lagi.';
+
+                return simpanFlashDanRedirect(req, res, 'error', ringkasan, kelompok);
             }
 
-            const hasil = await nilaiModel.bulkUpsertNilai(dataToSave);
+            const hasilSimpan = await nilaiModel.bulkUpsertNilai(dataToSave);
+
+            if (hasilSimpan.gagal > 0) {
+                kelompok.push({ judul: 'Gagal disimpan ke database', items: hasilSimpan.pesanGagal });
+                ringkasMasalah.push(`${hasilSimpan.gagal} data gagal disimpan ke database`);
+            }
+
+            const jumlahSiswaTersimpan = new Set(dataToSave.map(d => d.id_siswa)).size;
 
             await userModel.logActivity(
                 req.session.user.id_user,
-                `Mengimpor nilai siswa dari Excel (${hasil.berhasil} data berhasil)`
+                `Mengimpor nilai siswa dari Excel (${hasilSimpan.berhasil} data berhasil)`
             );
 
             await waspasModel.invalidateHasilJikaAda(periode.id_periode);
 
-            let pesan = `Import nilai selesai: ${hasil.berhasil} data berhasil disimpan.`;
-            if (nisnKosong.length) pesan += ` ${nisnKosong.length} baris dilewati karena NISN kosong (${formatDetail(nisnKosong, 10)}).`;
-            if (nisnTidakDitemukan.length) pesan += ` ${nisnTidakDitemukan.length} NISN tidak ditemukan (${formatDetail(nisnTidakDitemukan, 10)}).`;
-            if (siswaDilewati.length) pesan += ` ${siswaDilewati.length} siswa dilewati (${formatDetail(siswaDilewati, 10)}).`;
-            if (nilaiTidakValid.length) pesan += ` ${nilaiTidakValid.length} nilai gagal disimpan (${formatDetail(nilaiTidakValid, 10)}).`;
+            let ringkasan = `Import nilai selesai: ${hasilSimpan.berhasil} nilai dari ${jumlahSiswaTersimpan} siswa berhasil disimpan.`;
 
-            return res.redirect('/operator/nilai?success=' + encodeURIComponent(pesan));
+            if (ringkasMasalah.length > 0) {
+                ringkasan += ` Namun ada yang tidak bisa diproses: ${ringkasMasalah.join(', ')}. Klik "Lihat rincian" untuk melihat penyebabnya.`;
+            }
+
+            return simpanFlashDanRedirect(
+                req, res,
+                ringkasMasalah.length > 0 ? 'sebagian' : 'sukses',
+                ringkasan,
+                kelompok
+            );
         } catch (error) {
             console.error('ERROR IMPORT NILAI:', error);
             hapusFileUpload(req);
 
             return kembaliError(
-                'Gagal membaca atau mengimpor file Excel. Pastikan format sesuai template dan periksa log server.'
+                'Gagal membaca atau mengimpor file Excel. Pastikan file berformat .xlsx/.xls sesuai template dan tidak rusak, lalu coba lagi.'
             );
         }
     }

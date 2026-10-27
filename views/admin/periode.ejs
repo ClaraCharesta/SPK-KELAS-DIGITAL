@@ -22,27 +22,20 @@
         .ta-slash { font-size: 28px; color: #9aa5b8; font-weight: 300; line-height: 1; user-select: none; }
         .ta-bantuan { font-size: 12px; color: #6b7685; margin-top: 6px; }
         .ta-bantuan strong { color: #1d4ed8; }
-        /* tahun ajaran terkunci (otomatis, tidak bisa diubah) */
         .ta-field.ta-tetap { background: #f3f5f9; border-color: #dcdfe6; cursor: not-allowed; padding: 10px 18px; }
         .ta-field.ta-tetap:focus-within { border-color: #dcdfe6; box-shadow: none; }
         .ta-teks { font-size: 22px; font-weight: 600; letter-spacing: 3px; color: #0b2545; user-select: none; }
         .ta-ikon-kunci { font-size: 16px; color: #9aa5b8; }
-        /* badge kedaluwarsa */
-        .badge-orange { background: #fdf1de; color: #b35c00; }
-        /* teks bantuan aturan tanggal */
         .tgl-bantuan { font-size: 12px; color: #6b7685; margin-top: 4px; }
-        /* kotak info rentang tanggal otomatis sesuai tahun ajaran */
         .rentang-info {
             font-size: 12px; color: #1d4ed8; background: #eef4ff; border-radius: 8px;
             padding: 8px 10px; margin-top: 10px; display: flex; gap: 6px; align-items: flex-start;
         }
-        /* tombol aksi terkunci (abu-abu, tidak bisa diklik) */
         .btn-icon.terkunci, .btn-icon:disabled {
             opacity: .35; cursor: not-allowed; pointer-events: none;
         }
         .aksi-wrap { display: inline-block; }
 
-        /* ===== Responsif ===== */
         .tabel-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .tabel-scroll .data-table { min-width: 640px; }
         .modal-box { max-width: 560px; width: calc(100% - 24px); max-height: 92vh; overflow-y: auto; }
@@ -59,7 +52,6 @@
 </head>
 <body>
     <%
-    // tglStr = string 'YYYY-MM-DD' (sudah disiapkan controller), ditampilkan jadi DD/MM/YYYY
     function formatTgl(tglStr) {
         if (!tglStr) return '-';
         const [y, m, d] = String(tglStr).split('-');
@@ -68,7 +60,6 @@
 
     const saranTahun = (typeof tahunSaran !== 'undefined' && tahunSaran) ? tahunSaran : '';
     const terakhirTahun = (typeof tahunTerakhir !== 'undefined' && tahunTerakhir) ? tahunTerakhir : '';
-    // Tahun ajaran otomatis = tahun sekarang (dihitung di controller)
     const sekarangTahun = (typeof tahunSekarang !== 'undefined' && tahunSekarang) ? tahunSekarang : '';
     %>
     <div class="app-layout">
@@ -81,12 +72,6 @@
                 <% } %>
                 <% if (error) { %>
                     <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
-                <% } %>
-                <% if (typeof periodeKedaluwarsa !== 'undefined' && periodeKedaluwarsa) { %>
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        Periode <strong><%= periodeKedaluwarsa.tahun_ajaran %></strong> sudah kedaluwarsa. Klik tombol Perpanjang untuk mengubah tanggal dan mengaktifkannya kembali.
-                    </div>
                 <% } %>
                 <div class="panel">
                     <div class="panel-header-row">
@@ -129,59 +114,46 @@
                                         <%
                                             const isLatest = p.id_periode === latestId;
                                             const selesai = p.status_penyelesaian === 'selesai';
+                                            const ditutup = p.display_status.label === 'Ditutup';
 
-                                            // Alasan Edit/Hapus terkunci (null = boleh)
-                                            let alasanKunci = null;
-                                            if (p.kedaluwarsa) {
-                                                alasanKunci = 'Periode kedaluwarsa. Gunakan tombol Perpanjang untuk mengubah tanggal.';
-                                            } else if (!isLatest) {
-                                                alasanKunci = 'Hanya periode terbaru yang dapat diedit atau dihapus.';
+                                            let alasanDasar = null;
+                                            if (ditutup) {
+                                                alasanDasar = 'Periode sudah ditutup.';
                                             } else if (selesai) {
-                                                alasanKunci = 'Hasil seleksi sudah difinalisasi.';
-                                            } else if (p.bobot_final) {
-                                                alasanKunci = 'Pembobotan FUCOM sudah final, periode tidak dapat diedit atau dihapus.';
+                                                alasanDasar = 'Hasil seleksi sudah difinalisasi.';
+                                            } else if (!isLatest) {
+                                                alasanDasar = 'Hanya periode terbaru yang dapat diedit atau dihapus.';
+                                            }
+
+                                            let alasanEdit = alasanDasar;
+                                            if (!alasanEdit && p.bobot_final) {
+                                                alasanEdit = 'Pembobotan FUCOM sudah dilakukan, periode tidak dapat diedit lagi.';
+                                            }
+
+                                            let alasanHapus = alasanDasar;
+                                            if (!alasanHapus && p.bobot_final) {
+                                                alasanHapus = 'Pembobotan FUCOM sudah final, periode tidak dapat dihapus.';
                                             }
                                         %>
 
-                                        <% if (!alasanKunci) { %>
+                                        <% if (!alasanEdit) { %>
                                             <button class="btn-icon" title="Edit Periode" onclick='bukaModalEdit(<%- JSON.stringify(p) %>)'>
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
+                                        <% } else { %>
+                                            <span class="aksi-wrap" title="<%= alasanEdit %>">
+                                                <button type="button" class="btn-icon terkunci" disabled><i class="bi bi-pencil-square"></i></button>
+                                            </span>
+                                        <% } %>
+
+                                        <% if (!alasanHapus) { %>
                                             <form action="/admin/periode/delete/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'PERHATIAN: Menghapus periode ini akan menghapus SELURUH data terkait (siswa, nilai, kriteria, bobot FUCOM, dan hasil perankingan) secara permanen. Tindakan ini tidak dapat dibatalkan. Lanjutkan?');">
                                                 <button type="submit" class="btn-icon btn-icon-danger" title="Hapus"><i class="bi bi-trash-fill"></i></button>
                                             </form>
                                         <% } else { %>
-                                            <span class="aksi-wrap" title="<%= alasanKunci %>">
-                                                <button type="button" class="btn-icon terkunci" disabled><i class="bi bi-pencil-square"></i></button>
-                                            </span>
-                                            <span class="aksi-wrap" title="<%= alasanKunci %>">
+                                            <span class="aksi-wrap" title="<%= alasanHapus %>">
                                                 <button type="button" class="btn-icon btn-icon-danger terkunci" disabled><i class="bi bi-trash-fill"></i></button>
                                             </span>
-                                        <% } %>
-
-                                        <% if (p.kedaluwarsa && p.bisa_perpanjang) { %>
-                                            <%# Periode terbaru yang kedaluwarsa: tombol Aktifkan diganti Perpanjang %>
-                                            <button type="button" class="btn-icon" title="Perpanjang / Ubah Tanggal Periode" onclick='bukaModalPerpanjang(<%- JSON.stringify(p) %>)'>
-                                                <i class="bi bi-calendar-plus"></i>
-                                            </button>
-                                        <% } else if (p.kedaluwarsa) { %>
-                                            <%# Periode lama yang kedaluwarsa: tombol mati + label Arsip %>
-                                            <span class="aksi-wrap" title="Periode ini sudah kedaluwarsa dan bukan periode terbaru, sehingga tidak dapat diaktifkan kembali.">
-                                                <button type="button" class="btn-icon terkunci" disabled><i class="bi bi-toggle-off"></i></button>
-                                            </span>
-                                            <span style="color:#999; font-size:12px;"><i class="bi bi-archive-fill"></i> Arsip</span>
-                                        <% } else if (p.status_periode === 'aktif') { %>
-                                            <form action="/admin/periode/tutup/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Tutup periode ini sekarang? Akun siswa pada periode ini akan dinonaktifkan. Anda perlu mengaktifkan periode baru untuk melanjutkan proses seleksi berikutnya.');">
-                                                <button type="submit" class="btn-icon" title="Tutup Periode"><i class="bi bi-lock-fill"></i></button>
-                                            </form>
-                                        <% } else { %>
-                                            <form action="/admin/periode/set-active/<%= p.id_periode %>" method="POST" onsubmit="return confirmDelete(this, 'Aktifkan periode ini?');">
-                                                <button type="submit" class="btn-icon" title="Aktifkan"><i class="bi bi-toggle-off"></i></button>
-                                            </form>
-                                        <% } %>
-
-                                        <% if (selesai) { %>
-                                            <span class="badge badge-lulus" style="margin-left:4px;">Selesai</span>
                                         <% } %>
                                     </td>
                                 </tr>
@@ -194,7 +166,6 @@
             </div>
         </div>
     </div>
-    <!-- Modal Tambah Periode -->
     <div class="modal-overlay" id="modalTambah">
         <div class="modal-box">
             <div class="modal-header">
@@ -235,7 +206,6 @@
             </form>
         </div>
     </div>
-    <!-- Modal Edit Periode -->
     <div class="modal-overlay" id="modalEdit">
         <div class="modal-box">
             <div class="modal-header">
@@ -270,48 +240,11 @@
             </form>
         </div>
     </div>
-    <!-- Modal Perpanjang Periode Kedaluwarsa -->
-    <div class="modal-overlay" id="modalPerpanjang">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h3><i class="bi bi-calendar-plus"></i> Perpanjang Periode Seleksi</h3>
-                <button class="modal-close" onclick="document.getElementById('modalPerpanjang').style.display='none'">&times;</button>
-            </div>
-            <form action="/admin/periode/perpanjang" method="POST" onsubmit="return handlePerpanjangSubmit(this)">
-                <input type="hidden" name="id_periode" id="perpanjang_id_periode">
-                <p style="font-size:13px; color:#b35c00; margin-bottom:15px; background:#fdf1de; padding:10px; border-radius:8px;">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    Anda harus mengubah tanggal rentang karena tanggal periode ini telah kedaluwarsa.
-                    Setelah disimpan, periode otomatis diaktifkan kembali beserta akun siswanya.
-                    Data siswa, nilai, bobot FUCOM, dan hasil ranking tidak berubah.
-                </p>
-                <label>Tahun Ajaran</label>
-                <p style="font-size:18px; font-weight:600; color:#0b2545; margin: 4px 0 12px;" id="perpanjang_tahun_label">-</p>
-
-                <div class="rentang-info"><i class="bi bi-calendar-check"></i><span id="rentang_info_perpanjang"></span></div>
-
-                <label>Tanggal Mulai</label>
-                <input type="date" name="tanggal_mulai" id="perpanjang_tgl_mulai">
-                <p class="tgl-bantuan">Jika diubah, minimal hari ini, dan harus di dalam tahun ajaran.</p>
-                <label>Tanggal Selesai Baru</label>
-                <input type="date" name="tanggal_selesai" id="perpanjang_tgl_selesai" required>
-                <p class="tgl-bantuan">Minimal 7 hari dari hari ini, dan harus di dalam tahun ajaran.</p>
-                <p id="peringatan_perpanjang" style="color:#e74c3c; font-size:12px; margin-top:4px; display:none;"></p>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('modalPerpanjang').style.display='none'">Batal</button>
-                    <button type="submit" class="btn-primary">Perpanjang &amp; Aktifkan</button>
-                </div>
-            </form>
-        </div>
-    </div>
  <script>
-    // Data dari server: tahun awal periode terbesar (null jika belum ada periode).
     const TAHUN_SARAN = <%- JSON.stringify(saranTahun) %>;
     const TAHUN_TERAKHIR = <%- JSON.stringify(terakhirTahun) %>;
-    // Tahun ajaran otomatis = tahun sekarang (dari server). Tidak bisa diubah pengguna.
     const TAHUN_SEKARANG = <%- JSON.stringify(sekarangTahun) %>;
 
-    // Jarak minimal (hari) antara hari ini dan tanggal selesai. Harus sama dengan di controller.
     const MIN_JARAK_HARI_SELESAI = 7;
 
     function tahunAwalDari(teks) {
@@ -327,7 +260,6 @@
         return `${y}-${m}-${day}`;
     }
 
-    // Tambah n hari ke string 'YYYY-MM-DD'
     function tambahHariStr(str, n) {
         const [y, m, d] = str.split('-').map(Number);
         const dt = new Date(y, m - 1, d + n);
@@ -340,26 +272,18 @@
         return `${parseInt(d)} ${bulan[parseInt(m) - 1]} ${y}`;
     }
 
-    // Ambil yang lebih besar dari dua string tanggal (string kosong dianggap tidak ada).
     function maksTgl(a, b) {
         if (!a) return b || '';
         if (!b) return a;
         return a > b ? a : b;
     }
 
-    // ==== RENTANG TANGGAL YANG DIIZINKAN UNTUK SATU TAHUN AJARAN ====
-    // Tahun ajaran 2026/2027 => 1 Januari 2026 sampai 31 Desember 2027.
-    // Kalau mau pakai tahun ajaran sekolah (1 Juli - 30 Juni), ubah dua baris return di bawah
-    // dan fungsi yang sama di controller.
     function rentangTahunAjaran(ta) {
         const m = String(ta || '').match(/^(\d{4})\/(\d{4})$/);
         if (!m) return null;
         return { min: m[1] + '-01-01', max: m[2] + '-12-31' };
     }
 
-    // Validasi rentang tanggal di sisi browser. Mengembalikan pesan error atau null.
-    // mulaiLama/selesaiLama: tanggal yang tidak diubah tidak divalidasi aturan "minimal hari ini"
-    // (dipakai saat edit/perpanjang). Aturan "harus di dalam tahun ajaran" SELALU dicek.
     function validasiTanggal(mulai, selesai, mulaiLama, selesaiLama, tahunAjaran) {
         const today = getTodayStr();
         const minSelesai = tambahHariStr(today, MIN_JARAK_HARI_SELESAI);
@@ -400,8 +324,6 @@
         }
     }
 
-    // Atur batas (min/max) kedua kolom tanggal otomatis mengikuti tahun ajaran.
-    // mode: 'tambah' | 'edit' | 'perpanjang'
     function terapkanBatas(mode, tahun, elMulai, elSelesai, elInfo) {
         const today = getTodayStr();
         const minSelesaiHari = tambahHariStr(today, MIN_JARAK_HARI_SELESAI);
@@ -414,8 +336,6 @@
         if (mode === 'tambah') {
             minMulai = maksTgl(minMulai, today);
             minSelesai = maksTgl(minSelesai, minSelesaiHari);
-        } else if (mode === 'perpanjang') {
-            minSelesai = maksTgl(minSelesai, minSelesaiHari);
         }
 
         elMulai.min = minMulai;
@@ -423,13 +343,11 @@
         elSelesai.min = minSelesai;
         elSelesai.max = batasMaks;
 
-        // Kosongkan tanggal yang keluar dari batas supaya tidak lolos tanpa sadar.
         [elMulai, elSelesai].forEach(function (el) {
             if (!el.value) return;
             if ((el.min && el.value < el.min) || (el.max && el.value > el.max)) el.value = '';
         });
 
-        // Periode baru: tanggal mulai terisi otomatis (hari ini, atau awal tahun ajaran kalau belum sampai).
         if (mode === 'tambah' && r && !elMulai.value && minMulai <= r.max) {
             elMulai.value = minMulai;
         }
@@ -458,7 +376,6 @@
     }
 
     function bukaModalTambah() {
-        // Kosongkan tanggal lama. Tahun ajaran otomatis = tahun sekarang dan tidak bisa diubah.
         document.getElementById('tambah_tgl_mulai').value = '';
         document.getElementById('tambah_tgl_selesai').value = '';
         document.getElementById('tahun_ajaran_tambah').value = TAHUN_SEKARANG;
@@ -474,14 +391,11 @@
         document.getElementById('edit_id_periode').value = p.id_periode;
         document.getElementById('edit_kuota').value = p.kuota_kelas_digital;
 
-        // Set tahun dulu (memicu batas tanggal), baru isi tanggal dari server (string YYYY-MM-DD).
-        // Tahun ajaran hanya ditampilkan (terkunci), tidak bisa diubah.
         document.getElementById('edit_tahun_ajaran').value = p.tahun_ajaran;
         document.getElementById('ta_label_edit').textContent = p.tahun_ajaran;
         document.getElementById('edit_tgl_mulai').value = p.tgl_mulai_str || '';
         document.getElementById('edit_tgl_selesai').value = p.tgl_selesai_str || '';
 
-        // Simpan nilai awal supaya aturan "minimal hari ini" hanya berlaku untuk tanggal yang diubah
         document.getElementById('edit_tgl_mulai').dataset.awal = document.getElementById('edit_tgl_mulai').value;
         document.getElementById('edit_tgl_selesai').dataset.awal = document.getElementById('edit_tgl_selesai').value;
         tampilPeringatan('peringatan_tanggal_edit', null);
@@ -490,61 +404,15 @@
         document.getElementById('modalEdit').style.display = 'flex';
     }
 
-    // ==== MODAL PERPANJANG PERIODE KEDALUWARSA ====
-    function bukaModalPerpanjang(p) {
-        document.getElementById('perpanjang_id_periode').value = p.id_periode;
-        document.getElementById('perpanjang_tahun_label').textContent = p.tahun_ajaran;
-
-        const inputMulai = document.getElementById('perpanjang_tgl_mulai');
-        inputMulai.value = p.tgl_mulai_str || '';
-        inputMulai.dataset.awal = inputMulai.value; // tanggal mulai lama boleh dibiarkan
-
-        const inputSelesai = document.getElementById('perpanjang_tgl_selesai');
-        inputSelesai.value = ''; // dikosongkan supaya admin wajib memilih tanggal baru
-
-        terapkanBatas('perpanjang', p.tahun_ajaran, inputMulai, inputSelesai, document.getElementById('rentang_info_perpanjang'));
-
-        document.getElementById('peringatan_perpanjang').style.display = 'none';
-        document.getElementById('modalPerpanjang').style.display = 'flex';
-    }
-
-    function handlePerpanjangSubmit(form) {
-        const warn = document.getElementById('peringatan_perpanjang');
-        const mulai = form.tanggal_mulai.value;
-        const selesai = form.tanggal_selesai.value;
-        const tahun = document.getElementById('perpanjang_tahun_label').textContent.trim();
-
-        function tampilkan(pesan) {
-            warn.textContent = pesan;
-            warn.style.display = 'block';
-            return false;
-        }
-
-        if (!selesai) {
-            return tampilkan('Tanggal selesai baru wajib diisi.');
-        }
-
-        // Tanggal selesai selalu divalidasi (selesaiLama = null), tanggal mulai hanya jika diubah
-        const pesan = validasiTanggal(mulai, selesai, form.tanggal_mulai.dataset.awal || '', null, tahun);
-        if (pesan) {
-            return tampilkan(pesan);
-        }
-
-        warn.style.display = 'none';
-        return true;
-    }
-
-    // ==== VALIDASI FORMAT TAHUN AJARAN (STRICT) ====
     const REGEX_TAHUN_AJARAN = /^\d{4}\/\d{4}$/;
 
     function isTahunAjaranValid(val) {
         if (!REGEX_TAHUN_AJARAN.test(val)) return false;
         const [y1, y2] = val.split('/').map(Number);
-        return y2 === y1 + 1; // tahun kedua harus persis tahun pertama + 1
+        return y2 === y1 + 1;
     }
 
     function handleTambahSubmit(form) {
-        // Tahun ajaran selalu otomatis tahun sekarang (nilai dari server), tidak bisa diubah.
         document.getElementById('tahun_ajaran_tambah').value = TAHUN_SEKARANG;
         const tahunVal = TAHUN_SEKARANG;
 
@@ -553,7 +421,6 @@
             return false;
         }
 
-        // Tahun ajaran baru harus lebih baru dari periode terakhir.
         const awalBaru = tahunAwalDari(tahunVal);
         const awalTerakhir = tahunAwalDari(TAHUN_TERAKHIR);
 
@@ -566,7 +433,6 @@
         }
         tampilPeringatan('peringatan_tahun_tambah', null);
 
-        // Validasi tanggal: di dalam tahun ajaran, mulai minimal hari ini, selesai minimal 7 hari dari hari ini
         const pesanTanggal = validasiTanggal(form.tanggal_mulai.value, form.tanggal_selesai.value, '', '', tahunVal);
         if (pesanTanggal) {
             tampilPeringatan('peringatan_tanggal_tambah', pesanTanggal);
@@ -587,14 +453,12 @@
     }
 
     function handleEditSubmit(form) {
-        // Tahun ajaran dikunci, hanya dibaca dari nilai periode yang sedang diedit.
         const tahunVal = form.tahun_ajaran.value.trim();
         if (!isTahunAjaranValid(tahunVal)) {
             tampilPeringatan('peringatan_tanggal_edit', 'Tahun ajaran periode tidak valid. Muat ulang halaman lalu coba lagi.');
             return false;
         }
 
-        // Tanggal harus di dalam tahun ajaran; aturan "minimal hari ini" hanya untuk tanggal yang diubah
         const pesanTanggal = validasiTanggal(
             form.tanggal_mulai.value,
             form.tanggal_selesai.value,

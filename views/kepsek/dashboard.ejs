@@ -3,92 +3,214 @@
 <head>
     <title>Dashboard Kepala Sekolah</title>
     <%- include('../partials/head') %>
+    <style>
+        .kp-banner {
+            display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+            background: linear-gradient(135deg, #0b2545 0%, #1d4ed8 100%);
+            color: #fff; border-radius: 16px; padding: 24px 28px; margin-bottom: 22px;
+            box-shadow: 0 8px 24px rgba(29, 78, 216, .22);
+        }
+        .kp-banner-icon {
+            width: 56px; height: 56px; border-radius: 14px; flex-shrink: 0;
+            background: rgba(255, 255, 255, .16); display: flex; align-items: center;
+            justify-content: center; font-size: 28px;
+        }
+        .kp-banner-teks { flex: 1; min-width: 220px; }
+        .kp-banner-teks h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; color: #fff; }
+        .kp-banner-teks p { margin: 0; font-size: 14px; color: rgba(255, 255, 255, .85); line-height: 1.5; }
+        .kp-banner-badge {
+            background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .28);
+            border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600;
+            white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+        }
+
+        .kp-stat-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 22px;
+        }
+        .kp-stat {
+            background: #fff; border-radius: 16px; padding: 20px 22px;
+            display: flex; align-items: center; gap: 16px;
+            border: 1px solid #e8ecf3; box-shadow: 0 2px 10px rgba(11, 37, 69, .05);
+            position: relative; overflow: hidden; transition: transform .15s, box-shadow .15s;
+        }
+        .kp-stat:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(11, 37, 69, .09); }
+        .kp-stat::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+            background: var(--kp-warna);
+        }
+        .kp-stat-ikon {
+            width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 24px;
+            background: var(--kp-latar); color: var(--kp-warna);
+        }
+        .kp-stat h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #6b7685; }
+        .kp-stat .kp-angka { margin: 0; font-size: 32px; font-weight: 700; color: #0b2545; line-height: 1.1; }
+        .kp-stat-merah { --kp-warna: #e74c3c; --kp-latar: #fdecea; }
+        .kp-stat-oranye { --kp-warna: #f39c12; --kp-latar: #fef3e0; }
+        .kp-stat-hijau { --kp-warna: #27ae60; --kp-latar: #e6f7ee; }
+
+        .kp-panel {
+            background: #fff; border-radius: 16px; padding: 22px 24px; margin-bottom: 22px;
+            border: 1px solid #e8ecf3; box-shadow: 0 2px 10px rgba(11, 37, 69, .05);
+        }
+        .kp-panel-judul {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+            padding-bottom: 14px; border-bottom: 1px solid #eef1f6;
+        }
+        .kp-panel-judul h3 { margin: 0; font-size: 16px; font-weight: 700; color: #0b2545; }
+        .kp-panel-judul small { display: block; font-size: 12px; color: #6b7685; font-weight: 500; margin-top: 2px; }
+        .kp-ikon {
+            width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 17px;
+        }
+        .kp-ikon-biru { background: #e3edfd; color: #1d4ed8; }
+        .kp-ikon-ungu { background: #f0e7fb; color: #8e44ad; }
+
+        .kp-dua-kolom { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; margin-bottom: 22px; }
+        .kp-dua-kolom .kp-panel { margin-bottom: 0; }
+
+        .kp-chart-box { position: relative; width: 100%; height: 300px; }
+        .kp-chart-box-kecil { position: relative; width: 100%; height: 300px; }
+
+        .kp-bobot-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+        .kp-bobot-donut { position: relative; width: 210px; height: 210px; }
+        .kp-legend { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+        .kp-legend li {
+            display: flex; align-items: center; gap: 10px; font-size: 13px; color: #33415c;
+            background: #f7f9fc; border-radius: 10px; padding: 8px 12px;
+        }
+        .kp-legend .kp-titik { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .kp-legend .kp-nama { flex: 1; }
+        .kp-legend b { color: #0b2545; font-size: 13px; }
+
+        .kp-kosong {
+            text-align: center; color: #8a94a6; font-size: 14px; padding: 36px 16px;
+            background: #f7f9fc; border-radius: 12px; line-height: 1.6;
+        }
+        .kp-kosong i { font-size: 30px; display: block; margin-bottom: 8px; color: #b6bfcf; }
+
+        .kp-alert { margin-bottom: 18px; }
+
+        @media (max-width: 900px) {
+            .kp-dua-kolom { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 720px) {
+            .kp-stat-grid { grid-template-columns: 1fr; }
+            .kp-banner { padding: 20px; }
+            .kp-banner-teks h2 { font-size: 19px; }
+            .kp-panel { padding: 18px 16px; }
+            .kp-chart-box, .kp-chart-box-kecil { height: 260px; }
+        }
+    </style>
 </head>
 <body>
+    <%
+    const paletBobot = ['#1d4ed8', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e74c3c'];
+    %>
     <div class="app-layout">
         <%- include('../partials/sidebar', { user: user, activePage: activePage }) %>
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
-                <div class="content-wrapper">
-                    <% if (typeof error !== 'undefined' && error) { %>
-                        <div class="alert alert-danger"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
-                    <% } %>
-                <div class="welcome-banner">
-                    <div class="welcome-icon"><i class="bi bi-mortarboard-fill"></i></div>
-                    <div>
+            <div class="content-wrapper">
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <div class="alert alert-danger kp-alert"><i class="bi bi-exclamation-circle-fill"></i> <%= error %></div>
+                <% } %>
+
+                <div class="kp-banner">
+                    <div class="kp-banner-icon"><i class="bi bi-mortarboard-fill"></i></div>
+                    <div class="kp-banner-teks">
                         <h2><%= user.isFirstLogin ? 'Selamat datang' : 'Selamat datang kembali' %>, <%= user.nama %>! 👋</h2>
                         <p>Pantau hasil seleksi Kelas Digital dan unduh laporan resmi kapan saja melalui dashboard ini.</p>
                     </div>
+                    <% if (latestPeriode) { %>
+                        <div class="kp-banner-badge"><i class="bi bi-calendar-range"></i> Periode <%= latestPeriode.tahun_ajaran %></div>
+                    <% } %>
                 </div>
 
-                <div class="card-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon icon-blue"><i class="bi bi-x-circle-fill"></i></div>
+                <div class="kp-stat-grid">
+                    <div class="kp-stat kp-stat-merah">
+                        <div class="kp-stat-ikon"><i class="bi bi-x-circle-fill"></i></div>
                         <div>
                             <h3>Tidak Lulus</h3>
-                            <p class="stat-number"><%= chartData.tidak_lulus %></p>
+                            <p class="kp-angka"><%= chartData.tidak_lulus %></p>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon icon-orange"><i class="bi bi-person-dash-fill"></i></div>
+                    <div class="kp-stat kp-stat-oranye">
+                        <div class="kp-stat-ikon"><i class="bi bi-person-dash-fill"></i></div>
                         <div>
                             <h3>Mengundurkan Diri</h3>
-                            <p class="stat-number"><%= chartData.mengundurkan_diri %></p>
+                            <p class="kp-angka"><%= chartData.mengundurkan_diri %></p>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon icon-green"><i class="bi bi-check-circle-fill"></i></div>
+                    <div class="kp-stat kp-stat-hijau">
+                        <div class="kp-stat-ikon"><i class="bi bi-check-circle-fill"></i></div>
                         <div>
                             <h3>Lulus</h3>
-                            <p class="stat-number"><%= chartData.lulus %></p>
+                            <p class="kp-angka"><%= chartData.lulus %></p>
                         </div>
                     </div>
                 </div>
 
-                <!-- CHART RIWAYAT ANTAR PERIODE -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-clock-history"></i></div>
-                        <h3>Riwayat Perkembangan Antar Periode</h3>
+                <div class="kp-panel">
+                    <div class="kp-panel-judul">
+                        <div class="kp-ikon kp-ikon-ungu"><i class="bi bi-clock-history"></i></div>
+                        <div>
+                            <h3>Riwayat Perkembangan Antar Periode</h3>
+                            <small>Perbandingan jumlah siswa, kelulusan, dan pengunduran diri tiap periode</small>
+                        </div>
                     </div>
                     <% if (riwayatPeriode.length === 0) { %>
-                        <p class="empty-state">Belum ada data periode.</p>
+                        <div class="kp-kosong"><i class="bi bi-inbox"></i>Belum ada data periode.</div>
                     <% } else { %>
-                        <canvas id="chartRiwayatKepsek" height="90"></canvas>
-                    <% } %>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-bar-chart-fill"></i></div>
-                        <h3>Sebaran Nilai Siswa <% if (latestPeriode) { %>(<%= latestPeriode.tahun_ajaran %> — Periode Terbaru)<% } %></h3>
-                    </div>
-                    <canvas id="chartSebaran" height="90"></canvas>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header">
-                        <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
-                        <h3>Bobot Tiap Kriteria (Hasil FUCOM) <% if (latestPeriode) { %>— <%= latestPeriode.tahun_ajaran %><% } %></h3>
-                    </div>
-                    <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
-                        <div class="chart-with-legend">
-                            <div style="width:200px; height:200px; flex-shrink:0;">
-                                <canvas id="chartBobot"></canvas>
-                            </div>
-                            <ul class="legend-list">
-                                <% chartData.bobotKriteria.forEach(function(k) { %>
-                                    <li><span class="dot"></span> <%= k.nama_kriteria %> <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b></li>
-                                <% }); %>
-                            </ul>
+                        <div class="kp-chart-box">
+                            <canvas id="chartRiwayatKepsek"></canvas>
                         </div>
-                    <% } else { %>
-                        <p class="empty-state">Bobot kriteria untuk periode terbaru belum tersedia. Lihat grafik riwayat di atas untuk data periode sebelumnya.</p>
                     <% } %>
                 </div>
 
+                <div class="kp-dua-kolom">
+                    <div class="kp-panel">
+                        <div class="kp-panel-judul">
+                            <div class="kp-ikon kp-ikon-biru"><i class="bi bi-bar-chart-fill"></i></div>
+                            <div>
+                                <h3>Sebaran Nilai Siswa</h3>
+                                <small><% if (latestPeriode) { %><%= latestPeriode.tahun_ajaran %> — Periode Terbaru<% } else { %>Belum ada periode<% } %></small>
+                            </div>
+                        </div>
+                        <div class="kp-chart-box-kecil">
+                            <canvas id="chartSebaran"></canvas>
+                        </div>
+                    </div>
 
+                    <div class="kp-panel">
+                        <div class="kp-panel-judul">
+                            <div class="kp-ikon kp-ikon-ungu"><i class="bi bi-pie-chart-fill"></i></div>
+                            <div>
+                                <h3>Bobot Tiap Kriteria</h3>
+                                <small>Hasil FUCOM<% if (latestPeriode) { %> — <%= latestPeriode.tahun_ajaran %><% } %></small>
+                            </div>
+                        </div>
+                        <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
+                            <div class="kp-bobot-wrap">
+                                <div class="kp-bobot-donut">
+                                    <canvas id="chartBobot"></canvas>
+                                </div>
+                                <ul class="kp-legend">
+                                    <% chartData.bobotKriteria.forEach(function(k, i) { %>
+                                        <li>
+                                            <span class="kp-titik" style="background: <%= paletBobot[i % paletBobot.length] %>;"></span>
+                                            <span class="kp-nama"><%= k.nama_kriteria %></span>
+                                            <b><%= (k.nilai_bobot * 100).toFixed(0) %>%</b>
+                                        </li>
+                                    <% }); %>
+                                </ul>
+                            </div>
+                        <% } else { %>
+                            <div class="kp-kosong"><i class="bi bi-pie-chart"></i>Bobot kriteria untuk periode terbaru belum tersedia. Lihat grafik riwayat di atas untuk data periode sebelumnya.</div>
+                        <% } %>
+                    </div>
+                </div>
 
                 <%- include('../partials/footer') %>
             </div>
@@ -97,21 +219,33 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        Chart.defaults.font.family = "'Segoe UI', system-ui, -apple-system, Arial, sans-serif";
+        Chart.defaults.font.size = 12;
+        Chart.defaults.color = '#6b7685';
+
         <% if (riwayatPeriode.length > 0) { %>
         new Chart(document.getElementById('chartRiwayatKepsek'), {
             type: 'bar',
             data: {
                 labels: <%- JSON.stringify(riwayatPeriode.map(p => p.tahun_ajaran)) %>,
                 datasets: [
-                    { label: 'Total Siswa', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalSiswa)) %>, backgroundColor: '#94b8f0' },
-                    { label: 'Lulus', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalLulus)) %>, backgroundColor: '#27ae60' },
-                    { label: 'Mengundurkan Diri', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalMundur)) %>, backgroundColor: '#e74c3c' }
+                    { label: 'Total Siswa', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalSiswa)) %>, backgroundColor: '#94b8f0', borderRadius: 6, maxBarThickness: 38 },
+                    { label: 'Lulus', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalLulus)) %>, backgroundColor: '#27ae60', borderRadius: 6, maxBarThickness: 38 },
+                    { label: 'Mengundurkan Diri', data: <%- JSON.stringify(riwayatPeriode.map(p => p.totalMundur)) %>, backgroundColor: '#e74c3c', borderRadius: 6, maxBarThickness: 38 }
                 ]
             },
             options: {
                 responsive: true,
-                plugins: { legend: { display: true, position: 'bottom' } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 18 } },
+                    tooltip: { backgroundColor: '#0b2545', padding: 10, cornerRadius: 8 }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#eef1f6' }, border: { display: false } }
+                }
             }
         });
         <% } %>
@@ -120,19 +254,50 @@
             type: 'bar',
             data: {
                 labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
-                datasets: [{ label: 'Jumlah Siswa', data: <%- JSON.stringify(chartData.sebaranNilai) %>, backgroundColor: '#1d5fd6', borderRadius: 6 }]
+                datasets: [{
+                    label: 'Jumlah Siswa',
+                    data: <%- JSON.stringify(chartData.sebaranNilai) %>,
+                    backgroundColor: ['#c7d7f5', '#9dbbee', '#6f9be3', '#3f78d8', '#1d4ed8'],
+                    borderRadius: 8,
+                    maxBarThickness: 56
+                }]
             },
-            options: { plugins: { legend: { display: false } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: '#0b2545', padding: 10, cornerRadius: 8 }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#eef1f6' }, border: { display: false } }
+                }
+            }
         });
 
         <% if (chartData.bobotKriteria && chartData.bobotKriteria.length > 0) { %>
         new Chart(document.getElementById('chartBobot'), {
-            type: 'pie',
+            type: 'doughnut',
             data: {
                 labels: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nama_kriteria)) %>,
-                datasets: [{ data: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nilai_bobot)) %>, backgroundColor: ['#1d5fd6', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e74c3c'] }]
+                datasets: [{
+                    data: <%- JSON.stringify(chartData.bobotKriteria.map(k => k.nilai_bobot)) %>,
+                    backgroundColor: <%- JSON.stringify(paletBobot) %>,
+                    borderColor: '#ffffff',
+                    borderWidth: 3,
+                    hoverOffset: 6
+                }]
             },
-            options: { maintainAspectRatio: true, plugins: { legend: { display: false } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '58%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: '#0b2545', padding: 10, cornerRadius: 8 }
+                }
+            }
         });
         <% } %>
     </script>

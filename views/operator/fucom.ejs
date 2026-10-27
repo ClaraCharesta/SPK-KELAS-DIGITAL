@@ -32,6 +32,9 @@
 <%
     const aman = function (obj) { return JSON.stringify(obj).replace(/</g, '\\u003c'); };
 
+    // Batas DFC untuk teks tampilan. Harus sama dengan DFC_THRESHOLD di fucomController.js (0.025).
+    const batasDfcTampil = '0,025';
+
     // Nama responden otomatis = nama profil akun yang sedang login (dikirim controller)
     const namaResp = (typeof namaResponden !== 'undefined' && namaResponden)
         ? namaResponden
@@ -78,7 +81,9 @@
     const adaData = respondenList.length >= 1;
     const tipTerkunci = 'Isi data responden dulu untuk membuka langkah ini';
 
-    // ===== Bantuan tampilan saat hasil inkonsisten (hanya tampilan, tidak mengubah logika) =====
+    // ===== Bantuan tampilan untuk bobot lama yang belum konsisten (hanya tampilan, tidak mengubah logika) =====
+    // Catatan: dengan aturan baru, bobot yang tidak konsisten tidak disimpan lagi oleh controller.
+    // Bagian ini hanya berfungsi sebagai cadangan jika masih ada data lama di basis data.
     const inkonsisten = bobotFinal.length > 0 && !dfcKonsisten;
     const AMBANG_BESAR_VIEW = 4;
     const nilaiDfcTampil = bobotFinal.length > 0 ? parseFloat(bobotFinal[0].nilai_dfc).toFixed(3).replace('.', ',') : '';
@@ -150,11 +155,11 @@
                             <li>Gunakan nilai yang <strong>moderat</strong> (misalnya 1 sampai 4, boleh desimal). Semakin besar lompatan nilai antar kriteria, semakin besar risiko hasil pembobotan menjadi tidak konsisten. Sistem akan memberi peringatan jika nilai melebihi 4.</li>
                             <li>Data hanya diinput <strong>satu kali</strong> (1 responden). Jika dua orang menekan simpan di waktu yang hampir sama, hanya yang masuk lebih dulu yang tersimpan. Selama bobot belum final, data masih bisa diedit lewat tombol <strong>"Edit"</strong> pada kartu responden. Setelah data yakin benar, klik <strong>"Hitung Bobot FUCOM"</strong>.</li>
                             <li>
-                                Setelah dihitung, sistem akan menampilkan nilai <strong>DFC (Deviation from Full Consistency)</strong> — semacam skor yang menunjukkan seberapa konsisten urutan dan nilai yang diinput tadi secara matematis.
+                                Setelah dihitung, sistem akan memeriksa nilai <strong>DFC (Deviation from Full Consistency)</strong> — semacam skor yang menunjukkan seberapa konsisten urutan dan nilai yang diinput tadi secara matematis.
                                 <ul style="margin-top:6px;">
-                                    <li><strong>DFC di bawah 0,1</strong> → hasil dianggap <strong>konsisten</strong>. Bobot otomatis menjadi final dan terkunci, Admin dapat melanjutkan ke pengelolaan data siswa.</li>
-                                    <li><strong>DFC di atas atau sama dengan 0,1</strong> → hasil dianggap <strong>belum konsisten</strong>. Ini bukan berarti sistem error — artinya urutan atau nilai perbandingan yang diinput tadi kurang logis secara matematis (misalnya lompatan nilai terlalu ekstrem). Bobot <strong>tidak</strong> dikunci. Halaman otomatis menampilkan panduan perbaikan, lalu klik <strong>"Perbaiki Data Perbandingan"</strong> untuk mengubah nilai yang bermasalah.</li>
-                                    <li><strong>Distribusi bobot terlalu timpang</strong> (ada kriteria dengan bobot di bawah 3%) → bobot <strong>tidak disimpan dan tidak dikunci</strong>, walaupun DFC sudah di bawah 0,1. Sistem menyebutkan kriteria mana yang bobotnya terlalu kecil. Ubah nilai perbandingan agar lebih seimbang, lalu hitung ulang.</li>
+                                    <li><strong>DFC di bawah <%= batasDfcTampil %></strong> → hasil dianggap <strong>konsisten</strong>. Bobot otomatis disimpan sebagai bobot final dan terkunci, lalu Admin dapat melanjutkan ke pengelolaan data siswa.</li>
+                                    <li><strong>DFC di atas atau sama dengan <%= batasDfcTampil %></strong> → hasil dianggap <strong>belum konsisten</strong>. Ini bukan berarti sistem error — artinya urutan atau nilai perbandingan yang diinput tadi kurang logis secara matematis (misalnya lompatan nilai terlalu ekstrem). Bobot <strong>tidak disimpan dan tidak dikunci</strong>. Sistem menampilkan pesan berisi nilai DFC. Klik <strong>"Edit"</strong> pada kartu responden, turunkan nilai yang besar, lalu klik <strong>"Hitung Bobot FUCOM"</strong> lagi.</li>
+                                    <li><strong>Distribusi bobot terlalu timpang</strong> (ada kriteria dengan bobot di bawah 3%) → bobot <strong>tidak disimpan dan tidak dikunci</strong>, walaupun DFC sudah di bawah <%= batasDfcTampil %>. Sistem menyebutkan kriteria mana yang bobotnya terlalu kecil. Ubah nilai perbandingan agar lebih seimbang, lalu hitung ulang.</li>
                                 </ul>
                             </li>
                         </ol>
@@ -192,7 +197,7 @@
                         <div class="banner-inkonsisten">
                             <span>
                                 <i class="bi bi-exclamation-triangle-fill"></i>
-                                Hasil perhitungan terakhir <strong>belum konsisten</strong> (DFC <%= nilaiDfcTampil %>, batas 0,1).
+                                Hasil perhitungan terakhir <strong>belum konsisten</strong> (DFC <%= nilaiDfcTampil %>, batas <%= batasDfcTampil %>).
                                 Perbaiki nilai perbandingan di bawah ini, terutama yang bertanda kuning.
                             </span>
                             <span class="aksi">
@@ -297,13 +302,13 @@
                                 <% if (terkunci) { %>
                                     Data terkunci, perhitungan tidak dapat dijalankan lagi.
                                 <% } else { %>
-                                    Data sudah lengkap. Klik "Hitung Bobot FUCOM" untuk memulai perhitungan.
+                                    Data sudah lengkap. Klik "Hitung Bobot FUCOM" untuk memulai perhitungan. Bobot hanya disimpan jika hasilnya konsisten (DFC di bawah <%= batasDfcTampil %>).
                                 <% } %>
                             </p>
                         <% } else { %>
 
                             <% if (!dfcKonsisten) { %>
-                                <!-- ===== PANDUAN PERBAIKAN (tampilan saja) ===== -->
+                                <!-- ===== PANDUAN PERBAIKAN (tampilan saja, cadangan untuk data lama) ===== -->
                                 <div class="panduan-inkonsisten">
                                     <h4><i class="bi bi-compass-fill"></i> Hasil belum konsisten. Apa yang perlu dilakukan sekarang?</h4>
                                     <p>
@@ -319,7 +324,7 @@
                                         </div>
                                         <div class="kotak target">
                                             <small>Syarat konsisten</small>
-                                            <strong>&lt; 0,1</strong>
+                                            <strong>&lt; <%= batasDfcTampil %></strong>
                                         </div>
                                     </div>
 
@@ -896,7 +901,7 @@
         }
 
         // Pulihkan langkah terakhir saat halaman dimuat.
-        // Jika hasil terakhir inkonsisten, langsung tampilkan Langkah 2 agar panduan perbaikan terlihat.
+        // Jika ada bobot lama yang inkonsisten, langsung tampilkan Langkah 2 agar panduan perbaikan terlihat.
         (function() {
             let awal = 1;
             try { awal = parseInt(sessionStorage.getItem(STEP_KEY), 10) || 1; } catch (e) {}

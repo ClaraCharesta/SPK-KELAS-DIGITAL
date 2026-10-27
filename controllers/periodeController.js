@@ -4,17 +4,13 @@ const userModel = require('../models/userModel');
 const waspasModel = require('../models/waspasModel');
 const pengingatService = require('../services/pengingatService');
 
-// Jarak minimal (hari) antara hari ini dan tanggal selesai periode.
 const MIN_JARAK_HARI_SELESAI = 7;
 
-// Tahun ajaran otomatis mengikuti tahun sekarang. Contoh: tahun 2026 => "2026/2027".
-// Tidak bisa diubah oleh pengguna.
 function tahunAjaranSekarang() {
     const y = new Date().getFullYear();
     return `${y}/${y + 1}`;
 }
 
-// Helper tanggal (aman untuk string 'YYYY-MM-DD' maupun objek Date)
 function tanggalKeString(val) {
     if (!val) return null;
     if (val instanceof Date) {
@@ -28,7 +24,6 @@ function hariIniString() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-// Tambah n hari ke string 'YYYY-MM-DD', hasilnya string 'YYYY-MM-DD'
 function tambahHariString(str, n) {
     const [y, m, d] = str.split('-').map(Number);
     const dt = new Date(y, m - 1, d + n);
@@ -41,25 +36,12 @@ function formatTanggalIndoServer(str) {
     return `${parseInt(d)} ${BULAN[parseInt(m) - 1]} ${y}`;
 }
 
-// Rentang tanggal yang diizinkan untuk satu tahun ajaran.
-// Tahun ajaran 2026/2027 => 1 Januari 2026 sampai 31 Desember 2027.
-// Kalau mau memakai tahun ajaran sekolah (1 Juli - 30 Juni), ubah dua string di bawah:
-//   min: `${m[1]}-07-01`, max: `${m[2]}-06-30`
-// (dan ubah fungsi yang sama di view periode.ejs).
-// Mengembalikan null kalau format tahun ajaran tidak valid.
 function rentangTahunAjaran(tahun_ajaran) {
     const m = String(tahun_ajaran || '').trim().match(/^(\d{4})\/(\d{4})$/);
     if (!m) return null;
     return { min: `${m[1]}-01-01`, max: `${m[2]}-12-31` };
 }
 
-// Validasi rentang tanggal periode. Mengembalikan pesan error, atau null jika valid.
-// - Tanggal mulai/selesai (jika diisi) HARUS berada di dalam rentang tahun ajarannya (selalu dicek).
-// - Tanggal mulai (jika diisi dan DIUBAH) minimal hari ini.
-// - Tanggal selesai (jika diisi dan DIUBAH) minimal 7 hari dari hari ini.
-// - Tanggal selesai tidak boleh sebelum tanggal mulai.
-// mulaiLama/selesaiLama dipakai saat edit/perpanjang: tanggal yang tidak diubah tidak divalidasi
-// aturan "minimal hari ini" lagi, supaya periode yang sudah berjalan tetap bisa diedit.
 function validasiTanggalPeriode(mulai, selesai, mulaiLama = null, selesaiLama = null, tahunAjaran = null) {
     const hariIni = hariIniString();
     const minSelesai = tambahHariString(hariIni, MIN_JARAK_HARI_SELESAI);
@@ -96,34 +78,11 @@ function validasiTanggalPeriode(mulai, selesai, mulaiLama = null, selesaiLama = 
     return null;
 }
 
-// Periode dianggap kedaluwarsa jika tanggal selesai sudah lewat dan belum difinalisasi.
-// Berlaku untuk SEMUA periode (bukan hanya yang terbaru).
-function isKedaluwarsa(p) {
-    if (!p || !p.tanggal_selesai) return false;
-    if (p.status_penyelesaian === 'selesai') return false;
-    return tanggalKeString(p.tanggal_selesai) < hariIniString();
-}
-
-// Ambil satu periode berdasarkan ID (memakai getAll yang sudah ada)
 async function ambilPeriodeById(id_periode) {
     const semua = await periodeModel.getAll();
     return semua.find(x => String(x.id_periode) === String(id_periode)) || null;
 }
 
-// Kembalikan true (dan sudah redirect) jika periode kedaluwarsa.
-// Dipakai sebagai penjaga di sisi server supaya request manual (URL/Postman) juga ditolak.
-async function tolakJikaKedaluwarsa(res, id_periode, aksi) {
-    const p = await ambilPeriodeById(id_periode);
-    if (p && isKedaluwarsa(p)) {
-        res.redirect('/admin/periode?error=' + encodeURIComponent(
-            `Periode kedaluwarsa tidak dapat ${aksi}. Gunakan fitur Perpanjang untuk mengubah tanggal periode.`
-        ));
-        return true;
-    }
-    return false;
-}
-
-// Jalankan pengecekan pengingat di latar belakang (tidak menunggu, tidak boleh bikin error).
 function picuPengingat() {
     try {
         pengingatService.kirimPengingatHarian().catch(function (e) {
@@ -134,17 +93,44 @@ function picuPengingat() {
     }
 }
 
-// Tidak bergantung pada latestId
-function computeDisplayStatus(p) {
-    if (isKedaluwarsa(p)) {
-        return { label: 'Kedaluwarsa', badgeClass: 'badge-orange' };
+// Sinkronkan status periode dengan tanggal:
+// 1) tutup periode aktif yang tanggal selesainya sudah lewat
+// 2) nonaktifkan semua akun siswa dari periode yang sudah ditutup
+async function sinkronkanStatusPeriode(idUserLog = null) {
+    try {
+        const ditutup = await periodeModel.tutupPeriodeKedaluwarsa(hariIniString());
+        const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
+
+        if (idUserLog && ditutup > 0) {
+            await userModel.logActivity(idUserLog, `Sistem menutup ${ditutup} periode seleksi yang melewati tanggal selesai`);
+        }
+        if (idUserLog && dinonaktifkan > 0) {
+            await userModel.logActivity(idUserLog, `Sistem menonaktifkan ${dinonaktifkan} akun siswa dari periode yang ditutup`);
+        }
+    } catch (e) {
+        console.error('Gagal menyinkronkan status periode:', e);
     }
-    if (p.status_periode !== 'aktif') {
+}
+
+// Urutan prioritas status (berdasarkan tanggal):
+// 1. Ditutup  -> status_periode bukan 'aktif' ATAU tanggal selesai sudah lewat
+// 2. Selesai  -> hasil seleksi sudah difinalisasi (dan periode masih berjalan)
+// 3. Belum Aktif -> tanggal mulai belum tiba
+// 4. Aktif
+function computeDisplayStatus(p) {
+    const hariIni = hariIniString();
+    const tglSelesaiStr = tanggalKeString(p.tanggal_selesai);
+    const sudahLewat = !!tglSelesaiStr && tglSelesaiStr < hariIni;
+
+    if (p.status_periode !== 'aktif' || sudahLewat) {
         return { label: 'Ditutup', badgeClass: 'badge-red' };
+    }
+    if (p.status_penyelesaian === 'selesai') {
+        return { label: 'Selesai', badgeClass: 'badge-lulus' };
     }
     if (p.tanggal_mulai) {
         const tglMulaiStr = tanggalKeString(p.tanggal_mulai);
-        if (tglMulaiStr > hariIniString()) {
+        if (tglMulaiStr > hariIni) {
             return { label: 'Belum Aktif', badgeClass: 'badge-yellow' };
         }
     }
@@ -153,9 +139,6 @@ function computeDisplayStatus(p) {
 
 const REGEX_TAHUN_AJARAN = /^(\d{4})\/(\d{4})$/;
 
-// Mengembalikan pesan error, atau null jika tahun ajaran valid.
-// Aturan: format YYYY/YYYY, tahun kedua = tahun pertama + 1,
-// dan tahun awal harus LEBIH BESAR dari tahun awal periode lain yang sudah ada.
 async function validasiTahunAjaran(tahun_ajaran, excludeId = null) {
     const m = String(tahun_ajaran || '').trim().match(REGEX_TAHUN_AJARAN);
 
@@ -173,7 +156,6 @@ async function validasiTahunAjaran(tahun_ajaran, excludeId = null) {
     const terbesar = await periodeModel.getTahunAwalTerbesar(excludeId);
 
     if (terbesar !== null && awal <= terbesar) {
-        // Kembali ke bentuk "YYYY/YYYY" dari tahun terbesar yang tercatat.
         const terakhir = `${terbesar}/${terbesar + 1}`;
         const berikutnya = `${terbesar + 1}/${terbesar + 2}`;
 
@@ -186,34 +168,19 @@ async function validasiTahunAjaran(tahun_ajaran, excludeId = null) {
 const periodeController = {
     async index(req, res) {
         try {
-            // Pastikan periode kedaluwarsa sudah ditutup sebelum halaman ditampilkan
-            // (cadangan kalau cron belum sempat jalan). Kalau gagal, halaman tetap tampil.
-            try {
-                await pengingatService.tutupPeriodeKedaluwarsa();
-            } catch (e) {
-                console.error('Gagal menutup periode kedaluwarsa:', e);
-            }
+            await sinkronkanStatusPeriode(req.session.user.id_user);
 
             const periodeListRaw = await periodeModel.getAll();
             const latestId = await periodeModel.getLatestId();
 
-            // kedaluwarsa berlaku untuk semua periode; bisa_perpanjang hanya periode terbaru.
-            // tgl_mulai_str / tgl_selesai_str = string 'YYYY-MM-DD' siap pakai untuk view
-            // (menghindari pergeseran hari akibat JSON.stringify(Date) yang memakai UTC).
             const periodeList = await Promise.all(periodeListRaw.map(async p => ({
                 ...p,
                 tgl_mulai_str: tanggalKeString(p.tanggal_mulai) || '',
                 tgl_selesai_str: tanggalKeString(p.tanggal_selesai) || '',
                 display_status: computeDisplayStatus(p),
-                kedaluwarsa: isKedaluwarsa(p),
-                bisa_perpanjang: p.id_periode === latestId,
                 bobot_final: await kriteriaModel.checkBobotSudahFinal(p.id_periode)
             })));
 
-            // Banner hanya untuk periode terbaru yang kedaluwarsa (satu-satunya yang bisa diperpanjang)
-            const periodeKedaluwarsa = periodeList.find(p => p.kedaluwarsa && p.bisa_perpanjang) || null;
-
-            // Saran tahun ajaran berikutnya untuk modal "Buka Periode Baru".
             const terbesar = await periodeModel.getTahunAwalTerbesar();
             const tahunSaran = terbesar !== null ? `${terbesar + 1}/${terbesar + 2}` : '';
 
@@ -223,7 +190,6 @@ const periodeController = {
                 tahunSaran,
                 tahunSekarang: tahunAjaranSekarang(),
                 tahunTerakhir: terbesar !== null ? `${terbesar}/${terbesar + 1}` : '',
-                periodeKedaluwarsa,
                 success: req.query.success || null,
                 error: req.query.error || null
             });
@@ -235,7 +201,6 @@ const periodeController = {
 
     async create(req, res) {
         try {
-            // tahun_ajaran dari form DIABAIKAN. Selalu otomatis tahun sekarang.
             const { kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = req.body;
             const tahun_ajaran = tahunAjaranSekarang();
 
@@ -248,7 +213,6 @@ const periodeController = {
 
             const tahunBersih = tahun_ajaran.trim();
 
-            // Tahun ajaran otomatis = tahun sekarang. Kalau sudah pernah dibuat, tolak dengan pesan jelas.
             const sudahAdaTahunIni = await periodeModel.existsByTahunAjaran(tahunBersih);
             if (sudahAdaTahunIni) {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent(`Periode tahun ajaran ${tahunBersih} sudah dibuat. Tahun ajaran otomatis mengikuti tahun sekarang dan tidak dapat diubah.`));
@@ -259,8 +223,6 @@ const periodeController = {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTahun));
             }
 
-            // Validasi tanggal: harus di dalam tahun ajaran, mulai minimal hari ini,
-            // selesai minimal 7 hari dari hari ini
             const pesanTanggal = validasiTanggalPeriode(tanggal_mulai, tanggal_selesai, null, null, tahunBersih);
             if (pesanTanggal) {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTanggal));
@@ -281,7 +243,6 @@ const periodeController = {
             await kriteriaModel.createDefault(id_periode_baru);
             await userModel.logActivity(req.session.user.id_user, `Admin membuka periode seleksi baru: ${tahunBersih}`);
 
-            // Periode lama otomatis ditutup, jadi akun siswanya ikut dinonaktifkan.
             const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
             if (dinonaktifkan > 0) {
                 await userModel.logActivity(
@@ -303,22 +264,30 @@ const periodeController = {
         try {
             const { id_periode, kuota_kelas_digital } = req.body;
 
-            // Periode kedaluwarsa tidak boleh diubah kuotanya, harus diperpanjang dulu.
-            if (await tolakJikaKedaluwarsa(res, id_periode, 'diubah kuotanya')) return;
+            await sinkronkanStatusPeriode(req.session.user.id_user);
 
             if (parseInt(kuota_kelas_digital) < 30) {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
             }
 
-            // Status Masuk/Tidak Masuk dihitung dari ranking dan kuota,
-            // jadi kuota tidak boleh diubah setelah hasil difinalisasi.
+            const periodeLama = await ambilPeriodeById(id_periode);
+            if (!periodeLama) {
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode tidak ditemukan.'));
+            }
+            if (periodeLama.status_periode !== 'aktif') {
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota tidak dapat diubah karena periode sudah ditutup.'));
+            }
+
             if (await waspasModel.isFinal(id_periode)) {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota tidak dapat diubah karena hasil seleksi sudah difinalisasi.'));
             }
 
+            if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota tidak dapat diubah karena pembobotan FUCOM sudah dilakukan.'));
+            }
+
             await periodeModel.updateKuota(id_periode, kuota_kelas_digital);
 
-            // Perubahan kuota membuat hasil ranking lama tidak valid.
             await waspasModel.invalidateHasilJikaAda(id_periode);
 
             await userModel.logActivity(req.session.user.id_user, `Admin mengubah kuota periode ID ${id_periode} menjadi ${kuota_kelas_digital}`);
@@ -329,61 +298,16 @@ const periodeController = {
         }
     },
 
-    async setActive(req, res) {
-        try {
-            const { id_periode } = req.params;
-
-            // Periode kedaluwarsa tidak boleh diaktifkan lewat jalur apa pun.
-            const periodeTarget = await ambilPeriodeById(id_periode);
-            if (periodeTarget && isKedaluwarsa(periodeTarget)) {
-                const latestId = await periodeModel.getLatestId();
-                const pesan = (periodeTarget.id_periode === latestId)
-                    ? 'Periode ini tidak bisa diaktifkan karena tanggal selesainya sudah kedaluwarsa. Anda harus mengubah tanggal rentang periode terlebih dahulu lewat tombol Perpanjang.'
-                    : 'Periode ini sudah kedaluwarsa dan bukan periode terbaru, sehingga tidak dapat diaktifkan kembali. Datanya tetap tersimpan sebagai arsip.';
-                return res.redirect('/admin/periode?error=' + encodeURIComponent(pesan));
-            }
-
-            await periodeModel.setActive(id_periode);
-
-            // Periode lain ditutup (akunnya dinonaktifkan), periode ini dibuka kembali (akunnya diaktifkan).
-            const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
-            const diaktifkan = await periodeModel.aktifkanKembaliAkunPeriode(id_periode);
-
-            await userModel.logActivity(
-                req.session.user.id_user,
-                `Admin mengaktifkan periode ID ${id_periode} (${diaktifkan} akun siswa diaktifkan, ${dinonaktifkan} akun periode lain dinonaktifkan)`
-            );
-            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode berhasil diaktifkan.'));
-        } catch (error) {
-            console.error(error);
-            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
-        }
-    },
-
     async update(req, res) {
         try {
-            // tahun_ajaran dari form DIABAIKAN. Tahun ajaran tidak bisa diubah, selalu pakai data lama.
             const { id_periode, kuota_kelas_digital, tanggal_mulai, tanggal_selesai } = req.body;
+
+            await sinkronkanStatusPeriode(req.session.user.id_user);
+
             const latestId = await periodeModel.getLatestId();
 
             if (parseInt(id_periode) !== latestId) {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat diedit.'));
-            }
-
-            // Periode kedaluwarsa tidak boleh diedit, harus lewat Perpanjang.
-            if (await tolakJikaKedaluwarsa(res, id_periode, 'diedit')) return;
-
-            const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
-            if (statusPenyelesaian === 'selesai') {
-                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diedit karena hasil seleksinya sudah difinalisasi.'));
-            }
-
-            if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
-                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diedit karena pembobotan FUCOM sudah dijalankan dan final.'));
-            }
-
-            if (parseInt(kuota_kelas_digital) < 30) {
-                return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
             }
 
             const periodeLama = await ambilPeriodeById(id_periode);
@@ -391,23 +315,35 @@ const periodeController = {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode tidak ditemukan.'));
             }
 
-            // Tahun ajaran dikunci: selalu memakai nilai yang tersimpan di database.
+            if (periodeLama.status_periode !== 'aktif') {
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode sudah ditutup, tidak dapat diedit.'));
+            }
+
+            const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
+            if (statusPenyelesaian === 'selesai') {
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diedit karena hasil seleksinya sudah difinalisasi.'));
+            }
+
+            if (await kriteriaModel.checkBobotSudahFinal(id_periode)) {
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diedit karena pembobotan FUCOM sudah dilakukan.'));
+            }
+
+            if (parseInt(kuota_kelas_digital) < 30) {
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Kuota minimal 30 siswa.'));
+            }
+
             const tahunBersih = String(periodeLama.tahun_ajaran || '').trim();
 
-            // Saat edit, periode ini dikecualikan dari pembanding supaya tahunnya sendiri tidak dianggap bentrok.
             const pesanTahun = await validasiTahunAjaran(tahunBersih, id_periode);
             if (pesanTahun) {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTahun));
             }
 
-            // Validasi tanggal. Tanggal wajib di dalam tahun ajaran (selalu dicek).
-            // Aturan "minimal hari ini" hanya untuk tanggal yang diubah, supaya periode
-            // yang sudah berjalan tetap bisa diedit (misal hanya ganti kuota).
             const pesanTanggal = validasiTanggalPeriode(
                 tanggal_mulai,
                 tanggal_selesai,
-                periodeLama ? tanggalKeString(periodeLama.tanggal_mulai) : null,
-                periodeLama ? tanggalKeString(periodeLama.tanggal_selesai) : null,
+                tanggalKeString(periodeLama.tanggal_mulai),
+                tanggalKeString(periodeLama.tanggal_selesai),
                 tahunBersih
             );
             if (pesanTanggal) {
@@ -426,7 +362,6 @@ const periodeController = {
                 tanggal_selesai: tanggal_selesai || null
             });
 
-            // Kuota bisa ikut berubah, jadi hasil ranking lama dikosongkan.
             await waspasModel.invalidateHasilJikaAda(id_periode);
 
             await userModel.logActivity(req.session.user.id_user, `Admin memperbarui periode: ${tahunBersih}`);
@@ -440,16 +375,16 @@ const periodeController = {
         }
     },
 
-    // Perpanjang periode kedaluwarsa: HANYA mengubah rentang tanggal.
-    // Tahun ajaran, kuota, bobot FUCOM, dan hasil ranking tidak disentuh,
-    // sehingga tetap bisa dipakai walaupun bobot FUCOM sudah final.
-    async perpanjang(req, res) {
+    async delete(req, res) {
         try {
-            const { id_periode, tanggal_mulai, tanggal_selesai } = req.body;
+            const { id_periode } = req.params;
+
+            await sinkronkanStatusPeriode(req.session.user.id_user);
+
             const latestId = await periodeModel.getLatestId();
 
             if (parseInt(id_periode) !== latestId) {
-                return res.redirect('/admin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat diperpanjang.'));
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat dihapus.'));
             }
 
             const p = await ambilPeriodeById(id_periode);
@@ -457,68 +392,9 @@ const periodeController = {
                 return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode tidak ditemukan.'));
             }
 
-            if (p.status_penyelesaian === 'selesai') {
-                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode ini tidak dapat diperpanjang karena hasil seleksinya sudah difinalisasi.'));
-            }
-
-            if (!tanggal_selesai) {
-                return res.redirect('/admin/periode?error=' + encodeURIComponent('Tanggal selesai baru wajib diisi.'));
-            }
-
-            // Tanggal selesai baru wajib minimal 7 hari dari hari ini (selesaiLama = null
-            // supaya SELALU divalidasi). Tanggal mulai hanya divalidasi aturan "minimal hari ini"
-            // kalau diubah. Kedua tanggal wajib di dalam tahun ajaran periode ini.
-            const pesanTanggal = validasiTanggalPeriode(
-                tanggal_mulai,
-                tanggal_selesai,
-                tanggalKeString(p.tanggal_mulai),
-                null,
-                p.tahun_ajaran
-            );
-            if (pesanTanggal) {
-                return res.redirect('/admin/periode?error=' + encodeURIComponent(pesanTanggal));
-            }
-
-            await periodeModel.update(id_periode, {
-                tahun_ajaran: p.tahun_ajaran,
-                kuota_kelas_digital: p.kuota_kelas_digital,
-                tanggal_mulai: tanggal_mulai || null,
-                tanggal_selesai
-            });
-
-            // Jika periode sempat ditutup (otomatis/manual), buka kembali beserta akun siswanya.
-            let diaktifkan = 0;
             if (p.status_periode !== 'aktif') {
-                await periodeModel.setActive(id_periode);
-                await periodeModel.nonaktifkanAkunPeriodeDitutup();
-                diaktifkan = await periodeModel.aktifkanKembaliAkunPeriode(id_periode);
+                return res.redirect('/admin/periode?error=' + encodeURIComponent('Periode sudah ditutup, tidak dapat dihapus.'));
             }
-
-            await userModel.logActivity(
-                req.session.user.id_user,
-                `Admin memperpanjang periode ${p.tahun_ajaran} hingga ${tanggal_selesai} (${diaktifkan} akun siswa diaktifkan kembali)`
-            );
-
-            picuPengingat();
-
-            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode berhasil diperpanjang dan diaktifkan kembali. Data siswa, nilai, dan hasil ranking sebelumnya tetap aman.'));
-        } catch (error) {
-            console.error(error);
-            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
-        }
-    },
-
-    async delete(req, res) {
-        try {
-            const { id_periode } = req.params;
-            const latestId = await periodeModel.getLatestId();
-
-            if (parseInt(id_periode) !== latestId) {
-                return res.redirect('/admin/periode?error=' + encodeURIComponent('Hanya periode terbaru yang dapat dihapus.'));
-            }
-
-            // Periode kedaluwarsa tidak boleh dihapus, harus diperpanjang dulu.
-            if (await tolakJikaKedaluwarsa(res, id_periode, 'dihapus')) return;
 
             const statusPenyelesaian = await periodeModel.getStatusPenyelesaian(id_periode);
             if (statusPenyelesaian === 'selesai') {
@@ -532,29 +408,6 @@ const periodeController = {
             await periodeModel.deleteCascade(id_periode);
             await userModel.logActivity(req.session.user.id_user, `Admin menghapus periode ID ${id_periode} beserta seluruh data terkait`);
             res.redirect('/admin/periode?success=' + encodeURIComponent('Periode beserta seluruh data terkait berhasil dihapus.'));
-        } catch (error) {
-            console.error(error);
-            res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
-        }
-    },
-
-    async tutupManual(req, res) {
-        try {
-            const { id_periode } = req.params;
-
-            // Periode kedaluwarsa tidak boleh ditutup manual (sudah otomatis tertutup/kedaluwarsa).
-            if (await tolakJikaKedaluwarsa(res, id_periode, 'ditutup manual')) return;
-
-            await periodeModel.tutupManual(id_periode);
-
-            // Periode ditutup, akun siswanya ikut dinonaktifkan.
-            const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
-
-            await userModel.logActivity(
-                req.session.user.id_user,
-                `Admin menutup periode ID ${id_periode} secara manual (${dinonaktifkan} akun siswa dinonaktifkan)`
-            );
-            res.redirect('/admin/periode?success=' + encodeURIComponent('Periode berhasil ditutup. Akun siswa pada periode ini dinonaktifkan.'));
         } catch (error) {
             console.error(error);
             res.redirect('/admin/periode?error=' + encodeURIComponent('Terjadi kesalahan sistem.'));
