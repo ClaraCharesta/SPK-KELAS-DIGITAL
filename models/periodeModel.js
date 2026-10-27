@@ -2,7 +2,13 @@ const db = require('../config/database');
 
 const periodeModel = {
     async getAll() {
-        const [rows] = await db.query('SELECT * FROM periode_seleksi ORDER BY id_periode DESC');
+        const [rows] = await db.query(
+            `SELECT *,
+                    DATE_FORMAT(tanggal_mulai, '%Y-%m-%d') AS tanggal_mulai_str,
+                    DATE_FORMAT(tanggal_selesai, '%Y-%m-%d') AS tanggal_selesai_str
+             FROM periode_seleksi
+             ORDER BY id_periode DESC`
+        );
         return rows;
     },
 

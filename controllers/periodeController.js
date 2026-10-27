@@ -19,6 +19,17 @@ function tanggalKeString(val) {
     return String(val).split('T')[0];
 }
 
+// Ambil tanggal periode sebagai string 'YYYY-MM-DD'.
+// Utamakan kolom *_str hasil DATE_FORMAT dari MySQL (tidak kena masalah timezone),
+// kalau tidak ada baru fallback ke konversi dari nilai asli.
+// field: 'tanggal_mulai' atau 'tanggal_selesai'
+function tanggalPeriode(p, field) {
+    if (!p) return null;
+    const str = p[field + '_str'];
+    if (str) return String(str);
+    return tanggalKeString(p[field]);
+}
+
 function hariIniString() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -98,8 +109,16 @@ function picuPengingat() {
 // 2) nonaktifkan semua akun siswa dari periode yang sudah ditutup
 async function sinkronkanStatusPeriode(idUserLog = null) {
     try {
-        const ditutup = await periodeModel.tutupPeriodeKedaluwarsa(hariIniString());
+        const hariIni = hariIniString();
+        const ditutup = await periodeModel.tutupPeriodeKedaluwarsa(hariIni);
         const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
+
+        if (ditutup > 0) {
+            console.log(`[PERIODE] Hari ini ${hariIni}: ${ditutup} periode ditutup otomatis karena melewati tanggal selesai`);
+        }
+        if (dinonaktifkan > 0) {
+            console.log(`[PERIODE] ${dinonaktifkan} akun siswa dinonaktifkan karena periodenya ditutup`);
+        }
 
         if (idUserLog && ditutup > 0) {
             await userModel.logActivity(idUserLog, `Sistem menutup ${ditutup} periode seleksi yang melewati tanggal selesai`);
@@ -119,7 +138,7 @@ async function sinkronkanStatusPeriode(idUserLog = null) {
 // 4. Aktif
 function computeDisplayStatus(p) {
     const hariIni = hariIniString();
-    const tglSelesaiStr = tanggalKeString(p.tanggal_selesai);
+    const tglSelesaiStr = tanggalPeriode(p, 'tanggal_selesai');
     const sudahLewat = !!tglSelesaiStr && tglSelesaiStr < hariIni;
 
     if (p.status_periode !== 'aktif' || sudahLewat) {
@@ -128,8 +147,8 @@ function computeDisplayStatus(p) {
     if (p.status_penyelesaian === 'selesai') {
         return { label: 'Selesai', badgeClass: 'badge-lulus' };
     }
-    if (p.tanggal_mulai) {
-        const tglMulaiStr = tanggalKeString(p.tanggal_mulai);
+    const tglMulaiStr = tanggalPeriode(p, 'tanggal_mulai');
+    if (tglMulaiStr) {
         if (tglMulaiStr > hariIni) {
             return { label: 'Belum Aktif', badgeClass: 'badge-yellow' };
         }
@@ -175,14 +194,21 @@ const periodeController = {
 
             const periodeList = await Promise.all(periodeListRaw.map(async p => ({
                 ...p,
-                tgl_mulai_str: tanggalKeString(p.tanggal_mulai) || '',
-                tgl_selesai_str: tanggalKeString(p.tanggal_selesai) || '',
+                tgl_mulai_str: tanggalPeriode(p, 'tanggal_mulai') || '',
+                tgl_selesai_str: tanggalPeriode(p, 'tanggal_selesai') || '',
                 display_status: computeDisplayStatus(p),
                 bobot_final: await kriteriaModel.checkBobotSudahFinal(p.id_periode)
             })));
 
             const terbesar = await periodeModel.getTahunAwalTerbesar();
             const tahunSaran = terbesar !== null ? `${terbesar + 1}/${terbesar + 2}` : '';
+
+            // Pastikan halaman selalu diambil ulang dari server (tidak dari cache browser)
+            res.set({
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            });
 
             res.render('admin/periode', {
                 user: req.session.user, periodeList, latestId, activePage: 'periode',
@@ -342,8 +368,8 @@ const periodeController = {
             const pesanTanggal = validasiTanggalPeriode(
                 tanggal_mulai,
                 tanggal_selesai,
-                tanggalKeString(periodeLama.tanggal_mulai),
-                tanggalKeString(periodeLama.tanggal_selesai),
+                tanggalPeriode(periodeLama, 'tanggal_mulai'),
+                tanggalPeriode(periodeLama, 'tanggal_selesai'),
                 tahunBersih
             );
             if (pesanTanggal) {
