@@ -1,92 +1,165 @@
 const cfg = require('../config/sessionConfig');
 
-// Mengembalikan:
-//   'absolut' -> umur sesi sudah melewati batas maksimal sejak login
-//   'idle'    -> tidak ada aktivitas lebih lama dari batas idle
-//   null      -> sesi masih sah
-// Absolute dicek lebih dulu karena sifatnya lebih tegas.
-// Sesi lama yang belum punya loginAt / lastActivity dianggap masih sah.
-function statusSesiSiswa(dataSiswa) {
-    if (!dataSiswa) return null;
+function hitungStatus(data, konfig) {
+    if (!data) return null;
 
     const sekarang = Date.now();
 
-    const loginAt = Number(dataSiswa.loginAt);
-    if (loginAt && (sekarang - loginAt) > cfg.SISWA_ABSOLUT_MS) {
+    const loginAt = Number(data.loginAt);
+    if (loginAt && (sekarang - loginAt) > konfig.absolutMs) {
         return 'absolut';
     }
 
-    const terakhir = Number(dataSiswa.lastActivity);
-    if (terakhir && (sekarang - terakhir) > cfg.SISWA_IDLE_MS) {
+    const terakhir = Number(data.lastActivity);
+    if (terakhir && (sekarang - terakhir) > konfig.idleMs) {
         return 'idle';
     }
 
     return null;
 }
 
-// Teks pesan di halaman login sesuai alasan sesi berakhir.
-function pesanTimeout(alasan) {
-    if (alasan === 'absolut') {
-        return `Sesi login Anda sudah mencapai batas maksimal ${cfg.SISWA_ABSOLUT_JAM} jam. Silakan login kembali.`;
-    }
-    return `Sesi Anda berakhir otomatis karena tidak ada aktivitas selama ${cfg.SISWA_IDLE_MENIT} menit. Silakan login kembali.`;
+function statusSesiSiswa(dataSiswa) {
+    return hitungStatus(dataSiswa, cfg.KONFIGURASI.siswa);
 }
 
-// Dipasang di app.use('/siswa', ...) sebelum route siswa.
-// - Halaman siswa tidak boleh disimpan di cache (supaya tombol Back tidak menampilkan halaman lama setelah logout).
-// - Jika sesi melewati batas idle atau absolute: sesi dihapus, lalu diarahkan ke login.
-// - Jika masih sah: lastActivity diperbarui (setiap request ke /siswa dihitung sebagai aktivitas).
-//   loginAt TIDAK pernah diperbarui di sini, itulah yang membuat absolute timeout tidak bisa diperpanjang.
-function siswaIdleTimeout(req, res, next) {
+function statusSesiStaf(dataUser) {
+    return hitungStatus(dataUser, cfg.KONFIGURASI.staf);
+}
+
+function pesanTimeout(alasan, tipe) {
+    const k = tipe === 'staf' ? cfg.KONFIGURASI.staf : cfg.KONFIGURASI.siswa;
+
+    if (alasan === 'absolut') {
+        return `Sesi login Anda sudah mencapai batas maksimal ${k.absolutJam} jam. Silakan login kembali.`;
+    }
+    return `Sesi Anda berakhir otomatis karena tidak ada aktivitas selama ${k.idleMenit} menit. Silakan login kembali.`;
+}
+
+function setNoCache(res) {
     res.set({
         'Cache-Control': 'no-store, no-cache, must-revalidate, private',
         'Pragma': 'no-cache',
         'Expires': '0'
     });
+}
+
+function permintaanAjax(req) {
+    return Boolean(
+        req.xhr ||
+        String(req.originalUrl || '').indexOf('/sesi/') !== -1 ||
+        String(req.get('Accept') || '').indexOf('application/json') !== -1
+    );
+}
+
+function akhiriSesi(req, res, alasan, tipe) {
+    const tujuan = '/login?timeout=' + alasan + (tipe === 'staf' ? '&tipe=staf' : '');
+    const ajax = permintaanAjax(req);
+
+    return req.session.destroy(function () {
+        res.clearCookie(cfg.SESSION_COOKIE_NAME);
+
+        if (ajax) {
+            return res.status(401).json({ expired: true, alasan: alasan, redirect: tujuan });
+        }
+        return res.redirect(tujuan);
+    });
+}
+
+function isiLocals(res, data, konfig, pingUrl) {
+    res.locals.sesiIdleMs = konfig.idleMs;
+    res.locals.sesiPeringatanMs = konfig.peringatanMs;
+    res.locals.sesiAbsolutJam = konfig.absolutJam;
+    res.locals.sesiSisaAbsolutMs = Math.max(0, Number(data.loginAt) + konfig.absolutMs - Date.now());
+    res.locals.sesiPingUrl = pingUrl;
+    res.locals.sesiLogoutUrl = '/logout';
+}
+
+
+function siswaIdleTimeout(req, res, next) {
+    setNoCache(res);
 
     if (!req.session || !req.session.siswa) {
         return next();
     }
 
-    const alasan = statusSesiSiswa(req.session.siswa);
+    const konfig = cfg.KONFIGURASI.siswa;
+    const alasan = hitungStatus(req.session.siswa, konfig);
 
     if (alasan) {
-        const permintaanAjax =
-            req.xhr ||
-            req.path.indexOf('/sesi/') === 0 ||
-            String(req.get('Accept') || '').indexOf('application/json') !== -1;
-
-        return req.session.destroy(function () {
-            res.clearCookie(cfg.SESSION_COOKIE_NAME);
-
-            const tujuan = '/login?timeout=' + alasan;
-
-            if (permintaanAjax) {
-                return res.status(401).json({ expired: true, alasan: alasan, redirect: tujuan });
-            }
-            return res.redirect(tujuan);
-        });
+        return akhiriSesi(req, res, alasan, 'siswa');
     }
 
     const sekarang = Date.now();
 
-    // Sesi lama (dibuat sebelum fitur ini ada) belum punya loginAt: mulai hitung dari sekarang.
+
     if (!req.session.siswa.loginAt) {
         req.session.siswa.loginAt = sekarang;
     }
 
     req.session.siswa.lastActivity = sekarang;
 
-    // Dipakai oleh partial siswa-idle.ejs
-    res.locals.siswaIdleMs = cfg.SISWA_IDLE_MS;
-    res.locals.siswaPeringatanMs = cfg.SISWA_PERINGATAN_MS;
-    res.locals.siswaAbsolutJam = cfg.SISWA_ABSOLUT_JAM;
-    res.locals.siswaSisaAbsolutMs = Math.max(
-        0,
-        req.session.siswa.loginAt + cfg.SISWA_ABSOLUT_MS - sekarang
-    );
+    isiLocals(res, req.session.siswa, konfig, '/siswa/sesi/ping');
+
+    res.locals.siswaIdleMs = konfig.idleMs;
+    res.locals.siswaPeringatanMs = konfig.peringatanMs;
+    res.locals.siswaAbsolutJam = konfig.absolutJam;
+    res.locals.siswaSisaAbsolutMs = res.locals.sesiSisaAbsolutMs;
 
     next();
 }
 
-module.exports = { siswaIdleTimeout, statusSesiSiswa, pesanTimeout };
+
+function userIdleTimeout(req, res, next) {
+    if (!req.session || !req.session.user) {
+        return next();
+    }
+
+    setNoCache(res);
+
+    if (req.path === '/logout' || req.path === '/login') {
+        return next();
+    }
+
+    const konfig = cfg.KONFIGURASI.staf;
+    const alasan = hitungStatus(req.session.user, konfig);
+
+    if (alasan) {
+        return akhiriSesi(req, res, alasan, 'staf');
+    }
+
+    const sekarang = Date.now();
+
+    
+    if (!req.session.user.loginAt) {
+        req.session.user.loginAt = sekarang;
+    }
+
+    req.session.user.lastActivity = sekarang;
+
+    isiLocals(res, req.session.user, konfig, '/sesi/ping');
+
+    next();
+}
+
+function pingSesi(req, res) {
+    const adaSiswa = Boolean(req.session && req.session.siswa);
+    const data = adaSiswa ? req.session.siswa : (req.session && req.session.user);
+
+    if (!data) {
+        return res.status(401).json({ expired: true, alasan: 'idle', redirect: '/login' });
+    }
+
+    const konfig = adaSiswa ? cfg.KONFIGURASI.siswa : cfg.KONFIGURASI.staf;
+    const sisaAbsolutMs = Math.max(0, Number(data.loginAt) + konfig.absolutMs - Date.now());
+
+    res.json({ ok: true, sisaAbsolutMs: sisaAbsolutMs });
+}
+
+module.exports = {
+    siswaIdleTimeout,
+    userIdleTimeout,
+    pingSesi,
+    statusSesiSiswa,
+    statusSesiStaf,
+    pesanTimeout
+};

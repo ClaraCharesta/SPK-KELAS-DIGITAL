@@ -53,7 +53,7 @@ const userManagementController = {
                 users,
                 kepsekAktif: kepsekAktif || null,
                 activePage: 'akun-admin',
-                pageTitle: 'Kelola Akun Operator',
+                pageTitle: 'Kelola Akun Operator dan Kepala Sekolah',
                 success: req.query.success || null,
                 error: req.query.error || null
             });

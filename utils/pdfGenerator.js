@@ -44,6 +44,25 @@ function isMasuk(status) {
     return STATUS_MASUK.includes(String(status || '').toLowerCase().trim());
 }
 
+// Nilai status_penyelesaian (tabel periode) yang dianggap SUDAH FINAL.
+// Nilai lain (misal 'belum_selesai') dianggap DRAFT.
+const STATUS_PENYELESAIAN_FINAL = ['selesai', 'sudah_selesai', 'final', 'difinalisasi'];
+
+/**
+ * Menentukan apakah hasil seleksi sudah FINAL.
+ * Memakai kolom periode.status_penyelesaian:
+ *   - 'selesai' (dan variannya di atas) -> FINAL
+ *   - 'belum_selesai' / nilai lain      -> DRAFT
+ * Jika kolom tidak ada sama sekali, dianggap FINAL (perilaku lama).
+ */
+function isLaporanFinal(periode) {
+    if (!periode || periode.status_penyelesaian === undefined || periode.status_penyelesaian === null) {
+        return true;
+    }
+    const nilai = String(periode.status_penyelesaian).toLowerCase().trim();
+    return STATUS_PENYELESAIAN_FINAL.includes(nilai);
+}
+
 const STATUS_LABEL = {
     masuk: 'Masuk',
     tidak: 'Tidak Masuk'
@@ -230,6 +249,9 @@ function formatAngka(nilai, digit) {
  * data = { periode, hasilRanking, bobotKriteria, kepsek }
  * kepsek = { nama, nip } -> Kepala Sekolah yang AKTIF (ambil dari userModel.getKepsekAktif()).
  * Jika kepsek tidak ada, bagian tanda tangan tetap tercetak dengan garis kosong seperti sebelumnya.
+ *
+ * Jika periode.status_penyelesaian belum 'selesai', judul menjadi
+ * "DRAFT LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL".
  */
 function generateLaporanPDF(res, data) {
     const { periode, hasilRanking, bobotKriteria, kepsek } = data;
@@ -249,10 +271,16 @@ function generateLaporanPDF(res, data) {
     const siswaMasuk = hasilRanking.filter((h) => isMasuk(h.status_penerimaan));
     const siswaTidakMasuk = hasilRanking.filter((h) => !isMasuk(h.status_penerimaan));
 
+    // Judul berubah jadi DRAFT (tetap bold) kalau periode belum diselesaikan/difinalisasi
+    const laporanFinal = isLaporanFinal(periode);
+    const judulLaporan = laporanFinal
+        ? 'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL'
+        : 'DRAFT LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL';
+
     let y = drawLetterhead(
         doc,
         PAGE_WIDTH,
-        'LAPORAN HASIL PENEMPATAN SISWA KELAS DIGITAL',
+        judulLaporan,
         `Tahun Ajaran ${periode.tahun_ajaran}`
     );
 

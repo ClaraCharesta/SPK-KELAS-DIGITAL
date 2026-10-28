@@ -1,0 +1,244 @@
+<% if (typeof sesiIdleMs !== 'undefined') { %>
+<style>
+    #sesi-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: rgba(0, 0, 0, 0.55);
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        font-family: inherit;
+    }
+    #sesi-overlay.tampil {
+        display: flex;
+    }
+    #sesi-kotak {
+        background: #ffffff;
+        color: #1f2937;
+        width: 100%;
+        max-width: 420px;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        text-align: center;
+    }
+    #sesi-kotak h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+    }
+    #sesi-kotak p {
+        margin: 0 0 12px;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    #sesi-hitung {
+        font-size: 36px;
+        font-weight: 700;
+        margin: 4px 0 16px;
+        color: #dc2626;
+    }
+    #sesi-tombol {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    #sesi-tombol button {
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    #sesi-btn-tetap {
+        background: #2563eb;
+        color: #ffffff;
+    }
+    #sesi-btn-keluar {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+</style>
+
+<div id="sesi-overlay" role="alertdialog" aria-modal="true" aria-labelledby="sesi-judul">
+    <div id="sesi-kotak">
+        <h3 id="sesi-judul">Sesi akan segera berakhir</h3>
+        <p id="sesi-pesan"></p>
+        <div id="sesi-hitung">0</div>
+        <div id="sesi-tombol">
+            <button type="button" id="sesi-btn-tetap">Tetap Masuk</button>
+            <button type="button" id="sesi-btn-keluar">Keluar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var IDLE_MS = <%= Number(sesiIdleMs) %>;
+    var PERINGATAN_MS = <%= Number(sesiPeringatanMs) %>;
+    var SISA_ABSOLUT_MS = <%= Number(sesiSisaAbsolutMs) %>;
+    var ABSOLUT_JAM = <%= Number(sesiAbsolutJam) %>;
+    var PING_URL = <%- JSON.stringify(sesiPingUrl) %>;
+    var LOGOUT_URL = <%- JSON.stringify(sesiLogoutUrl) %>;
+
+    // Jeda minimal antar ping saat pengguna aktif (maks 30 detik, atau 1/4 batas idle)
+    var JEDA_PING_MS = Math.min(30000, Math.floor(IDLE_MS / 4));
+
+    var overlay = document.getElementById('sesi-overlay');
+    var elPesan = document.getElementById('sesi-pesan');
+    var elHitung = document.getElementById('sesi-hitung');
+    var btnTetap = document.getElementById('sesi-btn-tetap');
+    var btnKeluar = document.getElementById('sesi-btn-keluar');
+
+    var sekarang = Date.now();
+    var terakhirPing = sekarang;                  // halaman ini baru dimuat = server baru mencatat aktivitas
+    var absolutBerakhirPada = sekarang + SISA_ABSOLUT_MS;
+    var adaAktivitas = false;
+    var sedangPing = false;
+    var modePeringatan = null;                    // null | 'idle' | 'absolut'
+    var sudahKeluar = false;
+
+    function keluar(alasan) {
+        if (sudahKeluar) return;
+        sudahKeluar = true;
+        window.location.href = LOGOUT_URL + '?alasan=' + alasan;
+    }
+
+    function sembunyikan() {
+        modePeringatan = null;
+        overlay.classList.remove('tampil');
+    }
+
+    function tampilkan(mode) {
+        modePeringatan = mode;
+
+        if (mode === 'absolut') {
+            elPesan.textContent = 'Batas waktu maksimal login (' + ABSOLUT_JAM + ' jam) hampir tercapai. ' +
+                'Simpan pekerjaan Anda, lalu login kembali.';
+            btnTetap.style.display = 'none';
+            btnKeluar.textContent = 'Keluar Sekarang';
+        } else {
+            elPesan.textContent = 'Sesi Anda akan berakhir otomatis karena tidak ada aktivitas.';
+            btnTetap.style.display = '';
+            btnKeluar.textContent = 'Keluar';
+        }
+
+        overlay.classList.add('tampil');
+    }
+
+    function siarkanKeTabLain() {
+        try {
+            localStorage.setItem('sesi_ping', String(Date.now()));
+        } catch (e) { /* abaikan jika localStorage diblokir */ }
+    }
+
+    // Beritahu server bahwa pengguna masih aktif.
+    // tutupPeringatan = true kalau dipanggil dari tombol "Tetap Masuk".
+    function kirimPing(tutupPeringatan) {
+        if (sedangPing) return;
+        sedangPing = true;
+
+        fetch(PING_URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (res) {
+                return res.json().then(function (data) {
+                    return { status: res.status, data: data };
+                });
+            })
+            .then(function (hasil) {
+                sedangPing = false;
+
+                if (hasil.status === 401 || (hasil.data && hasil.data.expired)) {
+                    sudahKeluar = true;
+                    window.location.href = (hasil.data && hasil.data.redirect) || '/login';
+                    return;
+                }
+
+                terakhirPing = Date.now();
+                adaAktivitas = false;
+
+                if (hasil.data && typeof hasil.data.sisaAbsolutMs === 'number') {
+                    absolutBerakhirPada = Date.now() + hasil.data.sisaAbsolutMs;
+                }
+
+                if (tutupPeringatan) sembunyikan();
+                siarkanKeTabLain();
+            })
+            .catch(function () {
+                // Gagal jaringan: coba lagi di tick berikutnya
+                sedangPing = false;
+                adaAktivitas = true;
+            });
+    }
+
+    function tandaiAktivitas() {
+        // Saat peringatan tampil, hanya tombol yang boleh memperpanjang sesi
+        if (modePeringatan) return;
+        adaAktivitas = true;
+    }
+
+    ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(function (nama) {
+        document.addEventListener(nama, tandaiAktivitas, { passive: true });
+    });
+
+    // Tab lain sudah ping ke server -> anggap sesi baru saja diperbarui di sini juga
+    window.addEventListener('storage', function (e) {
+        if (e.key === 'sesi_ping') {
+            terakhirPing = Date.now();
+            adaAktivitas = false;
+            if (modePeringatan === 'idle') sembunyikan();
+        }
+    });
+
+    btnTetap.addEventListener('click', function () {
+        kirimPing(true);
+    });
+
+    btnKeluar.addEventListener('click', function () {
+        keluar(modePeringatan === 'absolut' ? 'absolut' : 'idle');
+    });
+
+    function tick() {
+        if (sudahKeluar) return;
+
+        var sekarang = Date.now();
+        var sisaIdle = (terakhirPing + IDLE_MS) - sekarang;
+        var sisaAbsolut = absolutBerakhirPada - sekarang;
+
+        // Habis
+        if (sisaAbsolut <= 0) return keluar('absolut');
+        if (sisaIdle <= 0) return keluar('idle');
+
+        // Pengguna aktif: kirim ping berkala supaya server ikut tahu
+        if (adaAktivitas && !modePeringatan && (sekarang - terakhirPing) >= JEDA_PING_MS) {
+            kirimPing(false);
+        }
+
+        // Peringatan absolut lebih tegas, diprioritaskan
+        if (sisaAbsolut <= PERINGATAN_MS) {
+            if (modePeringatan !== 'absolut') tampilkan('absolut');
+            elHitung.textContent = Math.ceil(sisaAbsolut / 1000);
+            return;
+        }
+
+        if (sisaIdle <= PERINGATAN_MS) {
+            if (modePeringatan !== 'idle') tampilkan('idle');
+            elHitung.textContent = Math.ceil(sisaIdle / 1000);
+            return;
+        }
+
+        if (modePeringatan) sembunyikan();
+    }
+
+    setInterval(tick, 1000);
+})();
+</script>
+<% } %>

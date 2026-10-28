@@ -1,18 +1,45 @@
-// Pengaturan batas waktu sesi siswa.
+// Pengaturan batas waktu sesi untuk SEMUA aktor.
 // Nilai bisa diubah lewat file .env tanpa mengubah kode.
 //
 // - Idle timeout     : sesi berakhir jika tidak ada aktivitas selama X menit.
-// - Absolute timeout : sesi berakhir X jam setelah login, seberapa aktif pun siswa.
+// - Absolute timeout : sesi berakhir X jam setelah login, seberapa aktif pun pengguna.
+//
+// Dua kelompok:
+//   siswa -> login lewat session key req.session.siswa
+//   staf  -> admin, operator, kepsek (login lewat session key req.session.user)
 
-const menitEnv = Number(process.env.SISWA_IDLE_MENIT);
-const jamEnv = Number(process.env.SISWA_ABSOLUT_JAM);
-const peringatanEnv = Number(process.env.SISWA_PERINGATAN_DETIK);
+function angkaPositif(nilai, bawaan) {
+    const n = Number(nilai);
+    return n > 0 ? n : bawaan;
+}
 
-const SISWA_IDLE_MENIT = menitEnv > 0 ? menitEnv : 15;
-const SISWA_ABSOLUT_JAM = jamEnv > 0 ? jamEnv : 8;
-const SISWA_PERINGATAN_DETIK = peringatanEnv > 0 ? peringatanEnv : 60;
+function buatKonfigurasi(idleMenit, absolutJam, peringatanDetik) {
+    return {
+        idleMenit,
+        idleMs: idleMenit * 60 * 1000,
+        absolutJam,
+        absolutMs: absolutJam * 60 * 60 * 1000,
+        peringatanDetik,
+        peringatanMs: peringatanDetik * 1000
+    };
+}
+
+const SISWA_IDLE_MENIT = angkaPositif(process.env.SISWA_IDLE_MENIT, 15);
+const SISWA_ABSOLUT_JAM = angkaPositif(process.env.SISWA_ABSOLUT_JAM, 8);
+const SISWA_PERINGATAN_DETIK = angkaPositif(process.env.SISWA_PERINGATAN_DETIK, 60);
+
+const STAF_IDLE_MENIT = angkaPositif(process.env.STAF_IDLE_MENIT, 30);
+const STAF_ABSOLUT_JAM = angkaPositif(process.env.STAF_ABSOLUT_JAM, 8);
+const STAF_PERINGATAN_DETIK = angkaPositif(process.env.STAF_PERINGATAN_DETIK, 60);
 
 module.exports = {
+    // Cara baru (dipakai middleware generik)
+    KONFIGURASI: {
+        siswa: buatKonfigurasi(SISWA_IDLE_MENIT, SISWA_ABSOLUT_JAM, SISWA_PERINGATAN_DETIK),
+        staf: buatKonfigurasi(STAF_IDLE_MENIT, STAF_ABSOLUT_JAM, STAF_PERINGATAN_DETIK)
+    },
+
+    // Nama lama dipertahankan supaya kode siswa yang sudah ada tidak rusak
     SISWA_IDLE_MENIT,
     SISWA_IDLE_MS: SISWA_IDLE_MENIT * 60 * 1000,
 

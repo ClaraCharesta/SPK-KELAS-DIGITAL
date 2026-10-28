@@ -27,7 +27,7 @@ const wajibGantiPasswordGuard = (req, res, next) => {
         res.locals.wajibGantiPassword = true;
 
         const dashboardRolePath = DASHBOARD_BY_ROLE[req.session.user.role] || '/login';
-        const allowedPaths = ['/dashboard', dashboardRolePath, '/ganti-password-wajib', '/logout'];
+        const allowedPaths = ['/dashboard', dashboardRolePath, '/ganti-password-wajib', '/logout', '/sesi/ping'];
 
         if (!allowedPaths.includes(req.path)) {
             return res.redirect('/dashboard');

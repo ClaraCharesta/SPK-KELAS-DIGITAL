@@ -3,7 +3,7 @@ const userModel = require('../models/userModel');
 const akunSiswaModel = require('../models/akunSiswaModel');
 const { sendDefaultPasswordEmail } = require('../utils/mailer');
 const cfg = require('../config/sessionConfig');
-const { statusSesiSiswa, pesanTimeout } = require('../middlewares/sessionTimeout');
+const { statusSesiSiswa, statusSesiStaf, pesanTimeout } = require('../middlewares/sessionTimeout');
 
 // Password default per role saat reset lewat "Lupa Password"
 const DEFAULT_PASSWORD_BY_ROLE = {
@@ -67,16 +67,33 @@ async function prosesLoginSiswa(req, res, usernameInput, password) {
     res.redirect('/siswa');
 }
 
+// Tentukan tipe sesi untuk pesan timeout ('staf' atau 'siswa')
+function tentukanTipe(nilai) {
+    return nilai === 'staf' ? 'staf' : 'siswa';
+}
+
 const authController = {
     showLoginPage(req, res) {
-        // Sesi siswa yang sudah melewati batas (idle atau absolute) dianggap tidak ada,
-        // supaya tidak dilempar ke /siswa lalu bolak-balik.
+        // Sesi yang sudah melewati batas (idle atau absolute) dianggap tidak ada,
+        // supaya tidak dilempar ke dashboard lalu bolak-balik.
         let alasan = null;
+        let tipe = 'siswa';
+
         if (req.session.siswa) {
             const status = statusSesiSiswa(req.session.siswa);
             if (status) {
                 delete req.session.siswa;
                 alasan = status;
+                tipe = 'siswa';
+            }
+        }
+
+        if (req.session.user) {
+            const status = statusSesiStaf(req.session.user);
+            if (status) {
+                delete req.session.user;
+                alasan = status;
+                tipe = 'staf';
             }
         }
 
@@ -88,9 +105,10 @@ const authController = {
             return res.redirect('/siswa');
         }
 
-        // Datang dari redirect timeout (?timeout=idle atau ?timeout=absolut)
+        // Datang dari redirect timeout (?timeout=idle atau ?timeout=absolut, opsional &tipe=staf)
         if (!alasan && ALASAN_TIMEOUT_VALID.indexOf(req.query.timeout) !== -1) {
             alasan = req.query.timeout;
+            tipe = tentukanTipe(req.query.tipe);
         }
 
         // Halaman login tidak boleh disimpan di cache browser.
@@ -100,7 +118,7 @@ const authController = {
             'Expires': '0'
         });
 
-        res.render('login', { error: alasan ? pesanTimeout(alasan) : null });
+        res.render('login', { error: alasan ? pesanTimeout(alasan, tipe) : null });
     },
     async processLogin(req, res) {
         const { username, password } = req.body;
@@ -122,6 +140,8 @@ const authController = {
             const isFirstLogin = user.last_login === null;
 
             delete req.session.siswa;
+
+            const sekarang = Date.now();
             req.session.user = {
                 id_user: user.id_user,
                 nama: user.nama,
@@ -129,7 +149,11 @@ const authController = {
                 role: user.role,
                 foto_profil: user.foto_profil || null,
                 isFirstLogin: isFirstLogin,
-                wajibGantiPassword: !!user.wajib_ganti_password
+                wajibGantiPassword: !!user.wajib_ganti_password,
+                // loginAt   : waktu login, dipakai untuk absolute timeout (tidak pernah diperbarui)
+                // lastActivity: aktivitas terakhir, dipakai untuk idle timeout (diperbarui tiap request)
+                loginAt: sekarang,
+                lastActivity: sekarang
             };
 
             await userModel.updateLastLogin(user.id_user);
@@ -143,12 +167,20 @@ const authController = {
         }
     },
     logout(req, res) {
-        // ?alasan=idle atau ?alasan=absolut dikirim oleh script timeout di browser siswa
+        // ?alasan=idle atau ?alasan=absolut dikirim oleh script timeout di browser
         const alasan = ALASAN_TIMEOUT_VALID.indexOf(req.query.alasan) !== -1 ? req.query.alasan : null;
+
+        // Tipe diambil dari sesi yang sedang aktif SEBELUM sesi dihancurkan
+        let tipe = 'siswa';
+        if (req.session.user) {
+            tipe = 'staf';
+        } else if (!req.session.siswa) {
+            tipe = tentukanTipe(req.query.tipe);
+        }
 
         req.session.destroy(() => {
             res.clearCookie(cfg.SESSION_COOKIE_NAME);
-            res.redirect(alasan ? '/login?timeout=' + alasan : '/login');
+            res.redirect(alasan ? '/login?timeout=' + alasan + (tipe === 'staf' ? '&tipe=staf' : '') : '/login');
         });
     },
 

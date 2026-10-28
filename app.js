@@ -6,7 +6,8 @@ const path = require('path');
 
 const db = require('./config/database');
 
-const { siswaIdleTimeout } = require('./middlewares/sessionTimeout');
+const cfg = require('./config/sessionConfig');
+const { siswaIdleTimeout, userIdleTimeout, pingSesi } = require('./middlewares/sessionTimeout');
 const sesiRoutes = require('./routes/sesiRoutes');
 
 const authRoutes = require('./routes/authRoutes');
@@ -44,20 +45,30 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Session dipakai semua role (admin, operator, kepsek, siswa).
-// maxAge 2 jam di bawah adalah umur cookie untuk STAF.
-// Untuk SISWA, umur cookie diganti saat login (lihat authController.prosesLoginSiswa)
-// menjadi SISWA_ABSOLUT_JAM, dan batas idle dijaga oleh middleware siswaIdleTimeout.
-// Jika kamu mengisi opsi "name" di sini, samakan dengan SESSION_COOKIE_NAME di .env.
+// Umur cookie = batas absolut terbesar antara siswa dan staf (dari .env) + 5 menit cadangan.
+// Batas idle dan absolut sebenarnya dijaga oleh middleware (siswaIdleTimeout dan userIdleTimeout),
+// cookie hanya perlu hidup selama-lamanya sampai batas absolut itu.
+const COOKIE_MAX_AGE_MS = Math.max(
+    cfg.KONFIGURASI.siswa.absolutMs,
+    cfg.KONFIGURASI.staf.absolutMs
+) + (5 * 60 * 1000);
+
 app.use(session({
+    name: cfg.SESSION_COOKIE_NAME,
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
         httpOnly: true,
         sameSite: 'lax',
-        maxAge: 1000 * 60 * 60 * 2
+        maxAge: COOKIE_MAX_AGE_MS
     }
 }));
+
+// ====== STAF: batas idle + absolute timeout (admin, operator, kepsek) ======
+// Global, harus setelah session dan sebelum semua route.
+// Hanya bekerja kalau req.session.user ada. /login dan /logout dilewati di dalam middleware.
+app.use(userIdleTimeout);
 
 app.use(autoTutupPeriode);
 app.use((req, res, next) => {
@@ -83,6 +94,10 @@ app.use('/akun-siswa', akunSiswaRoutes);
 
 app.use('/', authRoutes);
 
+// Ping sesi STAF. Sengaja SEBELUM isAuthenticated supaya sesi yang sudah habis
+// dibalas JSON 401 (bukan redirect HTML ke /login).
+app.post('/sesi/ping', pingSesi);
+
 app.post(
     '/ganti-password-wajib',
     isAuthenticated,
@@ -92,6 +107,7 @@ app.post(
 // ====== SISWA: batas idle + absolute timeout ======
 // Urutan penting: middleware cek sesi -> endpoint ping -> route siswa.
 app.use('/siswa', siswaIdleTimeout);
+app.post('/siswa/sesi/ping', pingSesi);
 app.use('/siswa/sesi', sesiRoutes);
 app.use('/siswa', siswaRoutes);
 
