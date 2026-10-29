@@ -44,10 +44,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session dipakai semua role (admin, operator, kepsek, siswa).
-// Umur cookie = batas absolut terbesar antara siswa dan staf (dari .env) + 5 menit cadangan.
-// Batas idle dan absolut sebenarnya dijaga oleh middleware (siswaIdleTimeout dan userIdleTimeout),
-// cookie hanya perlu hidup selama-lamanya sampai batas absolut itu.
 const COOKIE_MAX_AGE_MS = Math.max(
     cfg.KONFIGURASI.siswa.absolutMs,
     cfg.KONFIGURASI.staf.absolutMs
@@ -65,12 +61,10 @@ app.use(session({
     }
 }));
 
-// ====== STAF: batas idle + absolute timeout (admin, operator, kepsek) ======
-// Global, harus setelah session dan sebelum semua route.
-// Hanya bekerja kalau req.session.user ada. /login dan /logout dilewati di dalam middleware.
 app.use(userIdleTimeout);
 
 app.use(autoTutupPeriode);
+
 app.use((req, res, next) => {
     res.locals.akunSiswaFlash = null;
 
@@ -94,8 +88,6 @@ app.use('/akun-siswa', akunSiswaRoutes);
 
 app.use('/', authRoutes);
 
-// Ping sesi STAF. Sengaja SEBELUM isAuthenticated supaya sesi yang sudah habis
-// dibalas JSON 401 (bukan redirect HTML ke /login).
 app.post('/sesi/ping', pingSesi);
 
 app.post(
@@ -104,14 +96,25 @@ app.post(
     authController.processGantiPasswordWajib
 );
 
-// ====== SISWA: batas idle + absolute timeout ======
-// Urutan penting: middleware cek sesi -> endpoint ping -> route siswa.
 app.use('/siswa', siswaIdleTimeout);
+
+app.use('/siswa', (req, res, next) => {
+    if (req.method === 'GET' && !req.originalUrl.includes('/sesi/')) {
+        console.log(
+            '[DEBUG SESI]',
+            req.originalUrl,
+            '| session.siswa:', Boolean(req.session && req.session.siswa),
+            '| sesiIdleMs:', res.locals.sesiIdleMs,
+            '| sesiPeringatanMs:', res.locals.sesiPeringatanMs
+        );
+    }
+    next();
+});
+
 app.post('/siswa/sesi/ping', pingSesi);
 app.use('/siswa/sesi', sesiRoutes);
 app.use('/siswa', siswaRoutes);
 
-// ====== STAF: admin, operator, kepsek ======
 app.use(isAuthenticated, wajibGantiPasswordGuard);
 
 app.use('/admin', adminRoutes);

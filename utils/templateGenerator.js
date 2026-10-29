@@ -1,6 +1,24 @@
 const ExcelJS = require('exceljs');
 
-const MAX_BARIS_TEMPLATE = 500; // jumlah baris kosong yang disiapkan untuk diisi + dropdown
+const MAX_BARIS_TEMPLATE = 500; // jumlah baris kosong yang disiapkan untuk diisi + dropdown (template siswa)
+
+// Password proteksi sheet nilai (supaya sel terkunci tidak bisa diubah sembarangan lewat Excel).
+// Catatan: pengaman utama tetap di server (importNilai & saveNilai), proteksi Excel hanya lapisan tambahan.
+const PASSWORD_PROTEKSI_NILAI = 'nilai-siswa-terkunci';
+
+// Kriteria yang diisi SISWA lewat form minat:
+// minat, kepemilikan perangkat, kondisi ekonomi keluarga, kemampuan komputer.
+const KATA_KUNCI_KRITERIA_SISWA = ['minat', 'perangkat', 'ekonomi', 'komputer'];
+
+function isKriteriaIsianSiswa(namaKriteria) {
+    const n = String(namaKriteria || '').toLowerCase();
+    return KATA_KUNCI_KRITERIA_SISWA.some(kata => n.includes(kata));
+}
+
+// Apakah sebuah nilai (dari database) sudah terisi.
+function adaNilai(v) {
+    return v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
+}
 
 const GARIS_TIPIS = (warna) => ({
     top: { style: 'thin', color: { argb: warna } },
@@ -154,6 +172,15 @@ async function generateTemplateNilai(res, siswaList, kriteriaList) {
         cell.border = GARIS_TIPIS('FFB0B0B0');
     });
 
+    // Catatan pada header kriteria isian siswa.
+    kriteriaList.forEach((k, idx) => {
+        if (isKriteriaIsianSiswa(k.nama_kriteria)) {
+            headerRow.getCell(3 + idx).note =
+                'Kriteria ini diisi SISWA lewat form minat. Jika sudah terisi, selnya TERKUNCI (abu-abu) dan tidak bisa diubah operator. ' +
+                'Jika masih kosong, operator boleh mengisinya.';
+        }
+    });
+
     sheet.columns = [
         { width: 18 }, { width: 32 },
         ...kriteriaList.map(() => ({ width: 22 }))
@@ -169,28 +196,38 @@ async function generateTemplateNilai(res, siswaList, kriteriaList) {
     });
 
     // Baris per siswa; NISN dikirim sebagai TEKS agar angka 0 di depan tetap ada.
-    siswaList.forEach(s => {
+    // Selain itu dicatat sel mana saja yang TERKUNCI (isian siswa yang sudah terisi).
+    const peta = []; // peta[i][idx] = true jika sel nilai terkunci
+    siswaList.forEach((s, i) => {
         const row = [String(s.nisn === undefined || s.nisn === null ? '' : s.nisn), s.nama];
+        const kunciBaris = [];
+
         kriteriaList.forEach((k, idx) => {
             const mentah = s.nilai && s.nilai[k.id_kriteria] !== undefined ? s.nilai[k.id_kriteria] : null;
             let nilai = '';
-            if (mentah !== null && mentah !== '' && Number.isFinite(Number(mentah))) {
+            if (adaNilai(mentah)) {
                 nilai = skalaPerKriteria[idx].tipe === 'whole'
                     ? Math.round(Number(mentah))
                     : Math.round((Number(mentah) + Number.EPSILON) * 100) / 100;
             }
             row.push(nilai);
+
+            // Terkunci: kriteria isian siswa DAN sudah ada nilainya.
+            kunciBaris.push(isKriteriaIsianSiswa(k.nama_kriteria) && adaNilai(mentah));
         });
+
+        peta.push(kunciBaris);
+
         const addedRow = sheet.addRow(row);
         addedRow.eachCell(cell => {
             cell.border = GARIS_TIPIS('FFEFEFEF');
         });
+        addedRow.getCell(1).font = { bold: true };
     });
 
-    // Validasi rentang angka per kolom kriteria (baris siswa yang ada + buffer kosong)
-    const totalBarisData = Math.max(siswaList.length, MAX_BARIS_TEMPLATE);
+    const totalBarisData = siswaList.length;
 
-    // Kolom NISN berformat teks agar angka 0 di depan tetap ada (juga di baris kosong).
+    // Kolom NISN berformat teks agar angka 0 di depan tetap ada.
     for (let i = 2; i <= totalBarisData + 1; i++) {
         sheet.getCell(`A${i}`).numFmt = '@';
     }
@@ -202,9 +239,21 @@ async function generateTemplateNilai(res, siswaList, kriteriaList) {
 
         for (let i = 2; i <= totalBarisData + 1; i++) {
             const cell = sheet.getCell(`${kolomHuruf}${i}`);
+            const terkunci = peta[i - 2][idx];
 
             cell.numFmt = isBulat ? '0' : '0.00';
             cell.alignment = { horizontal: 'center' };
+
+            if (terkunci) {
+                // Nilai isian siswa: abu-abu, terkunci, tanpa validasi (tidak boleh diubah).
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDEDED' } };
+                cell.font = { color: { argb: 'FF777777' } };
+                cell.protection = { locked: true };
+                continue;
+            }
+
+            // Sel yang boleh diisi operator.
+            cell.protection = { locked: false };
 
             if (isBulat) {
                 cell.dataValidation = {
@@ -238,29 +287,41 @@ async function generateTemplateNilai(res, siswaList, kriteriaList) {
         }
     });
 
-    sheet.getColumn(1).font = { bold: true };
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    // Proteksi sheet: NISN, nama, header, dan nilai isian siswa terkunci.
+    // Hanya sel nilai yang boleh diisi operator yang terbuka.
+    await sheet.protect(PASSWORD_PROTEKSI_NILAI, {
+        selectLockedCells: true,
+        selectUnlockedCells: true,
+        formatColumns: false, // boleh melebarkan kolom
+        formatRows: false     // boleh mengubah tinggi baris
+    });
 
     // ==== SHEET KEDUA: PETUNJUK PENGISIAN ====
     const petunjuk = workbook.addWorksheet('Petunjuk Pengisian');
     petunjuk.columns = [{ width: 3 }, { width: 95 }];
     const daftarSkalaText = kriteriaList.map((k, idx) => {
         const s = skalaPerKriteria[idx];
-        return `   - ${k.nama_kriteria}: skala ${s.min}-${s.max}${s.tipe === 'whole' ? ' (hanya bilangan bulat 1, 2, 3, 4, 5; tidak boleh 0 dan tidak boleh desimal)' : ' (boleh desimal, otomatis disimpan 2 angka di belakang koma)'}`;
+        const tagSiswa = isKriteriaIsianSiswa(k.nama_kriteria) ? ' [diisi siswa lewat form minat]' : '';
+        return `   - ${k.nama_kriteria}${tagSiswa}: skala ${s.min}-${s.max}${s.tipe === 'whole' ? ' (hanya bilangan bulat 1, 2, 3, 4, 5; tidak boleh 0 dan tidak boleh desimal)' : ' (boleh desimal, otomatis disimpan 2 angka di belakang koma)'}`;
     });
     const isiPetunjuk = [
         ['', ''],
         ['', 'PETUNJUK PENGISIAN TEMPLATE NILAI SISWA'],
         ['', ''],
         ['', '1. Jangan mengubah nama kolom (baris header), urutan kolom, maupun urutan baris NISN.'],
-        ['', '2. Kolom NISN dan NAMA hanya untuk referensi/pencocokan data, jangan diubah.'],
+        ['', '2. Kolom NISN dan NAMA hanya untuk referensi/pencocokan data, jangan diubah (sel ini terkunci).'],
         ['', '3. Nilai dicocokkan ke sistem berdasarkan kolom NISN, pastikan NISN sesuai dengan data siswa yang sudah terdaftar.'],
         ['', '4. Rentang nilai untuk tiap kriteria:'],
         ...daftarSkalaText.map(t => ['', t]),
         ['', '5. Desimal boleh ditulis dengan tanda koma (85,5) atau titik (85.5), keduanya dikenali sistem. Nilai tanpa desimal seperti 92 otomatis disimpan sebagai 92,00. Nilai dengan lebih dari 2 angka di belakang koma dibulatkan ke 2 angka.'],
         ['', '6. Sel yang dikosongkan akan dilewati (tidak menimpa nilai yang sudah tersimpan sebelumnya).'],
-        ['', '7. Baris/nilai dengan format salah (bukan angka, atau di luar rentang) akan dilewati sistem saat import, dan sistem menampilkan penyebab serta rincian baris dan kolom yang gagal.'],
-        ['', '8. Kolom NISN berformat teks sehingga angka 0 di depan tetap ada. Lebih aman jangan mengubah kolom NISN.'],
+        ['', '7. SEL ABU-ABU = nilai yang sudah diisi siswa lewat form minat. Sel ini TERKUNCI dan tidak bisa diubah operator. Jika tetap diubah lewat cara lain, sistem menolaknya saat import.'],
+        ['', '8. Untuk siswa yang belum mengisi nilai (sel putih), operator masih boleh mengisi selama sel tersebut masih kosong. Setelah terisi, nilainya ikut terkunci.'],
+        ['', '9. Nilai Akademik dan Psikotes tetap bisa diisi/diubah operator.'],
+        ['', '10. Baris/nilai dengan format salah (bukan angka, atau di luar rentang) akan dilewati sistem saat import, dan sistem menampilkan penyebab serta rincian baris dan kolom yang gagal.'],
+        ['', '11. Kolom NISN berformat teks sehingga angka 0 di depan tetap ada. Lebih aman jangan mengubah kolom NISN.'],
         ['', ''],
         ['', 'Jika ada pertanyaan lebih lanjut, silakan hubungi Admin/Super Admin sistem.']
     ];
@@ -291,4 +352,9 @@ function kolomKeHuruf(nomorKolom) {
     return huruf;
 }
 
-module.exports = { generateTemplateSiswa, generateTemplateNilai };
+module.exports = {
+    generateTemplateSiswa,
+    generateTemplateNilai,
+    isKriteriaIsianSiswa,
+    adaNilai
+};

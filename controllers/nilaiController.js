@@ -5,7 +5,7 @@ const userModel = require('../models/userModel');
 const kriteriaModel = require('../models/kriteriaModel');
 const akunSiswaModel = require('../models/akunSiswaModel');
 const waspasModel = require('../models/waspasModel');
-const { generateTemplateNilai } = require('../utils/templateGenerator');
+const { generateTemplateNilai, isKriteriaIsianSiswa, adaNilai } = require('../utils/templateGenerator');
 const xlsx = require('xlsx');
 const fs = require('fs');
 const { cekTerkunci } = require('../utils/lockHelper');
@@ -114,6 +114,27 @@ function parseNilai(raw, skala) {
     }
 
     return { ok: true, nilai: bulatkanDuaDesimal(nilai) };
+}
+
+// Apakah nilai di file sama dengan nilai yang sudah tersimpan (toleransi pembulatan 2 desimal).
+function nilaiSama(lama, baru) {
+    return Math.abs(Number(lama) - Number(baru)) < 0.005;
+}
+
+// Tampilan nilai untuk pesan rincian.
+function tampilNilaiPesan(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return String(v);
+    return Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',');
+}
+
+// Ambil nilai yang sudah tersimpan untuk satu siswa: Map(id_kriteria -> nilai_mentah).
+async function ambilNilaiLamaSiswa(id_siswa, executor) {
+    const [rows] = await (executor || db).query(
+        'SELECT id_kriteria, nilai_mentah FROM nilai_siswa WHERE id_siswa = ?',
+        [id_siswa]
+    );
+    return new Map(rows.map(r => [Number(r.id_kriteria), r.nilai_mentah]));
 }
 
 function normalisasiHeader(teks) {
@@ -237,7 +258,10 @@ async function ambilKriteriaDenganNilai(id_siswa, id_periode) {
         nilai_mentah:
             r.nilai_mentah === null || r.nilai_mentah === undefined
                 ? null
-                : Number(r.nilai_mentah)
+                : Number(r.nilai_mentah),
+        // Penanda untuk view: nilai isian siswa yang sudah terisi tidak boleh diubah operator.
+        dikunci_siswa:
+            isKriteriaIsianSiswa(r.nama_kriteria) && adaNilai(r.nilai_mentah)
     }));
 }
 
@@ -348,6 +372,7 @@ const nilaiController = {
             }
 
             // Dibaca langsung dari database agar nilai selalu tampil, juga setelah finalisasi.
+            // Tiap kriteria punya penanda `dikunci_siswa` (true = isian siswa yang sudah terisi).
             const kriteriaList = await ambilKriteriaDenganNilai(id_siswa, periode.id_periode);
             const terkunci = await cekTerkunci(periode.id_periode);
             const bobotFinal = await cekBobotFinal(periode.id_periode);
@@ -393,6 +418,8 @@ const nilaiController = {
     // =========================================================
     // POST /operator/nilai/:id_siswa/save
     // Syarat: sudah ada data siswa + tidak ada siswa "Belum merespons".
+    // Nilai isian siswa (minat, perangkat, ekonomi, komputer) yang sudah terisi
+    // TIDAK bisa diubah operator: nilainya dipertahankan.
     // =========================================================
     async saveNilai(req, res) {
         let conn;
@@ -521,13 +548,24 @@ const nilaiController = {
                 return redirectError('Daftar kriteria pada form tidak sesuai dengan periode aktif. Muat ulang form nilai.');
             }
 
+            // Nilai yang sudah tersimpan (dikunci dalam transaksi ini).
+            const nilaiLama = await ambilNilaiLamaSiswa(id_siswa, conn);
+
             // Validasi semua nilai sekaligus, lalu laporkan seluruh kriteria yang bermasalah.
             const nilaiTervalidasi = [];
             const masalah = [];
+            const dikunciDipertahankan = [];
 
             for (let i = 0; i < idKriteriaAngka.length; i++) {
                 const idKrit = idKriteriaAngka[i];
                 const namaKriteria = kriteriaMap.get(idKrit);
+
+                // Isian siswa yang sudah terisi: tidak boleh diubah operator, nilai lama dipertahankan.
+                if (isKriteriaIsianSiswa(namaKriteria) && adaNilai(nilaiLama.get(idKrit))) {
+                    dikunciDipertahankan.push(namaKriteria);
+                    continue;
+                }
+
                 const hasil = parseNilai(nilaiArr[i], skalaKriteria(namaKriteria));
 
                 if (!hasil.ok) {
@@ -552,17 +590,22 @@ const nilaiController = {
             conn.release();
             conn = null;
 
-            await userModel.logActivity(
-                req.session.user.id_user,
-                `Menginput/memperbarui nilai siswa: ${siswa.nama}`
-            );
+            if (nilaiTervalidasi.length > 0) {
+                await userModel.logActivity(
+                    req.session.user.id_user,
+                    `Menginput/memperbarui nilai siswa: ${siswa.nama}`
+                );
 
-            await waspasModel.invalidateHasilJikaAda(periode.id_periode);
+                await waspasModel.invalidateHasilJikaAda(periode.id_periode);
+            }
 
-            return res.redirect(
-                '/operator/nilai?success=' +
-                encodeURIComponent(`Nilai siswa ${siswa.nama} berhasil disimpan.`)
-            );
+            let pesanSukses = `Nilai siswa ${siswa.nama} berhasil disimpan.`;
+
+            if (dikunciDipertahankan.length > 0) {
+                pesanSukses += ` Nilai isian siswa (${dikunciDipertahankan.join(', ')}) tidak diubah karena sudah diisi oleh siswa.`;
+            }
+
+            return res.redirect('/operator/nilai?success=' + encodeURIComponent(pesanSukses));
         } catch (error) {
             if (conn) {
                 try { await conn.rollback(); } catch (e) { console.error('Rollback gagal:', e); }
@@ -632,6 +675,8 @@ const nilaiController = {
     // POST /operator/nilai/import
     // Syarat: sudah ada data siswa + tidak ada siswa "Belum merespons".
     // Siswa tidak berminat dilewati.
+    // Nilai isian siswa (minat, perangkat, ekonomi, komputer) yang sudah terisi
+    // TIDAK bisa diubah lewat import. Jika masih kosong, operator boleh mengisi.
     // =========================================================
     async importNilai(req, res) {
         const kembaliError = (pesan) =>
@@ -731,6 +776,7 @@ const nilaiController = {
             const nisnTidakDitemukan = [];
             const nilaiTidakValid = [];
             const siswaDilewati = [];
+            const nilaiDikunci = [];
 
             for (let idx = 0; idx < jsonData.length; idx++) {
                 const row = jsonData[idx];
@@ -774,12 +820,28 @@ const nilaiController = {
                     continue;
                 }
 
+                // Nilai yang sudah tersimpan untuk siswa ini (dipakai untuk mengunci isian siswa).
+                const nilaiLama = await ambilNilaiLamaSiswa(siswa.id_siswa);
+
                 for (const kr of kolomKriteria) {
                     const rawVal = row[kr.kolom];
 
                     if (rawVal === undefined || rawVal === null || String(rawVal).trim() === '') continue;
 
-                    const hasil = parseNilai(rawVal, skalaKriteria(kr.nama));
+                    const skala = skalaKriteria(kr.nama);
+                    const hasil = parseNilai(rawVal, skala);
+
+                    // Isian siswa yang sudah terisi: TIDAK boleh diubah operator.
+                    const lama = nilaiLama.get(Number(kr.id));
+                    if (isKriteriaIsianSiswa(kr.nama) && adaNilai(lama)) {
+                        // Nilai di file sama dengan yang tersimpan: abaikan tanpa pesan.
+                        if (hasil.ok && nilaiSama(lama, hasil.nilai)) continue;
+
+                        nilaiDikunci.push(
+                            `Baris ${baris} (NISN ${nisn}), kolom "${kr.nama}": nilai ini sudah diisi siswa (${tampilNilaiPesan(lama)}) dan tidak bisa diubah operator (nilai di file: "${String(rawVal).trim()}")`
+                        );
+                        continue;
+                    }
 
                     if (!hasil.ok) {
                         if (hasil.kosong) continue;
@@ -803,6 +865,7 @@ const nilaiController = {
                 { judul: 'Baris tanpa NISN', items: nisnKosong },
                 { judul: 'NISN tidak ditemukan', items: nisnTidakDitemukan },
                 { judul: 'Siswa dilewati', items: siswaDilewati },
+                { judul: 'Nilai isian siswa terkunci (tidak diubah)', items: nilaiDikunci },
                 { judul: 'Nilai tidak valid', items: nilaiTidakValid }
             ];
 
@@ -811,12 +874,13 @@ const nilaiController = {
             if (nisnKosong.length) ringkasMasalah.push(`${nisnKosong.length} baris tanpa NISN`);
             if (nisnTidakDitemukan.length) ringkasMasalah.push(`${nisnTidakDitemukan.length} NISN tidak ditemukan`);
             if (siswaDilewati.length) ringkasMasalah.push(`${siswaDilewati.length} siswa dilewati`);
+            if (nilaiDikunci.length) ringkasMasalah.push(`${nilaiDikunci.length} nilai isian siswa terkunci dan tidak diubah`);
             if (nilaiTidakValid.length) ringkasMasalah.push(`${nilaiTidakValid.length} nilai tidak valid`);
 
             if (dataToSave.length === 0) {
                 const ringkasan = ringkasMasalah.length > 0
                     ? `Tidak ada nilai yang bisa disimpan. Penyebab: ${ringkasMasalah.join(', ')}. Klik "Lihat rincian" untuk melihat baris dan kolom yang bermasalah.`
-                    : 'Tidak ada nilai yang bisa disimpan karena semua sel nilai di file masih kosong. Isi nilai pada kolom kriteria lalu import lagi.';
+                    : 'Tidak ada nilai baru yang perlu disimpan. Semua sel nilai di file masih kosong atau sama dengan nilai yang sudah tersimpan.';
 
                 return simpanFlashDanRedirect(req, res, 'error', ringkasan, kelompok);
             }
