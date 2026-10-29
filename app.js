@@ -23,6 +23,7 @@ const {
     wajibGantiPasswordGuard
 } = require('./middlewares/authMiddleware');
 
+const periodeModel = require('./models/periodeModel');
 const autoTutupPeriode = require('./middlewares/autoTutupPeriode');
 const authController = require('./controllers/authController');
 const pengingatService = require('./services/pengingatService');
@@ -62,6 +63,63 @@ app.use(session({
 }));
 
 app.use(userIdleTimeout);
+
+// =========================================================
+// SINKRONISASI STATUS PERIODE DENGAN TANGGAL DI DATABASE
+// Dijalankan sebelum semua route (login siswa, halaman admin/operator/kepsek, dll),
+// jadi status periode dan akun siswa selalu mengikuti tanggal terbaru di database.
+//
+// - Dua arah: tanggal dimundurkan -> ditutup, tanggal dimajukan lagi -> aktif lagi.
+// - Dibatasi paling sering sekali per JEDA_SINKRON_MS agar database tidak
+//   dibebani query di setiap request. Permintaan yang bersamaan memakai satu proses yang sama.
+// - Kalau gagal, request tetap lanjut (tidak membuat aplikasi error).
+// =========================================================
+const JEDA_SINKRON_MS = 2000;
+let sinkronTerakhir = 0;
+let sinkronBerjalan = null;
+
+const JALUR_DILEWATI = ['/sesi/ping', '/siswa/sesi/ping'];
+
+async function jalankanSinkronPeriode() {
+    try {
+        const hasil = await periodeModel.sinkronkanDenganTanggal();
+
+        if (hasil.ditutup > 0) {
+            console.log(`[PERIODE] ${hasil.ditutup} periode ditutup otomatis (tanggal selesai terlewat)`);
+        }
+        if (hasil.dibuka > 0) {
+            console.log(`[PERIODE] ${hasil.dibuka} periode dibuka kembali (tanggal selesai masih berlaku)`);
+        }
+        if (hasil.akunDinonaktifkan > 0) {
+            console.log(`[PERIODE] ${hasil.akunDinonaktifkan} akun siswa dinonaktifkan`);
+        }
+        if (hasil.akunDiaktifkan > 0) {
+            console.log(`[PERIODE] ${hasil.akunDiaktifkan} akun siswa diaktifkan kembali`);
+        }
+    } catch (e) {
+        console.error('[PERIODE] Gagal sinkronisasi status periode:', e);
+    } finally {
+        sinkronTerakhir = Date.now();
+        sinkronBerjalan = null;
+    }
+}
+
+app.use(async (req, res, next) => {
+    try {
+        if (JALUR_DILEWATI.includes(req.path)) return next();
+
+        if (sinkronBerjalan) {
+            await sinkronBerjalan;
+        } else if (Date.now() - sinkronTerakhir >= JEDA_SINKRON_MS) {
+            sinkronBerjalan = jalankanSinkronPeriode();
+            await sinkronBerjalan;
+        }
+    } catch (e) {
+        console.error('[PERIODE] Middleware sinkronisasi error:', e);
+    }
+
+    next();
+});
 
 app.use(autoTutupPeriode);
 

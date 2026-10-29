@@ -1,5 +1,11 @@
 const db = require('../config/database');
 
+// Tanggal hari ini (zona waktu server) dalam format 'YYYY-MM-DD'.
+function hariIniLokal() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const periodeModel = {
     async getAll() {
         const [rows] = await db.query(
@@ -12,7 +18,15 @@ const periodeModel = {
         return rows;
     },
 
+    // Sebelum mengambil periode aktif, status disinkronkan dulu dengan tanggal di database,
+    // jadi semua halaman yang memakai fungsi ini selalu melihat status terbaru.
     async getActivePeriode() {
+        try {
+            await periodeModel.sinkronkanDenganTanggal();
+        } catch (e) {
+            console.error('[PERIODE] Gagal sinkronisasi status periode:', e);
+        }
+
         const [rows] = await db.query("SELECT * FROM periode_seleksi WHERE status_periode = 'aktif' LIMIT 1");
         return rows[0];
     },
@@ -151,6 +165,66 @@ const periodeModel = {
             [id_periode]
         );
         return hasil.affectedRows;
+    },
+
+    // =========================================================
+    // Sinkronisasi DUA ARAH antara tanggal di database dan status periode.
+    //
+    // 1) Periode aktif yang tanggal selesainya sudah lewat  -> ditutup.
+    // 2) Periode TERBARU yang berstatus ditutup tetapi tanggal selesainya
+    //    belum lewat (misal tanggal di database dimajukan lagi) -> diaktifkan kembali,
+    //    dan akun siswanya diaktifkan kembali.
+    // 3) Akun siswa dari semua periode yang ditutup -> dinonaktifkan.
+    //
+    // Hanya periode terbaru yang bisa dibuka otomatis, supaya periode lama
+    // tidak ikut aktif dan tidak pernah ada dua periode aktif sekaligus.
+    // Periode tanpa tanggal selesai tidak dibuka otomatis.
+    //
+    // Return: { ditutup, dibuka, akunDinonaktifkan, akunDiaktifkan }
+    // =========================================================
+    async sinkronkanDenganTanggal(hariIniStr = null) {
+        const hariIni = hariIniStr || hariIniLokal();
+        const hasil = { ditutup: 0, dibuka: 0, akunDinonaktifkan: 0, akunDiaktifkan: 0 };
+
+        // 1) Tutup yang sudah kedaluwarsa.
+        hasil.ditutup = await periodeModel.tutupPeriodeKedaluwarsa(hariIni);
+
+        // 2) Buka kembali periode terbaru jika tanggalnya masih berlaku.
+        const [terbaruRows] = await db.query(
+            'SELECT id_periode, status_periode FROM periode_seleksi ORDER BY id_periode DESC LIMIT 1'
+        );
+        const terbaru = terbaruRows[0];
+
+        if (terbaru && terbaru.status_periode !== 'aktif') {
+            const [masihBerlaku] = await db.query(
+                `SELECT id_periode FROM periode_seleksi
+                 WHERE id_periode = ?
+                   AND tanggal_selesai IS NOT NULL
+                   AND tanggal_selesai >= ?`,
+                [terbaru.id_periode, hariIni]
+            );
+
+            if (masihBerlaku.length > 0) {
+                // Pastikan tidak ada periode lain yang aktif.
+                await db.query(
+                    "UPDATE periode_seleksi SET status_periode = 'ditutup' WHERE id_periode <> ? AND status_periode = 'aktif'",
+                    [terbaru.id_periode]
+                );
+
+                const [dibuka] = await db.query(
+                    "UPDATE periode_seleksi SET status_periode = 'aktif' WHERE id_periode = ?",
+                    [terbaru.id_periode]
+                );
+                hasil.dibuka = dibuka.affectedRows;
+
+                hasil.akunDiaktifkan = await periodeModel.aktifkanKembaliAkunPeriode(terbaru.id_periode);
+            }
+        }
+
+        // 3) Akun dari periode yang ditutup dinonaktifkan.
+        hasil.akunDinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
+
+        return hasil;
     },
 
     async getTahunAwalTerbesar(excludeId = null) {

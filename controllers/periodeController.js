@@ -104,34 +104,48 @@ function picuPengingat() {
     }
 }
 
-// Sinkronkan status periode dengan tanggal:
-// 1) tutup periode aktif yang tanggal selesainya sudah lewat
-// 2) nonaktifkan semua akun siswa dari periode yang sudah ditutup
+// Sinkronkan status periode dengan tanggal di database (DUA ARAH):
+// 1) periode aktif yang tanggal selesainya sudah lewat -> ditutup
+// 2) periode terbaru yang ditutup tapi tanggalnya masih berlaku -> dibuka lagi
+// 3) akun siswa periode yang ditutup dinonaktifkan, akun periode yang dibuka lagi diaktifkan
 async function sinkronkanStatusPeriode(idUserLog = null) {
     try {
         const hariIni = hariIniString();
-        const ditutup = await periodeModel.tutupPeriodeKedaluwarsa(hariIni);
-        const dinonaktifkan = await periodeModel.nonaktifkanAkunPeriodeDitutup();
+        const hasil = await periodeModel.sinkronkanDenganTanggal(hariIni);
 
-        if (ditutup > 0) {
-            console.log(`[PERIODE] Hari ini ${hariIni}: ${ditutup} periode ditutup otomatis karena melewati tanggal selesai`);
+        if (hasil.ditutup > 0) {
+            console.log(`[PERIODE] Hari ini ${hariIni}: ${hasil.ditutup} periode ditutup otomatis karena melewati tanggal selesai`);
         }
-        if (dinonaktifkan > 0) {
-            console.log(`[PERIODE] ${dinonaktifkan} akun siswa dinonaktifkan karena periodenya ditutup`);
+        if (hasil.dibuka > 0) {
+            console.log(`[PERIODE] Hari ini ${hariIni}: ${hasil.dibuka} periode dibuka kembali karena tanggal selesainya masih berlaku`);
+        }
+        if (hasil.akunDinonaktifkan > 0) {
+            console.log(`[PERIODE] ${hasil.akunDinonaktifkan} akun siswa dinonaktifkan karena periodenya ditutup`);
+        }
+        if (hasil.akunDiaktifkan > 0) {
+            console.log(`[PERIODE] ${hasil.akunDiaktifkan} akun siswa diaktifkan kembali karena periodenya dibuka`);
         }
 
-        if (idUserLog && ditutup > 0) {
-            await userModel.logActivity(idUserLog, `Sistem menutup ${ditutup} periode seleksi yang melewati tanggal selesai`);
-        }
-        if (idUserLog && dinonaktifkan > 0) {
-            await userModel.logActivity(idUserLog, `Sistem menonaktifkan ${dinonaktifkan} akun siswa dari periode yang ditutup`);
+        if (idUserLog) {
+            if (hasil.ditutup > 0) {
+                await userModel.logActivity(idUserLog, `Sistem menutup ${hasil.ditutup} periode seleksi yang melewati tanggal selesai`);
+            }
+            if (hasil.dibuka > 0) {
+                await userModel.logActivity(idUserLog, `Sistem membuka kembali ${hasil.dibuka} periode seleksi karena tanggal selesainya masih berlaku`);
+            }
+            if (hasil.akunDinonaktifkan > 0) {
+                await userModel.logActivity(idUserLog, `Sistem menonaktifkan ${hasil.akunDinonaktifkan} akun siswa dari periode yang ditutup`);
+            }
+            if (hasil.akunDiaktifkan > 0) {
+                await userModel.logActivity(idUserLog, `Sistem mengaktifkan kembali ${hasil.akunDiaktifkan} akun siswa dari periode yang dibuka`);
+            }
         }
     } catch (e) {
         console.error('Gagal menyinkronkan status periode:', e);
     }
 }
 
-// Urutan prioritas status (berdasarkan tanggal):
+// Urutan prioritas status (berdasarkan data di database):
 // 1. Ditutup  -> status_periode bukan 'aktif' ATAU tanggal selesai sudah lewat
 // 2. Selesai  -> hasil seleksi sudah difinalisasi (dan periode masih berjalan)
 // 3. Belum Aktif -> tanggal mulai belum tiba
@@ -187,6 +201,7 @@ async function validasiTahunAjaran(tahun_ajaran, excludeId = null) {
 const periodeController = {
     async index(req, res) {
         try {
+            // Selalu sinkronkan dulu dengan tanggal di database sebelum data dibaca.
             await sinkronkanStatusPeriode(req.session.user.id_user);
 
             const periodeListRaw = await periodeModel.getAll();
