@@ -28,8 +28,8 @@ const userModel = {
 
     async logActivity(id_user, aktivitas) {
         await db.query(
-            'INSERT INTO log_aktivitas (id_user, aktivitas) VALUES (?, ?)',
-            [id_user, aktivitas]
+            'INSERT INTO log_aktivitas (id_user, aktivitas, role_log) SELECT id_user, ?, role FROM users WHERE id_user = ?',
+            [aktivitas, id_user]
         );
     },
 

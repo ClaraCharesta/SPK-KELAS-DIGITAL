@@ -942,39 +942,235 @@ body {
     }
 }
 
+/* ============================================
+   SIDEBAR MOBILE: elemen pendukung (default tersembunyi di desktop)
+   ============================================ */
+.sidebar-close,
+.sidebar-overlay,
+.sidebar-fab {
+    display: none;
+}
+
+/* ============================================
+   HP / ANDROID (<= 768px): sidebar jadi drawer geser
+   ============================================ */
 @media (max-width: 768px) {
     .app-layout {
         flex-direction: column;
     }
-    .sidebar {
-        width: 100%;
-        height: auto;
-        min-height: 0;
-        position: relative;
-        top: auto;
-        flex-direction: row;
-        align-items: center;
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding: 10px 0;
+
+    /* ----- Drawer ----- */
+    .sidebar,
+    .sidebar.collapsed,
+    .sidebar.collapsed:hover {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: min(82vw, 300px);
+        height: 100vh;
+        height: 100dvh;
+        z-index: 1100;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: stretch;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: calc(env(safe-area-inset-top, 0px) + 18px) 0 env(safe-area-inset-bottom, 0px);
+        transform: translateX(-105%);
+        transition: transform 0.28s cubic-bezier(.22, .8, .3, 1), box-shadow 0.28s;
+        box-shadow: none;
+        will-change: transform;
     }
-    .sidebar-header,
-    .sidebar-footer {
-        display: none;
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 8px 0 30px rgba(0, 0, 0, 0.35);
     }
-    .sidebar-menu {
+
+    /* Tampilkan lagi teks yang disembunyikan oleh aturan tablet / collapsed */
+    .sidebar .sidebar-header-text,
+    .sidebar .sidebar-menu li a span,
+    .sidebar .sidebar-footer-link span,
+    .sidebar .sidebar-footer a span,
+    .sidebar.collapsed .sidebar-header-text,
+    .sidebar.collapsed .sidebar-menu li a span,
+    .sidebar.collapsed .sidebar-footer a span,
+    .sidebar.collapsed .sidebar-footer-link span,
+    .sidebar.collapsed:hover .sidebar-header-text,
+    .sidebar.collapsed:hover .sidebar-menu li a span,
+    .sidebar.collapsed:hover .sidebar-footer a span,
+    .sidebar.collapsed:hover .sidebar-footer-link span {
+        display: inline;
+    }
+    .sidebar .sidebar-header-text,
+    .sidebar.collapsed .sidebar-header-text,
+    .sidebar.collapsed:hover .sidebar-header-text {
+        display: block;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .sidebar .sidebar-header,
+    .sidebar.collapsed .sidebar-header,
+    .sidebar.collapsed:hover .sidebar-header {
         display: flex;
-        flex: none;
-        padding: 0 10px;
-        overflow-x: auto;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 0 14px 16px 18px;
     }
-    .sidebar-menu li {
-        margin-bottom: 0;
-        margin-right: 6px;
+    .sidebar-header img {
+        width: 40px;
         flex-shrink: 0;
     }
-    .sidebar-menu li a span {
-        display: inline;
+
+    .sidebar .sidebar-menu {
+        display: block;
+        flex: 1;
+        overflow-x: visible;
+        padding: 14px 12px;
+    }
+    .sidebar .sidebar-menu li {
+        margin-right: 0;
+        margin-bottom: 6px;
+    }
+    .sidebar .sidebar-menu li a,
+    .sidebar.collapsed .sidebar-menu li a,
+    .sidebar.collapsed:hover .sidebar-menu li a {
+        justify-content: flex-start;
+        padding: 14px 16px;
+        font-size: 15px;
+        line-height: 1.35;
+        min-height: 48px;
+        border-radius: 12px;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.15s, transform 0.12s;
+    }
+    .sidebar-menu li a i {
+        font-size: 18px;
+        width: 22px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .sidebar-menu li a:active {
+        background: rgba(255, 255, 255, 0.16);
+        transform: scale(0.98);
+    }
+    .sidebar-menu li.active a {
+        box-shadow: 0 4px 12px rgba(47, 111, 224, 0.45);
+    }
+
+    .sidebar .sidebar-footer,
+    .sidebar.collapsed .sidebar-footer {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 12px 12px 16px;
+        gap: 6px;
+    }
+    .sidebar .sidebar-footer-link,
+    .sidebar.collapsed .sidebar-footer-link,
+    .sidebar.collapsed:hover .sidebar-footer-link {
+        justify-content: flex-start;
+        padding: 12px;
+        min-height: 48px;
+        font-size: 15px;
+        border-radius: 12px;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .sidebar-footer-link:active {
+        background: rgba(255, 255, 255, 0.16);
+    }
+    .sidebar-footer-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+    }
+
+    /* ----- Tombol tutup di header drawer ----- */
+    .sidebar-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        margin-left: auto;
+        flex-shrink: 0;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font-size: 15px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.15s, transform 0.12s;
+    }
+    .sidebar-close:active {
+        background: rgba(255, 255, 255, 0.25);
+        transform: scale(0.92);
+    }
+
+    /* ----- Lapisan gelap ----- */
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1090;
+        background: rgba(8, 20, 45, 0.55);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s, visibility 0.25s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .sidebar-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* ----- Tombol menu melayang ----- */
+    .sidebar-fab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        right: 16px;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+        z-index: 900;
+        width: 54px;
+        height: 54px;
+        border: none;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2f6fe0 0%, #1d5fd6 100%);
+        color: #fff;
+        font-size: 26px;
+        cursor: pointer;
+        box-shadow: 0 8px 20px rgba(29, 95, 214, 0.45);
+        -webkit-tap-highlight-color: transparent;
+        transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+    }
+    .sidebar-fab:active {
+        transform: scale(0.9);
+        box-shadow: 0 4px 10px rgba(29, 95, 214, 0.4);
+    }
+    body.sidebar-open .sidebar-fab {
+        opacity: 0;
+        pointer-events: none;
+    }
+    body.sidebar-open {
+        overflow: hidden;
+        touch-action: none;
+    }
+    body.sidebar-open .sidebar {
+        touch-action: pan-y;
+    }
+
+    /* Hamburger lama di topbar disembunyikan di HP (sudah digantikan tombol melayang) */
+    .hamburger-btn {
+        display: none;
+    }
+
+    /* ----- Konten ----- */
+    .main-content {
+        width: 100%;
     }
     .topbar {
         padding: 14px 16px;
@@ -986,6 +1182,10 @@ body {
     .main-content > .footer {
         margin-left: 16px;
         margin-right: 16px;
+    }
+    /* Ruang di bawah supaya tombol menu melayang tidak menutupi isi paling bawah */
+    .content-wrapper {
+        padding-bottom: 84px;
     }
     .welcome-banner {
         flex-direction: column;

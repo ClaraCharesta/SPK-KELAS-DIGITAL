@@ -186,6 +186,22 @@
         .role-hint.tampil {
             display: block;
         }
+        /* Dropdown role dikunci (dipakai untuk akun Admin di form Edit) */
+        select.role-terkunci {
+            background: #f1f3f7;
+            color: #6b7280;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .role-lock-hint {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 4px;
+            display: none;
+        }
+        .role-lock-hint.tampil {
+            display: block;
+        }
         .info-kepsek {
             font-size: 13px;
             color: #444;
@@ -392,10 +408,12 @@
                 <p class="field-hint" id="edit_email_hint">Gunakan format email yang valid, tanpa spasi atau koma.</p>
 
                 <label>Role</label>
+                <!-- Opsi role diisi ulang lewat JS (terapkanOpsiRoleEdit): akun Admin = terkunci "Admin", akun lain = Operator / Kepala Sekolah -->
                 <select name="role" id="edit_role" required>
-                    <option value="admin">Admin</option>
+                    <option value="operator">Operator</option>
                     <option value="kepsek">Kepala Sekolah</option>
                 </select>
+                <p class="role-lock-hint" id="edit_role_lock_hint">Role Admin tidak dapat diubah.</p>
                 <p class="role-hint" id="edit_role_hint"></p>
 
                 <label id="edit_nip_label">NIP <span class="tag-opsional">(opsional)</span></label>
@@ -627,12 +645,36 @@
             document.getElementById('modalTambah').style.display = 'flex';
         }
 
+        // ===== ROLE DI FORM EDIT =====
+        // - Akun Admin  : dropdown dikunci, hanya berisi "Admin" (role Admin tidak bisa diubah).
+        // - Akun lainnya: dropdown hanya berisi Operator dan Kepala Sekolah.
+        function terapkanOpsiRoleEdit(roleAsal) {
+            const selectEl = document.getElementById('edit_role');
+            const lockHintEl = document.getElementById('edit_role_lock_hint');
+
+            if (roleAsal === 'admin') {
+                selectEl.innerHTML = '<option value="admin">Admin</option>';
+                selectEl.value = 'admin';
+                selectEl.classList.add('role-terkunci');
+                selectEl.setAttribute('tabindex', '-1');
+                lockHintEl.className = 'role-lock-hint tampil';
+            } else {
+                selectEl.innerHTML =
+                    '<option value="operator">Operator</option>' +
+                    '<option value="kepsek">Kepala Sekolah</option>';
+                selectEl.value = roleAsal;
+                selectEl.classList.remove('role-terkunci');
+                selectEl.removeAttribute('tabindex');
+                lockHintEl.className = 'role-lock-hint';
+            }
+        }
+
         function bukaModalEdit(u) {
             document.getElementById('edit_id_user').value = u.id_user;
             document.getElementById('edit_nama').value = u.nama;
             document.getElementById('edit_username').value = u.username;
             document.getElementById('edit_email').value = u.email;
-            document.getElementById('edit_role').value = u.role;
+            terapkanOpsiRoleEdit(u.role);
             document.getElementById('edit_nip').value = u.nip || '';
             document.getElementById('edit_password').value = '';
             document.getElementById('edit_confirmPassword').value = '';
@@ -877,3 +919,4 @@
     </script>
 </body>
 </html>
+

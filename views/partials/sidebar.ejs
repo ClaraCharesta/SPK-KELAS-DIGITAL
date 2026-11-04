@@ -1,10 +1,27 @@
-<div class="sidebar">
+<script>
+// Pastikan meta viewport ada, supaya aturan layar kecil (HP) benar-benar aktif di Android.
+(function () {
+    try {
+        if (!document.querySelector('meta[name="viewport"]')) {
+            var m = document.createElement('meta');
+            m.name = 'viewport';
+            m.content = 'width=device-width, initial-scale=1';
+            document.head.appendChild(m);
+        }
+    } catch (e) {}
+})();
+</script>
+
+<div class="sidebar" id="appSidebar" aria-label="Menu navigasi">
     <div class="sidebar-header">
         <img src="/img/logo-sman12.png" alt="Logo">
         <div class="sidebar-header-text">
             <h3>SISTEM PENDUKUNG KEPUTUSAN</h3>
             <p>Penempatan Siswa Kelas Digital</p>
         </div>
+        <button type="button" class="sidebar-close" id="sidebarClose" aria-label="Tutup menu">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
 
     <ul class="sidebar-menu">
@@ -147,3 +164,122 @@
         <form id="logoutForm" action="/logout" method="GET" style="display:none;"></form>
     </div>
 </div>
+
+<!-- Hanya tampil di HP: lapisan gelap + tombol menu melayang -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<button type="button" class="sidebar-fab" id="sidebarToggle" aria-label="Buka menu" aria-controls="appSidebar" aria-expanded="false">
+    <i class="bi bi-list"></i>
+</button>
+
+<script>
+(function () {
+    var sidebar = document.getElementById('appSidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    var btnBuka = document.getElementById('sidebarToggle');
+    var btnTutup = document.getElementById('sidebarClose');
+    if (!sidebar || !overlay || !btnBuka) return;
+
+    var mq = window.matchMedia('(max-width: 768px)');
+    var historyDipush = false;
+
+    function terbuka() {
+        return sidebar.classList.contains('open');
+    }
+
+    // Tutup drawer tanpa menyentuh riwayat browser (dipakai saat pindah halaman / tombol Back)
+    function tutupLangsung() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+        document.body.classList.remove('sidebar-open');
+        btnBuka.setAttribute('aria-expanded', 'false');
+    }
+
+    function buka() {
+        if (!mq.matches || terbuka()) return;
+        sidebar.classList.add('open');
+        overlay.classList.add('show');
+        document.body.classList.add('sidebar-open');
+        btnBuka.setAttribute('aria-expanded', 'true');
+
+        // Supaya tombol Back di Android menutup drawer dulu
+        if (!historyDipush) {
+            try { history.pushState({ sidebar: true }, ''); historyDipush = true; } catch (e) {}
+        }
+
+        var aktif = sidebar.querySelector('.sidebar-menu li.active');
+        if (aktif && aktif.scrollIntoView) {
+            try { aktif.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+        }
+    }
+
+    // Tutup lewat tombol X / overlay / geser / Esc
+    function tutup() {
+        if (!terbuka()) return;
+        tutupLangsung();
+        if (historyDipush) {
+            historyDipush = false;
+            try { history.back(); } catch (e) {}
+        }
+    }
+
+    // Satu-satunya pendaftaran klik untuk tombol menu
+    btnBuka.addEventListener('click', function () {
+        if (terbuka()) tutup(); else buka();
+    });
+    if (btnTutup) btnTutup.addEventListener('click', tutup);
+    overlay.addEventListener('click', tutup);
+
+    // Saat salah satu menu diketuk: tutup tampilan saja, biarkan halaman berpindah
+    sidebar.querySelectorAll('.sidebar-menu a, .sidebar-footer a').forEach(function (a) {
+        a.addEventListener('click', function () {
+            historyDipush = false;
+            tutupLangsung();
+        });
+    });
+
+    // Tombol Back Android
+    window.addEventListener('popstate', function () {
+        if (terbuka()) {
+            historyDipush = false;
+            tutupLangsung();
+        }
+    });
+
+    // Tombol Esc
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') tutup();
+    });
+
+    // Geser: dari tepi kiri untuk membuka, geser ke kiri untuk menutup
+    var startX = 0, startY = 0, melacak = false;
+
+    document.addEventListener('touchstart', function (e) {
+        if (!mq.matches || e.touches.length !== 1) { melacak = false; return; }
+        var t = e.touches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+        melacak = terbuka() || startX <= 22;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function (e) {
+        if (!melacak || !e.changedTouches.length) return;
+        melacak = false;
+        var t = e.changedTouches[0];
+        var dx = t.clientX - startX;
+        var dy = t.clientY - startY;
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+        if (!terbuka() && dx > 0) buka();
+        else if (terbuka() && dx < 0) tutup();
+    }, { passive: true });
+
+    // Layar berubah ke ukuran desktop, atau halaman dipulihkan dari cache: pastikan tertutup
+    function saatUkuranBerubah() { if (!mq.matches) tutupLangsung(); }
+    if (mq.addEventListener) mq.addEventListener('change', saatUkuranBerubah);
+    else if (mq.addListener) mq.addListener(saatUkuranBerubah);
+    window.addEventListener('pageshow', function () {
+        historyDipush = false;
+        tutupLangsung();
+    });
+})();
+</script>

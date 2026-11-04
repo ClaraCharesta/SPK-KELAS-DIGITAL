@@ -8,6 +8,9 @@ const REGEX_NIP = /^[0-9]{18}$/;
 
 const BASE_URL = '/admin/akun-admin';
 
+// Role yang boleh dipilih saat EDIT akun non-admin. Role admin tidak bisa diubah.
+const ROLE_EDIT_VALID = ['operator', 'kepsek'];
+
 // Hapus semua spasi pada NIP (sering ikut ter-copy dari dokumen: "1985 0101 2010 01 1 001").
 function rapikanNip(nilai) {
     return String(nilai === undefined || nilai === null ? '' : nilai).replace(/\s+/g, '').trim();
@@ -163,10 +166,26 @@ const userManagementController = {
 
     async update(req, res) {
         try {
-            const { id_user, nama, username, email, password, confirmPassword, role, nip } = req.body;
+            const { id_user, nama, username, email, password, confirmPassword, nip } = req.body;
+            let role = req.body.role;
 
             if (!nama || !username || !email || !role) {
                 return res.redirect('/admin/akun-admin?error=Semua field wajib diisi, termasuk email.');
+            }
+
+            // Ambil data akun yang sedang diedit (dipakai untuk aturan role & kepsek di bawah).
+            const akunSekarang = await userManagementModel.getUserById(id_user);
+            if (!akunSekarang) {
+                return redirectError(res, 'Akun tidak ditemukan.');
+            }
+
+            // ROLE:
+            // - Akun admin  : role TIDAK bisa diubah, selalu tetap admin (apa pun yang dikirim dari form).
+            // - Akun lainnya: role hanya boleh operator atau kepsek.
+            if (akunSekarang.role === 'admin') {
+                role = 'admin';
+            } else if (ROLE_EDIT_VALID.indexOf(role) === -1) {
+                return redirectError(res, 'Role hanya boleh Operator atau Kepala Sekolah.');
             }
 
             if (!REGEX_EMAIL.test(email.trim())) {
@@ -182,8 +201,7 @@ const userManagementController = {
             // Hanya dicek jika akun ini BARU menjadi kepsek (sebelumnya bukan kepsek aktif).
             // Mengedit akun yang memang sudah kepsek aktif tidak diblokir.
             if (role === 'kepsek') {
-                const akunSekarang = await userManagementModel.getUserById(id_user);
-                const sudahKepsekAktif = akunSekarang && akunSekarang.role === 'kepsek' && Boolean(akunSekarang.status_aktif);
+                const sudahKepsekAktif = akunSekarang.role === 'kepsek' && Boolean(akunSekarang.status_aktif);
 
                 if (!sudahKepsekAktif) {
                     const kepsekLain = await userManagementModel.getKepsekAktif(id_user);

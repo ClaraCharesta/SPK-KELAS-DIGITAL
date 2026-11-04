@@ -25,7 +25,7 @@
         }
 
         .kp-stat-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 22px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-bottom: 22px;
         }
         .kp-stat {
             background: #fff; border-radius: 16px; padding: 20px 22px;
@@ -132,22 +132,15 @@
                     <div class="kp-stat kp-stat-merah">
                         <div class="kp-stat-ikon"><i class="bi bi-x-circle-fill"></i></div>
                         <div>
-                            <h3>Tidak Lulus</h3>
-                            <p class="kp-angka"><%= chartData.tidak_lulus %></p>
-                        </div>
-                    </div>
-                    <div class="kp-stat kp-stat-oranye">
-                        <div class="kp-stat-ikon"><i class="bi bi-person-dash-fill"></i></div>
-                        <div>
-                            <h3>Mengundurkan Diri</h3>
-                            <p class="kp-angka"><%= chartData.mengundurkan_diri %></p>
+                            <h3>Tidak Diterima</h3>
+                            <p class="kp-angka"><%= chartData.tidak_diterima %></p>
                         </div>
                     </div>
                     <div class="kp-stat kp-stat-hijau">
                         <div class="kp-stat-ikon"><i class="bi bi-check-circle-fill"></i></div>
                         <div>
-                            <h3>Lulus</h3>
-                            <p class="kp-angka"><%= chartData.lulus %></p>
+                            <h3>Diterima</h3>
+                            <p class="kp-angka"><%= chartData.diterima %></p>
                         </div>
                     </div>
                 </div>

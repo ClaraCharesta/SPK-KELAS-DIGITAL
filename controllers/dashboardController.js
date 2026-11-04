@@ -2,6 +2,7 @@ const dashboardModel = require('../models/dashboardModel');
 const periodeModel = require('../models/periodeModel');
 const akunSiswaModel = require('../models/akunSiswaModel');
 const siswaModel = require('../models/siswaModel');
+const waspasModel = require('../models/waspasModel');
 const db = require('../config/database');
 const { cekTerkunci } = require('../utils/lockHelper');
 const { cekBobotFinal } = require('../utils/bobotHelper');
@@ -49,6 +50,48 @@ function selisihHariDariHariIni(val) {
 
 function persen(bagian, total) {
     return total > 0 ? Math.round((bagian / total) * 100) : 0;
+}
+
+// ======================================================================
+// Hitung jumlah "Diterima" dan "Tidak Diterima" untuk dashboard Kepala Sekolah.
+// Aturannya sama dengan halaman WASPAS: ranking <= kuota = diterima, sisanya tidak diterima.
+// Memakai waspasModel.getHasilRanking (fungsi yang sama dengan halaman WASPAS),
+// jadi angkanya langsung ada setelah ranking dihitung, tanpa menunggu finalisasi.
+// Siswa yang mengundurkan diri tidak dihitung di sini karena sudah punya kartu sendiri.
+// ======================================================================
+async function hitungDiterimaKepsek(latestPeriode) {
+    if (!latestPeriode) return { diterima: 0, tidak_diterima: 0 };
+
+    const idPeriode = latestPeriode.id_periode;
+
+    const [[periodeRow]] = await db.query(
+        'SELECT kuota_kelas_digital FROM periode_seleksi WHERE id_periode = ?',
+        [idPeriode]
+    );
+    const kuota = periodeRow ? (Number(periodeRow.kuota_kelas_digital) || 0) : 0;
+
+    const hasilRanking = await waspasModel.getHasilRanking(idPeriode);
+    if (!Array.isArray(hasilRanking) || hasilRanking.length === 0) {
+        return { diterima: 0, tidak_diterima: 0 };
+    }
+
+    const [mundurRows] = await db.query(
+        "SELECT id_siswa FROM siswa WHERE id_periode = ? AND status_penerimaan = 'mengundurkan_diri'",
+        [idPeriode]
+    );
+    const mundurSet = new Set(mundurRows.map(function (r) { return String(r.id_siswa); }));
+
+    let diterima = 0;
+    let tidakDiterima = 0;
+
+    hasilRanking.forEach(function (h) {
+        if (mundurSet.has(String(h.id_siswa))) return;
+
+        if (Number(h.ranking) <= kuota) diterima++;
+        else tidakDiterima++;
+    });
+
+    return { diterima: diterima, tidak_diterima: tidakDiterima };
 }
 
 // ======================================================================
@@ -438,6 +481,11 @@ const dashboardController = {
                 latestPeriode ? latestPeriode.id_periode : null
             );
             const riwayatPeriode = await dashboardModel.getRiwayatAntarPeriode();
+
+            // Kartu "Diterima" dan "Tidak Diterima": dihitung dari ranking WASPAS vs kuota.
+            const hitungan = await hitungDiterimaKepsek(latestPeriode);
+            chartData.diterima = hitungan.diterima;
+            chartData.tidak_diterima = hitungan.tidak_diterima;
 
             res.render('kepsek/dashboard', {
                 user: req.session.user,
