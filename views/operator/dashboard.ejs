@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <title>Dashboard Admin</title>
+    <title>Dashboard Operator</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <%- include('../partials/head') %>
     <style>
@@ -230,11 +230,11 @@
                         <h2><%= user.isFirstLogin ? 'Selamat datang' : 'Selamat datang kembali' %>, <%= user.nama %>! 👋</h2>
                         <p>
                             <% if (stats.statusFucom === 'Belum') { %>
-                                Mulai dengan melengkapi pembobotan kriteria di menu <strong>Pembobotan Kriteria</strong> sebelum menjalankan perankingan.
+                                Mulai dengan melengkapi pembobotan kriteria di menu <strong>Pembobotan Kriteria</strong> sebelum menjalankan perangkingan.
                             <% } else if (stats.statusWaspas === 'Belum') { %>
-                                Pembobotan kriteria sudah siap. Lanjutkan ke menu <strong>Perankingan</strong> untuk melihat hasil seleksi siswa.
+                                Pembobotan kriteria sudah siap. Lanjutkan ke menu <strong>Perangkingan</strong> untuk melihat hasil seleksi siswa.
                             <% } else { %>
-                                Semua proses seleksi sudah berjalan. Cek menu <strong>Perankingan</strong> untuk meninjau hasil terbaru.
+                                Semua proses seleksi sudah berjalan. Cek menu <strong>Perangkingan</strong> untuk meninjau hasil terbaru.
                             <% } %>
                         </p>
                     </div>
@@ -258,7 +258,7 @@
                             <div class="stat-icon icon-orange" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-calendar-x"></i></div>
                             <h3>Progres Periode Berjalan</h3>
                         </div>
-                        <p class="empty-state">Belum ada periode seleksi yang aktif. Hubungi Super Admin untuk membuka atau mengaktifkan periode.</p>
+                        <p class="empty-state">Belum ada periode seleksi yang aktif. Hubungi Admin untuk membuka atau mengaktifkan periode.</p>
                     </div>
                 <% } %>
 
@@ -358,7 +358,7 @@
                     </a>
                     <a class="dash-kpi <%= P.siswa.belumRespon > 0 ? 'warn' : 'abu' %>" href="/operator/siswa?minat=belum_respon">
                         <div class="angka"><%= P.siswa.belumRespon %></div>
-                        <div class="label">Belum merespons</div>
+                        <div class="label">Belum mengisi minat</div>
                         <div class="hint">Lihat daftar</div>
                     </a>
                     <a class="dash-kpi merah" href="/operator/siswa?minat=tidak_berminat">
@@ -368,7 +368,7 @@
                     </a>
                 </div>
 
-                <!-- ===== KUOTA + DISTRIBUSI KESEDIAAN ===== -->
+                <!-- ===== KUOTA + DISTRIBUSI PERNYATAAN MINAT ===== -->
                 <div class="dash-grid-2">
                     <div class="panel">
                         <div class="panel-header">
@@ -399,7 +399,7 @@
                         <p style="font-size:12px; color:#8a94a3;">
                             Sisa kuota dihitung dari kuota periode dikurangi jumlah siswa yang berstatus Berminat.
                             <% if (P.siswa.belumRespon > 0) { %>
-                                Masih ada <%= P.siswa.belumRespon %> siswa yang belum merespons, jadi angka ini bisa berubah.
+                                Masih ada <%= P.siswa.belumRespon %> siswa yang belum mengisi pernyataan minat, jadi angka ini bisa berubah.
                             <% } %>
                         </p>
                     </div>
@@ -407,7 +407,7 @@
                     <div class="panel">
                         <div class="panel-header">
                             <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-pie-chart-fill"></i></div>
-                            <h3>Distribusi Kesediaan Siswa</h3>
+                            <h3>Distribusi Pernyataan Minat Siswa</h3>
                         </div>
                         <% if (P.siswa.total === 0) { %>
                             <p class="empty-state">Belum ada data siswa.</p>
@@ -426,12 +426,12 @@
                     </div>
 
                     <div class="dash-tabs" role="tablist">
-                        <button type="button" class="dash-tab aktif" role="tab" data-tabgrup="lengkap" data-tab="akun" onclick="dashPilihTab('lengkap','akun')">Akun &amp; Kesediaan</button>
+                        <button type="button" class="dash-tab aktif" role="tab" data-tabgrup="lengkap" data-tab="akun" onclick="dashPilihTab('lengkap','akun')">Akun &amp; Pernyataan Minat</button>
                         <button type="button" class="dash-tab" role="tab" data-tabgrup="lengkap" data-tab="kriteria" onclick="dashPilihTab('lengkap','kriteria')">Nilai per Kriteria</button>
                         <button type="button" class="dash-tab" role="tab" data-tabgrup="lengkap" data-tab="peserta" onclick="dashPilihTab('lengkap','peserta')">Nilai per Peserta</button>
                     </div>
 
-                    <!-- Tab 1: akun & kesediaan -->
+                    <!-- Tab 1: akun & pernyataan minat -->
                     <div class="dash-tabpane aktif" data-tabgrup="lengkap" data-tab="akun">
                         <div class="dash-bar-wrap">
                             <div class="dash-bar-top">
@@ -442,7 +442,7 @@
                         </div>
                         <div class="dash-bar-wrap">
                             <div class="dash-bar-top">
-                                <span>Siswa yang sudah merespons kesediaan</span>
+                                <span>Siswa yang sudah mengisi pernyataan minat</span>
                                 <b><%= P.siswa.total - P.siswa.belumRespon %> / <%= P.siswa.total %> (<%= P.persen.respons %>%)</b>
                             </div>
                             <div class="dash-bar"><span class="oranye" data-w="<%= P.persen.respons %>"></span></div>
@@ -450,7 +450,7 @@
                         <div class="dash-mini-row">
                             <div class="dash-mini <%= P.siswa.belumRespon > 0 ? 'oranye' : 'hijau' %>">
                                 <strong><%= P.siswa.belumRespon %></strong>
-                                <span>Belum merespons kesediaan</span>
+                                <span>Belum mengisi pernyataan minat</span>
                             </div>
                             <div class="dash-mini <%= P.siswa.belumLogin > 0 ? 'oranye' : 'hijau' %>">
                                 <strong><%= P.siswa.belumLogin %></strong>
@@ -513,7 +513,7 @@
                     </div>
                 </div>
 
-                <!-- ===== STATUS FUCOM + STATUS PERANKINGAN ===== -->
+                <!-- ===== STATUS FUCOM + STATUS PERANGKINGAN ===== -->
                 <div class="dash-grid-2">
                     <div class="panel">
                         <div class="panel-header-row">
@@ -556,7 +556,7 @@
                         <div class="panel-header-row">
                             <div class="panel-header">
                                 <div class="stat-icon icon-purple" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-graph-up-arrow"></i></div>
-                                <h3>Status Perankingan</h3>
+                                <h3>Status Perangkingan</h3>
                             </div>
                             <a href="<%= hrefPerankingan %>" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                                 <i class="bi bi-box-arrow-up-right"></i> Buka
@@ -592,9 +592,9 @@
                             <% if (P.terkunci) { %>
                                 Seluruh data periode terkunci dan siswa hanya melihat pengumuman hasil seleksi.
                             <% } else if (P.waspas.sudah) { %>
-                                Hasil ranking akan dikosongkan jika ada perubahan data siswa, status minat, nilai, atau kuota.
+                                Hasil ranking akan dikosongkan jika ada perubahan data siswa, status minat, jawaban form minat, atau nilai siswa.
                             <% } else { %>
-                                Perankingan dapat dijalankan setelah bobot final dan nilai peserta lengkap.
+                                Perangkingan dapat dijalankan setelah bobot final, nilai peserta lengkap, dan jumlah peserta berminat melebihi kuota.
                             <% } %>
                         </p>
                     </div>
@@ -613,7 +613,7 @@
                     <div class="dash-chips" id="dashChips">
                         <button type="button" class="dash-chip aktif" data-f="perlu">Perlu tindak lanjut <span class="n">0</span></button>
                         <button type="button" class="dash-chip" data-f="tanpa_akun">Belum punya akun <span class="n">0</span></button>
-                        <button type="button" class="dash-chip" data-f="belum_respon">Belum merespons <span class="n">0</span></button>
+                        <button type="button" class="dash-chip" data-f="belum_respon">Belum mengisi minat <span class="n">0</span></button>
                         <button type="button" class="dash-chip" data-f="nilai_kurang">Nilai belum lengkap <span class="n">0</span></button>
                         <button type="button" class="dash-chip" data-f="semua">Semua siswa <span class="n">0</span></button>
                     </div>
@@ -626,7 +626,7 @@
                                     <th>NISN</th>
                                     <th>Nama</th>
                                     <th>Akun</th>
-                                    <th>Kesediaan</th>
+                                    <th>Pernyataan Minat</th>
                                     <th>Nilai</th>
                                     <th>Aksi</th>
                                 </tr>
@@ -807,7 +807,7 @@
     </script>
 
     <% if (P) { %>
-    <!-- ===== Interaksi dashboard progres (tab, bar animasi, grafik kesediaan, tabel terfilter) ===== -->
+    <!-- ===== Interaksi dashboard progres (tab, bar animasi, grafik pernyataan minat, tabel terfilter) ===== -->
     <script>
         // ----- Tab -----
         function dashPilihTab(grup, nama) {
@@ -833,7 +833,7 @@
             });
         });
 
-        // ----- Grafik distribusi kesediaan (klik = buka daftar terfilter) -----
+        // ----- Grafik distribusi pernyataan minat (klik = buka daftar terfilter) -----
         (function () {
             var kanvas = document.getElementById('chartMinatDash');
             if (!kanvas || typeof Chart === 'undefined') return;
@@ -843,7 +843,7 @@
             new Chart(kanvas, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Berminat', 'Belum merespons', 'Tidak berminat'],
+                    labels: ['Berminat', 'Belum mengisi', 'Tidak berminat'],
                     datasets: [{
                         data: [<%= P.siswa.berminat %>, <%= P.siswa.belumRespon %>, <%= P.siswa.tidakBerminat %>],
                         backgroundColor: ['#27ae60', '#f39c12', '#e74c3c'],
@@ -915,12 +915,12 @@
             function badgeMinat(s) {
                 if (s.minat === 'berminat') return '<span class="dash-badge hijau">Berminat</span>';
                 if (s.minat === 'tidak_berminat') return '<span class="dash-badge merah">Tidak berminat</span>';
-                return '<span class="dash-badge oranye">Belum merespons</span>';
+                return '<span class="dash-badge oranye">Belum mengisi</span>';
             }
 
             function selNilai(s) {
                 if (s.minat === 'tidak_berminat') return '<span class="dash-sub" style="margin:0;">Tidak ikut</span>';
-                if (s.minat !== 'berminat') return '<span class="dash-sub" style="margin:0;">Menunggu respons</span>';
+                if (s.minat !== 'berminat') return '<span class="dash-sub" style="margin:0;">Menunggu pernyataan minat</span>';
                 var kelas = s.nilaiLengkap ? 'hijau' : (s.terisi === 0 ? 'merah' : 'oranye');
                 return '<span class="dash-badge ' + kelas + '">' + s.terisi + ' / ' + DATA.totalKriteria + '</span>';
             }
@@ -961,7 +961,7 @@
                             '<td data-label="NISN">' + esc(s.nisn) + '</td>' +
                             '<td data-label="Nama">' + esc(s.nama) + '</td>' +
                             '<td data-label="Akun">' + badgeAkun(s) + '</td>' +
-                            '<td data-label="Kesediaan">' + badgeMinat(s) + '</td>' +
+                            '<td data-label="Pernyataan Minat">' + badgeMinat(s) + '</td>' +
                             '<td data-label="Nilai">' + selNilai(s) + '</td>' +
                             '<td data-label="Aksi">' + selAksi(s) + '</td>' +
                             '</tr>';

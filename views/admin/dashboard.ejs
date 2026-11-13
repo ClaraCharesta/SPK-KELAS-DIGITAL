@@ -5,40 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <%- include('../partials/head') %>
     <style>
-        .sa-page { min-width: 0; }
+        .adm-page { min-width: 0; }
 
-        .sa-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
-        .sa-toolbar small { color: #8a94a3; font-size: 12px; }
-        .sa-refresh {
+        .adm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+        .adm-toolbar small { color: #8a94a3; font-size: 12px; }
+        .adm-refresh {
             border: 1px solid #d5dbe7; background: #fff; color: #334155; border-radius: 999px;
             padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
             display: inline-flex; align-items: center; gap: 6px;
         }
-        .sa-refresh:hover { border-color: #1d5fd6; color: #1d5fd6; }
+        .adm-refresh:hover { border-color: #1d5fd6; color: #1d5fd6; }
 
-        .sa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-top: 22px; }
-        .sa-grid .stat-card { margin: 0; }
+        .adm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-top: 22px; }
+        .adm-grid .stat-card { margin: 0; }
 
-        .sa-grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-top: 22px; }
-        .sa-grid-2 > .panel { margin-top: 0; min-width: 0; }
-        @media (max-width: 992px) { .sa-grid-2 { grid-template-columns: 1fr; } }
+        .adm-grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-top: 22px; }
+        .adm-grid-2 > .panel { margin-top: 0; min-width: 0; }
+        @media (max-width: 992px) { .adm-grid-2 { grid-template-columns: 1fr; } }
 
-        .sa-periode-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-        .sa-periode-box strong { font-size: 26px; color: #0b2545; }
-        .sa-periode-box small { display: block; color: #8a94a3; font-size: 12px; margin-top: 2px; }
+        .adm-periode-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .adm-periode-box strong { font-size: 26px; color: #0b2545; }
+        .adm-periode-box small { display: block; color: #8a94a3; font-size: 12px; margin-top: 2px; }
 
-        .sa-aksi { display: flex; flex-direction: column; gap: 10px; }
-        .sa-aksi a {
+        .adm-aksi { display: flex; flex-direction: column; gap: 10px; }
+        .adm-aksi a {
             display: flex; align-items: center; gap: 12px; text-decoration: none; color: #0b2545;
             background: #f4f7fb; border: 1.5px solid #e6eaf2; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 600;
             transition: transform .15s, border-color .15s, box-shadow .15s;
         }
-        .sa-aksi a:hover { transform: translateY(-2px); border-color: #1d5fd6; box-shadow: 0 6px 16px rgba(15,23,42,.08); }
-        .sa-aksi a i:first-child { color: #1d5fd6; font-size: 18px; }
-        .sa-aksi a i:last-child { margin-left: auto; color: #9aa5b8; }
+        .adm-aksi a:hover { transform: translateY(-2px); border-color: #1d5fd6; box-shadow: 0 6px 16px rgba(15,23,42,.08); }
+        .adm-aksi a i:first-child { color: #1d5fd6; font-size: 18px; }
+        .adm-aksi a i:last-child { margin-left: auto; color: #9aa5b8; }
 
         @media (max-width: 640px) {
-            .sa-periode-box strong { font-size: 22px; }
+            .adm-periode-box strong { font-size: 22px; }
         }
     </style>
 </head>
@@ -49,7 +49,7 @@
         <div class="main-content">
             <%- include('../partials/topbar', { user: user, pageTitle: pageTitle }) %>
 
-            <div class="content-wrapper sa-page">
+            <div class="content-wrapper adm-page">
 
                 <div class="welcome-banner">
                     <div class="welcome-icon">
@@ -70,14 +70,14 @@
                     </div>
                 </div>
 
-                <div class="sa-toolbar">
-                    <small><i class="bi bi-clock"></i> Diperbarui: <span id="saJam">-</span></small>
-                    <button type="button" class="sa-refresh" onclick="window.location.reload()">
+                <div class="adm-toolbar">
+                    <small><i class="bi bi-clock"></i> Diperbarui: <span id="admJam">-</span></small>
+                    <button type="button" class="adm-refresh" onclick="window.location.reload()">
                         <i class="bi bi-arrow-clockwise"></i> Muat ulang
                     </button>
                 </div>
 
-                <div class="sa-grid">
+                <div class="adm-grid">
 
                     <div class="stat-card">
                         <div class="stat-icon icon-blue">
@@ -131,7 +131,7 @@
 
                 </div>
 
-                <div class="sa-grid-2">
+                <div class="adm-grid-2">
                     <div class="panel">
                         <div class="panel-header">
                             <div class="stat-icon icon-green" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-calendar-check"></i></div>
@@ -139,7 +139,7 @@
                         </div>
 
                         <% if (stats.periodeAktif && stats.periodeAktif !== '-') { %>
-                            <div class="sa-periode-box">
+                            <div class="adm-periode-box">
                                 <div>
                                     <strong><%= stats.periodeAktif %></strong>
                                     <small>Periode yang sedang berjalan</small>
@@ -160,7 +160,7 @@
                             <div class="stat-icon icon-blue" style="width:36px;height:36px;font-size:16px;"><i class="bi bi-lightning-charge-fill"></i></div>
                             <h3>Aksi Cepat</h3>
                         </div>
-                        <div class="sa-aksi">
+                        <div class="adm-aksi">
                             <a href="/admin/periode">
                                 <i class="bi bi-calendar-range"></i>
                                 <span>Kelola Periode Seleksi</span>
@@ -181,7 +181,7 @@
 
     <script>
         (function () {
-            var el = document.getElementById('saJam');
+            var el = document.getElementById('admJam');
             if (!el) return;
             var d = new Date();
             el.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
